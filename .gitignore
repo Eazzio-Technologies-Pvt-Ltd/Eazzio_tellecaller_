@@ -1,0 +1,8 @@
+# Root ignore file
+/backend/node_modules/
+/admin-panel/node_modules/
+/mobile-app/.dart_tool/
+/mobile-app/build/
+/mobile-app/.flutter-plugins
+/mobile-app/.flutter-plugins-dependencies
+database.sqlite
