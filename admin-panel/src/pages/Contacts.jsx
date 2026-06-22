@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import API_BASE_URL from '../config/api';
 import { Upload, User, UserPlus } from 'lucide-react';
 
 const Contacts = () => {
@@ -44,7 +45,7 @@ const Contacts = () => {
 
   const fetchCampaigns = async () => {
     try {
-      const response = await fetch('/api/campaigns', {
+      const response = await fetch(`${API_BASE_URL}/api/campaigns`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -60,7 +61,7 @@ const Contacts = () => {
 
   const fetchTelecallers = async () => {
     try {
-      const response = await fetch('/api/call-logs/analytics', {
+      const response = await fetch(`${API_BASE_URL}/api/call-logs/analytics`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -77,7 +78,7 @@ const Contacts = () => {
   const fetchContacts = async () => {
     setLoading(true);
     try {
-      const url = `/api/contacts?campaignId=${selectedCampaignFilter}&status=${selectedStatusFilter}&search=${searchTerm}`;
+      const url = `${API_BASE_URL}/api/contacts?campaignId=${selectedCampaignFilter}&status=${selectedStatusFilter}&search=${searchTerm}`;
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -126,7 +127,7 @@ const Contacts = () => {
     }
 
     try {
-      const response = await fetch('/api/contacts/import', {
+      const response = await fetch(`${API_BASE_URL}/api/contacts/import`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -156,7 +157,7 @@ const Contacts = () => {
 
   const handleReassignContact = async (contactId, telecallerId) => {
     try {
-      const response = await fetch(`/api/contacts/${contactId}/assign`, {
+      const response = await fetch(`${API_BASE_URL}/api/contacts/${contactId}/assign`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -184,7 +185,7 @@ const Contacts = () => {
 
     setBulkAssigning(true);
     try {
-      const response = await fetch('/api/contacts/assign-campaign', {
+      const response = await fetch(`${API_BASE_URL}/api/contacts/assign-campaign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -221,7 +222,7 @@ const Contacts = () => {
     }
 
     try {
-      const response = await fetch('/api/contacts/allot', {
+      const response = await fetch(`${API_BASE_URL}/api/contacts/allot`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

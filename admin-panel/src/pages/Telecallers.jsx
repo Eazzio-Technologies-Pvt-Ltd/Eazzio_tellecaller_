@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import API_BASE_URL from '../config/api';
 import { UserPlus, Mail, Shield, User, Lock, Trash2, Phone } from 'lucide-react';
 
 const Telecallers = () => {
@@ -15,7 +16,7 @@ const Telecallers = () => {
 
   const fetchTelecallers = async () => {
     try {
-      const response = await fetch('/api/call-logs/analytics', {
+      const response = await fetch(`${API_BASE_URL}/api/call-logs/analytics`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -46,7 +47,7 @@ const Telecallers = () => {
     }
 
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,7 +85,7 @@ const Telecallers = () => {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`/api/auth/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

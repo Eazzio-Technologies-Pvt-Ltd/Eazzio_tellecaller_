@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_BASE_URL from './config/api';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Telecallers from './pages/Telecallers';
@@ -37,7 +38,7 @@ const App = () => {
   useEffect(() => {
     if (token) {
       // Validate token & get current user
-      fetch('/api/auth/me', {
+      fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -72,7 +73,7 @@ const App = () => {
 
     setLoggingIn(true);
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

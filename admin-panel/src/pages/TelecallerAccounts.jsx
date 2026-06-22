@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import API_BASE_URL from '../config/api';
 import { Mail, Key, User, Search, Copy, Check, ShieldAlert, Phone } from 'lucide-react';
 
 const TelecallerAccounts = () => {
@@ -24,7 +25,7 @@ const TelecallerAccounts = () => {
 
   const fetchAccounts = async () => {
     try {
-      const response = await fetch('/api/auth/telecallers', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/telecallers`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

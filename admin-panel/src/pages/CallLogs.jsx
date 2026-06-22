@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import API_BASE_URL from '../config/api';
 import { Volume2, Play, Search, Calendar, PhoneIncoming } from 'lucide-react';
 
 const CallLogs = () => {
@@ -23,7 +24,7 @@ const CallLogs = () => {
 
   const fetchLogs = async () => {
     try {
-      const response = await fetch('/api/call-logs', {
+      const response = await fetch(`${API_BASE_URL}/api/call-logs`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

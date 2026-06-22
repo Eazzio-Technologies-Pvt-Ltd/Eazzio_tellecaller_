@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import API_BASE_URL from '../config/api';
 import { Plus, Play, Pause, CheckCircle2, Upload, Music, Volume2, Trash2 } from 'lucide-react';
 
 const Campaigns = () => {
@@ -18,7 +19,7 @@ const Campaigns = () => {
 
   const fetchCampaigns = async () => {
     try {
-      const response = await fetch('/api/campaigns', {
+      const response = await fetch(`${API_BASE_URL}/api/campaigns`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -49,7 +50,7 @@ const Campaigns = () => {
     }
 
     try {
-      const response = await fetch('/api/campaigns', {
+      const response = await fetch(`${API_BASE_URL}/api/campaigns`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,7 +84,7 @@ const Campaigns = () => {
     else if (currentStatus === 'pending') nextStatus = 'active';
 
     try {
-      const response = await fetch(`/api/campaigns/${campaignId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/api/campaigns/${campaignId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -124,7 +125,7 @@ const Campaigns = () => {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`/api/campaigns/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/campaigns/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -158,7 +159,7 @@ const Campaigns = () => {
     formData.append('file', audioFile);
 
     try {
-      const response = await fetch('/api/campaigns/upload-voice', {
+      const response = await fetch(`${API_BASE_URL}/api/campaigns/upload-voice`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

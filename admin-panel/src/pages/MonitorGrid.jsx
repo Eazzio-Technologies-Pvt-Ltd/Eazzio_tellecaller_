@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import API_BASE_URL from '../config/api';
 import {
   LayoutGrid, Grid2X2, Grid3X3, Monitor,
   Phone, Clock, Coffee, Wifi, WifiOff,
@@ -178,7 +179,7 @@ const MonitorGrid = () => {
 
   const fetchCallers = async () => {
     try {
-      const res = await fetch('/api/call-logs/analytics', {
+      const res = await fetch(`${API_BASE_URL}/api/call-logs/analytics`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       if (res.ok) {

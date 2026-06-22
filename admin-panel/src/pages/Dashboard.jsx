@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import API_BASE_URL from '../config/api';
 import { 
   PhoneCall, 
   PhoneOff, 
@@ -62,7 +63,7 @@ const Dashboard = ({ setActiveTab }) => {
 
   const handleDeleteNotification = async (id) => {
     try {
-      const res = await fetch(`/api/notifications/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/notifications/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -78,7 +79,7 @@ const Dashboard = ({ setActiveTab }) => {
 
   const handleClearAllNotifications = async () => {
     try {
-      const res = await fetch('/api/notifications', {
+      const res = await fetch(`${API_BASE_URL}/api/notifications`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -111,9 +112,9 @@ const Dashboard = ({ setActiveTab }) => {
 
       // Fetch analytics, logs, and notifications in parallel
       const [analyticsRes, logsRes, notificationsRes] = await Promise.all([
-        fetch(`/api/call-logs/analytics${queryParams}`, { headers }),
-        fetch(`/api/call-logs${queryParams}`, { headers }),
-        fetch('/api/notifications', { headers })
+        fetch(`${API_BASE_URL}/api/call-logs/analytics${queryParams}`, { headers }),
+        fetch(`${API_BASE_URL}/api/call-logs${queryParams}`, { headers }),
+        fetch(`${API_BASE_URL}/api/notifications`, { headers })
       ]);
 
       if (!analyticsRes.ok || !logsRes.ok) {
