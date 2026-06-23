@@ -14,6 +14,11 @@ const BillingPage = ({ theme, user }) => {
   const [telecallers, setTelecallers] = useState([]);
   const [companyBill, setCompanyBill] = useState(0);
   const [editCount, setEditCount] = useState(0);
+  const [planType, setPlanType] = useState('monthly');
+  const [noOfTelecallers, setNoOfTelecallers] = useState(0);
+  const [subscriptionStart, setSubscriptionStart] = useState(null);
+  const [subscriptionEnd, setSubscriptionEnd] = useState(null);
+  const [pricePerTelecaller, setPricePerTelecaller] = useState(59);
 
   // Common States
   const [loading, setLoading] = useState(true);
@@ -37,8 +42,18 @@ const BillingPage = ({ theme, user }) => {
         setTelecallers(data.telecallers || []);
         const edits = data.editCount || 0;
         setEditCount(edits);
+
+        const seats = data.noOfTelecallers || 0;
+        const plan = data.planType || 'monthly';
+        const rate = data.pricePerTelecaller || (plan === 'annual' ? 49 : 59);
+
+        setPlanType(plan);
+        setNoOfTelecallers(seats);
+        setSubscriptionStart(data.subscriptionStart || null);
+        setSubscriptionEnd(data.subscriptionEnd || null);
+        setPricePerTelecaller(rate);
         
-        const seatsBill = (data.telecallers || []).length * 49;
+        const seatsBill = plan === 'annual' ? seats * rate * 12 : seats * rate;
         const editSurcharge = Math.max(0, edits - 3) * 20;
         setCompanyBill(seatsBill + editSurcharge);
       } else {
@@ -102,7 +117,7 @@ const BillingPage = ({ theme, user }) => {
           <p style={styles.subtitle}>
             {isCompanyAdmin 
               ? `Account billing breakdown for Registration Code: ${user.companyRegNum}` 
-              : 'Financial audit of telecaller accounts at ₹49 / telecaller rate'}
+              : 'Financial audit of registered companies and subscription revenues'}
           </p>
         </div>
 
@@ -148,9 +163,12 @@ const BillingPage = ({ theme, user }) => {
                 <Users size={22} />
               </div>
               <div className="stat-info">
-                <span className="stat-label" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600' }}>ACTIVE TELECALLER USERS</span>
+                <span className="stat-label" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600' }}>REGISTERED SEAT LIMIT</span>
                 <span className="stat-value" style={{ fontSize: '1.8rem', fontWeight: '900', color: '#6366f1', marginTop: '2px' }}>
-                  {telecallers.length} callers
+                  {noOfTelecallers} seats
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  {telecallers.length} active telecallers registered
                 </span>
               </div>
             </div>
@@ -160,9 +178,12 @@ const BillingPage = ({ theme, user }) => {
                 <FileText size={22} />
               </div>
               <div className="stat-info">
-                <span className="stat-label" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600' }}>FLAT BILLING RATE</span>
-                <span className="stat-value" style={{ fontSize: '1.8rem', fontWeight: '900', color: '#f59e0b', marginTop: '2px' }}>
-                  ₹49 <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'normal' }}>/ caller / mo</span>
+                <span className="stat-label" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600' }}>ACTIVE BILLING PLAN</span>
+                <span className="stat-value" style={{ fontSize: '1.6rem', fontWeight: '900', color: '#f59e0b', marginTop: '2px', textTransform: 'capitalize' }}>
+                  {planType} Plan
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  ₹{pricePerTelecaller} / seat / month
                 </span>
               </div>
             </div>
@@ -192,6 +213,14 @@ const BillingPage = ({ theme, user }) => {
                 <span style={styles.invVal}>{getBillingCycle()}</span>
               </div>
               <div style={styles.invoiceRow}>
+                <span style={styles.invLabel}>Subscription Start:</span>
+                <span style={styles.invVal}>{formatDate(subscriptionStart)}</span>
+              </div>
+              <div style={styles.invoiceRow}>
+                <span style={styles.invLabel}>Subscription End:</span>
+                <span style={{ ...styles.invVal, fontWeight: '700', color: '#6366f1' }}>{formatDate(subscriptionEnd)}</span>
+              </div>
+              <div style={styles.invoiceRow}>
                 <span style={styles.invLabel}>Payment Status:</span>
                 <span style={{ ...styles.invVal, color: '#10b981', fontWeight: '700' }}>Active Subscription</span>
               </div>
@@ -212,12 +241,12 @@ const BillingPage = ({ theme, user }) => {
                 <tbody>
                   <tr style={styles.tr}>
                     <td style={{ ...styles.td, fontWeight: '700', color: 'var(--text-primary)' }}>
-                      Flat-Rate Telecaller Account Seats (1-Month Subscription)
+                      {planType === 'annual' ? 'Annual Plan Telecaller Seats (12-Month Pre-paid)' : 'Monthly Plan Telecaller Seats (1-Month Subscription)'}
                     </td>
-                    <td style={styles.td}>₹49 / caller / mo</td>
-                    <td style={styles.td}>{telecallers.length} active users</td>
+                    <td style={styles.td}>₹{pricePerTelecaller} / seat / mo {planType === 'annual' && '(billed annually)'}</td>
+                    <td style={styles.td}>{noOfTelecallers} seats purchased</td>
                     <td style={{ ...styles.td, textAlign: 'right', fontWeight: '800', color: '#10b981' }}>
-                      ₹{telecallers.length * 49}
+                      ₹{planType === 'annual' ? noOfTelecallers * pricePerTelecaller * 12 : noOfTelecallers * pricePerTelecaller}
                     </td>
                   </tr>
                   <tr style={styles.tr}>
@@ -232,7 +261,7 @@ const BillingPage = ({ theme, user }) => {
                   </tr>
                   <tr style={{ border: 'none' }}>
                     <td colSpan="3" style={{ ...styles.td, textAlign: 'right', fontWeight: '700', color: 'var(--text-secondary)', border: 'none', paddingTop: '1.5rem' }}>
-                      Grand Total Monthly Due:
+                      Total Subscription Cost (including surcharges):
                     </td>
                     <td style={{ ...styles.td, textAlign: 'right', fontSize: '1.25rem', fontWeight: '900', color: '#10b981', border: 'none', paddingTop: '1.5rem' }}>
                       ₹{companyBill}
@@ -283,7 +312,7 @@ const BillingPage = ({ theme, user }) => {
                               {tc.status}
                             </span>
                           </td>
-                          <td style={{ ...styles.td, color: '#10b981', fontWeight: '700' }}>₹49.00</td>
+                          <td style={{ ...styles.td, color: '#10b981', fontWeight: '700' }}>₹{pricePerTelecaller}.00</td>
                         </tr>
                       ))
                     )}
@@ -346,10 +375,14 @@ const BillingPage = ({ theme, user }) => {
               <tbody>
                 {companies.map((comp) => {
                   const callerCount = comp.telecaller_count || 0;
-                  const price = comp.price_per_telecaller || 49;
+                  const seats = comp.no_of_telecallers || 0;
+                  const plan = comp.plan_type || 'monthly';
+                  const rate = comp.price_per_telecaller || (plan === 'annual' ? 49 : 59);
+                  const subscriptionCharge = plan === 'annual' ? seats * rate * 12 : seats * rate;
+
                   const edits = comp.edit_count || 0;
                   const editCharge = Math.max(0, edits - 3) * 20;
-                  const total = (callerCount * price) + editCharge;
+                  const total = subscriptionCharge + editCharge;
 
                   return (
                     <tr key={comp.id} style={styles.tr}>
@@ -365,10 +398,14 @@ const BillingPage = ({ theme, user }) => {
                         <span style={styles.codeText}>{comp.reg_num}</span>
                       </td>
                       <td style={styles.td}>{comp.nature}</td>
-                      <td style={{ ...styles.td, fontWeight: '700', color: '#6366f1' }}>
-                        {callerCount}
+                      <td style={{ ...styles.td, color: 'var(--text-primary)' }}>
+                        <strong style={{ color: '#6366f1' }}>{callerCount}</strong>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: '4px' }}>/ {seats} seats</span>
                       </td>
-                      <td style={styles.td}>₹{price}</td>
+                      <td style={styles.td}>
+                        <div style={{ fontWeight: '700', textTransform: 'capitalize', color: 'var(--text-primary)' }}>₹{rate} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>/ mo</span></div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({plan})</div>
+                      </td>
                       <td style={styles.td}>
                         {edits} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>({Math.max(0, edits - 3)} billable)</span>
                       </td>

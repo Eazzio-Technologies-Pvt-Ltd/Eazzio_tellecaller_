@@ -167,7 +167,7 @@ const Companies = () => {
         </div>
 
         {/* Grid selector buttons */}
-        <div style={styles.gridSelector}>
+        <div className="companies-grid-selector" style={styles.gridSelector}>
           {GRID_OPTIONS.map(opt => {
             const Icon = opt.icon;
             const active = gridSize === opt.value;
@@ -205,11 +205,14 @@ const Companies = () => {
           <div style={{ color: 'var(--text-secondary)' }}>No companies found.</div>
         </div>
       ) : (
-        <div style={{ ...styles.grid, gridTemplateColumns: colsStyle }}>
+        <div className="live-monitor-grid" style={{ ...styles.grid, gridTemplateColumns: colsStyle }}>
           {filteredCompanies.map(c => {
             const addedTelecallers = c.telecaller_count || 0;
             const pricePerCaller = c.price_per_telecaller || 49;
             const totalCharge = addedTelecallers * pricePerCaller;
+            const isExpired = c.subscription_end ? new Date(c.subscription_end) < new Date() : false;
+            const expiryStr = formatDate(c.subscription_end);
+            const planText = c.plan_type ? c.plan_type.charAt(0).toUpperCase() + c.plan_type.slice(1) : 'Monthly';
 
             return (
               <div 
@@ -259,6 +262,20 @@ const Companies = () => {
                       Registered On
                     </div>
                     <span style={styles.itemValue}>{formatDate(c.created_at)}</span>
+                  </div>
+
+                  <div style={styles.detailItem}>
+                    <div style={styles.itemLabel}>
+                      <Calendar size={14} style={{ marginRight: '6px', color: isExpired ? '#ef4444' : '#10b981' }} />
+                      Plan / Expiry
+                    </div>
+                    <span style={{ 
+                      ...styles.itemValue, 
+                      color: isExpired ? '#ef4444' : '#10b981',
+                      fontWeight: '700'
+                    }}>
+                      {planText} / {expiryStr} {isExpired ? '(Expired)' : ''}
+                    </span>
                   </div>
 
                   <div style={styles.detailItem}>
@@ -338,6 +355,23 @@ const Companies = () => {
                   <div style={styles.infoField}>
                     <span style={styles.infoLabel}>Registered On</span>
                     <span style={styles.infoValue}>{formatDate(selectedCompany.created_at)}</span>
+                  </div>
+                  <div style={styles.infoField}>
+                    <span style={styles.infoLabel}>Billing Plan Type</span>
+                    <span style={{ ...styles.infoValue, textTransform: 'capitalize' }}>
+                      {selectedCompany.plan_type || 'monthly'}
+                    </span>
+                  </div>
+                  <div style={styles.infoField}>
+                    <span style={styles.infoLabel}>Subscription Expiry Date</span>
+                    <span style={{ 
+                      ...styles.infoValue, 
+                      color: (selectedCompany.subscription_end && new Date(selectedCompany.subscription_end) < new Date()) ? '#ef4444' : '#10b981',
+                      fontWeight: '700'
+                    }}>
+                      {formatDate(selectedCompany.subscription_end)}
+                      {(selectedCompany.subscription_end && new Date(selectedCompany.subscription_end) < new Date()) ? ' (Expired)' : ''}
+                    </span>
                   </div>
                   <div style={styles.infoField}>
                     <span style={styles.infoLabel}>Monthly Revenue Generated</span>

@@ -143,6 +143,9 @@ async function initializeSchema() {
       admin_password_hash VARCHAR(255) NOT NULL,
       admin_plain_password VARCHAR(255) NOT NULL,
       price_per_telecaller INTEGER DEFAULT 49,
+      plan_type VARCHAR(20) DEFAULT 'monthly',
+      subscription_start ${timestampType},
+      subscription_end ${timestampType},
       edit_count INTEGER DEFAULT 0,
       created_at ${timestampType}
     )`,
@@ -238,6 +241,20 @@ async function initializeSchema() {
   } catch (err) {
     // Column already exists, ignore
   }
+
+  // Add plan_type, subscription_start, subscription_end columns if missing
+  try {
+    await queryMain("ALTER TABLE companies ADD COLUMN plan_type VARCHAR(20) DEFAULT 'monthly'");
+    console.log('Added plan_type column to companies table.');
+  } catch (err) { /* already exists */ }
+  try {
+    await queryMain('ALTER TABLE companies ADD COLUMN subscription_start DATETIME');
+    console.log('Added subscription_start column to companies table.');
+  } catch (err) { /* already exists */ }
+  try {
+    await queryMain('ALTER TABLE companies ADD COLUMN subscription_end DATETIME');
+    console.log('Added subscription_end column to companies table.');
+  } catch (err) { /* already exists */ }
 
   // Create default admin user if none exists
   try {

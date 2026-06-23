@@ -11,7 +11,7 @@ import MonitorGrid from './pages/MonitorGrid';
 import RegisterCompany from './components/RegisterCompany';
 import Companies from './pages/Companies';
 import BillingPage from './pages/BillingPage';
-import { Mail, Lock, LogIn, AlertCircle, Menu, X } from 'lucide-react';
+import { Mail, Lock, LogIn, AlertCircle, Menu, X, ShieldCheck, ArrowLeft } from 'lucide-react';
 import Logo from './components/Logo';
 
 const App = () => {
@@ -21,6 +21,7 @@ const App = () => {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [subscriptionExpired, setSubscriptionExpired] = useState(false);
   const [loginType, setLoginType] = useState('company'); // 'company' or 'superadmin'
   
   // Login Form States
@@ -60,6 +61,16 @@ const App = () => {
           throw new Error('Unauthorized role access.');
         }
         setUser(userData);
+        // Check subscription expiry for company admins
+        if (userData.companyRegNum && userData.subscriptionEnd) {
+          const now = new Date();
+          const expiry = new Date(userData.subscriptionEnd);
+          if (expiry < now) {
+            setSubscriptionExpired(true);
+          } else {
+            setSubscriptionExpired(false);
+          }
+        }
       })
       .catch(err => {
         console.error(err);
@@ -175,38 +186,6 @@ const App = () => {
                 <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginTop: '10px' }}>SIM-Based Auto Dialing Admin Panel</p>
               </div>
 
-              {/* Login Type Selection Tabs */}
-              <div style={styles.loginTypeTabs}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginType('superadmin');
-                    setEmail(''); // Keep empty as requested
-                    setPassword('');
-                  }}
-                  style={{
-                    ...styles.loginTypeTab,
-                    ...(loginType === 'superadmin' ? styles.loginTypeTabActive : {})
-                  }}
-                >
-                  Superadmin Login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginType('company');
-                    setEmail('');
-                    setPassword('');
-                  }}
-                  style={{
-                    ...styles.loginTypeTab,
-                    ...(loginType === 'company' ? styles.loginTypeTabActive : {})
-                  }}
-                >
-                  Company Login
-                </button>
-              </div>
-
               <form onSubmit={handleLogin} style={{ marginTop: '1.5rem' }}>
                 {loginError && (
                   <div style={styles.errorAlert}>
@@ -256,23 +235,99 @@ const App = () => {
                   ) : (
                     <>
                       <LogIn size={22} />
-                      Access Dashboard
+                      {loginType === 'superadmin' ? 'Superadmin Login' : 'Access Dashboard'}
                     </>
                   )}
                 </button>
               </form>
 
-              <div style={{ textAlign: 'center', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>New to Eazzio? </span>
-                <button 
-                  onClick={() => setIsRegistering(true)}
-                  style={{ background: 'none', border: 'none', color: '#6366f1', fontWeight: '700', cursor: 'pointer', fontSize: '0.95rem', padding: 0 }}
-                >
-                  Register Company
-                </button>
+              {loginType === 'company' && (
+                <div style={{ textAlign: 'center', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>New to Eazzio? </span>
+                  <button 
+                    onClick={() => setIsRegistering(true)}
+                    style={{ background: 'none', border: 'none', color: '#6366f1', fontWeight: '700', cursor: 'pointer', fontSize: '0.95rem', padding: 0 }}
+                  >
+                    Register Company
+                  </button>
+                </div>
+              )}
+              <div style={{ textAlign: 'center', marginTop: loginType === 'company' ? '0.75rem' : '1.5rem', ...(loginType === 'superadmin' ? { borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' } : {}) }}>
+                {loginType === 'company' ? (
+                  <button
+                    onClick={() => {
+                      setLoginType('superadmin');
+                      setEmail('');
+                      setPassword('');
+                      setLoginError('');
+                    }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', fontSize: '0.82rem', padding: 0, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <ShieldCheck size={14} />
+                    Partner Login
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setLoginType('company');
+                      setEmail('');
+                      setPassword('');
+                      setLoginError('');
+                    }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', fontSize: '0.82rem', padding: 0, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <ArrowLeft size={14} />
+                    Company Login
+                  </button>
+                )}
               </div>
             </>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // Subscription expired — show renewal / plan selection screen for company admins
+  if (subscriptionExpired && user && user.companyRegNum) {
+    return (
+      <div style={{
+        ...styles.loginContainer,
+        backgroundImage: theme === 'dark'
+          ? 'linear-gradient(to bottom, rgba(11, 17, 32, 0.82), rgba(8, 12, 24, 0.94)), url("/login-bg.png")'
+          : 'linear-gradient(to bottom, rgba(248, 250, 252, 0.82), rgba(241, 245, 249, 0.94)), url("/login-bg.png")'
+      }}>
+        <div style={styles.loginBackgroundDecoration}></div>
+        <div className="login-glass-card" style={{ ...styles.loginCard, padding: '2rem 2.25rem', maxWidth: '620px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.12)', border: '2px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
+              <AlertCircle size={30} color="#ef4444" />
+            </div>
+            <h2 style={{ color: 'var(--text-primary)', fontSize: '1.6rem', fontWeight: '800', margin: 0 }}>Subscription Expired</h2>
+            <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '0.95rem' }}>
+              Your Eazzio subscription has expired. Please renew to continue using the platform.
+            </p>
+          </div>
+          <RegisterCompany
+            onBack={handleLogout}
+            theme={theme}
+            renewalMode={true}
+            prefillEmail={user.email}
+            prefillNoOfTelecallers={user.noOfTelecallers}
+            onRenewalSuccess={(data) => {
+              setSubscriptionExpired(false);
+              fetch(`${API_BASE_URL}/api/auth/me`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              })
+              .then(res => res.json())
+              .then(userData => {
+                setUser(userData);
+              })
+              .catch(err => console.error('Error fetching updated user after renewal:', err));
+            }}
+          />
         </div>
       </div>
     );

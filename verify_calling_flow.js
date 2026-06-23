@@ -99,16 +99,50 @@ async function runTest() {
   fs.writeFileSync(recFile, 'dummy-audio-bytes-data', 'utf8');
   console.log('Created dummy recording audio file.');
 
-  // 2. Login as John Telecaller
+  // 2. Login as Admin to assign a contact to John Telecaller
+  const adminLogin = await makeJsonRequest('POST', '/api/auth/login', {
+    email: 'sumitsmile666@gmail.com',
+    password: 'afifasumit666'
+  });
+  const adminToken = adminLogin.body.token;
+
+  console.log('Fetching telecallers to find John Telecaller ID...');
+  const tcsRes = await makeJsonRequest('GET', '/api/auth/telecallers', null, adminToken);
+  const john = tcsRes.body.find(tc => tc.email === 'john@eazzio.com');
+  if (!john) {
+    console.error('❌ John Telecaller not found in database.');
+    process.exit(1);
+  }
+  console.log(`Found John Telecaller ID: ${john.id}`);
+
+  console.log('Fetching contacts to find a target contact...');
+  const contactsRes = await makeJsonRequest('GET', '/api/contacts', null, adminToken);
+  const contactsList = contactsRes.body;
+  if (!contactsList || contactsList.length === 0) {
+    console.error('❌ No contacts found in database. Run verify_allotment.js first.');
+    process.exit(1);
+  }
+  const targetContact = contactsList[0];
+  console.log(`Assigning contact "${targetContact.name}" (ID: ${targetContact.id}) to John Telecaller...`);
+  
+  await makeJsonRequest('PUT', `/api/contacts/${targetContact.id}/assign`, { telecallerId: john.id }, adminToken);
+  console.log('Contact assigned successfully.');
+
+  // 3. Login as John Telecaller
   const callerLogin = await makeJsonRequest('POST', '/api/auth/login', {
     email: 'john@eazzio.com',
-    password: 'caller_password_123'
+    password: 'caller_password_123',
+    companyRegNum: 'EAZ-397728'
   });
   const callerToken = callerLogin.body.token;
 
-  // 3. Fetch his allotted contacts to find the ID
+  // 4. Fetch his allotted contacts to find the ID
   const allottedRes = await makeJsonRequest('GET', '/api/contacts/allotted', null, callerToken);
-  const contact = allottedRes.body[0]; // first lead
+  const contact = allottedRes.body.find(c => c.id === targetContact.id);
+  if (!contact) {
+    console.error('❌ Target contact not found in John\'s allotted contacts list.');
+    process.exit(1);
+  }
   console.log(`Submitting call log for lead: ${contact.name} (ID: ${contact.id})`);
 
   // 4. Upload Call Log + Recording
@@ -142,13 +176,6 @@ async function runTest() {
     callingTime: 45
   }, callerToken);
   console.log('Telemetry sync response:', syncRes.status);
-
-  // 6. Login as Admin
-  const adminLogin = await makeJsonRequest('POST', '/api/auth/login', {
-    email: 'tellecaller111@eazzio.com',
-    password: 'eazziotellecaller111'
-  });
-  const adminToken = adminLogin.body.token;
 
   // 7. Get Call Logs list (Admin)
   console.log('Checking call logs list in admin database...');

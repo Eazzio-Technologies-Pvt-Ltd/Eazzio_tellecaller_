@@ -843,3 +843,71 @@ tr:hover td {
     gap: 8px !important;
   }
 }
+
+/* Media query specifically targeting screen width range 380px - 420px for mobile interfaces */
+@media screen and (min-width: 380px) and (max-width: 420px) {
+  .main-content {
+    padding: 0.5rem !important;
+  }
+  
+  .mobile-header {
+    padding: 0.5rem 0.75rem !important;
+  }
+
+  .grid-stats {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+    margin-bottom: 1.25rem !important;
+  }
+  
+  .grid-charts {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  .live-monitor-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  .companies-grid-selector {
+    display: none !important;
+  }
+
+  .plan-selection-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .login-glass-card {
+    padding: 1.75rem 1.25rem !important;
+    width: 95% !important;
+    max-width: 390px !important;
+    margin: 0 auto !important;
+  }
+
+  h1 {
+    font-size: 1.2rem !important;
+  }
+  
+  h2 {
+    font-size: 0.95rem !important;
+  }
+
+  .stat-value {
+    font-size: 1.3rem !important;
+  }
+
+  .btn {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.82rem !important;
+  }
+  
+  table, .table, .telecallers-table {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+  }
+}
+

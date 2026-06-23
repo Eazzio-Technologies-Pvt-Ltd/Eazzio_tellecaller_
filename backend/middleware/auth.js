@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const db = require('../config/database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_eazzio_telecaller_system_2026';
 
@@ -25,6 +26,37 @@ module.exports = (roles = []) => {
         return res.status(403).json({ error: 'Access forbidden. Insufficient permissions.' });
       }
 
+      // If user is associated with a company, check if subscription is expired
+      if (req.user.companyRegNum) {
+        const path = req.originalUrl || '';
+        const isRenewalOrMe = path.includes('/renew-subscription-with-payment') || 
+                              path.includes('/razorpay-order') || 
+                              path.includes('/me') ||
+                              path.includes('/login');
+
+        if (!isRenewalOrMe) {
+          db.queryMain('SELECT subscription_end FROM companies WHERE reg_num = $1', [req.user.companyRegNum])
+            .then(compCheck => {
+              if (compCheck.rows.length > 0 && compCheck.rows[0].subscription_end) {
+                const now = new Date();
+                const expiry = new Date(compCheck.rows[0].subscription_end);
+                if (expiry < now) {
+                  return res.status(403).json({ 
+                    error: 'subscription_expired',
+                    message: 'Your company\'s Eazzio subscription has expired. Please renew your subscription to access this resource.' 
+                  });
+                }
+              }
+              next();
+            })
+            .catch(err => {
+              console.error('Subscription check middleware error:', err);
+              next(); // Fallback to allow if database fails
+            });
+          return;
+        }
+      }
+
       next();
     } catch (error) {
       console.error('JWT verification error:', error);
@@ -32,3 +64,4 @@ module.exports = (roles = []) => {
     }
   };
 };
+

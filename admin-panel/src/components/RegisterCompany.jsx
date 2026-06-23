@@ -1,21 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import API_BASE_URL from '../config/api';
 import { Building2, Briefcase, Users, Mail, Lock, CheckCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 
-const RegisterCompany = ({ onBack, theme }) => {
+const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = '', onRenewalSuccess, prefillNoOfTelecallers = '' }) => {
   const isLight = theme === 'light';
 
   // Form Fields
   const [name, setName] = useState('');
   const [nature, setNature] = useState('');
-  const [noOfTelecallers, setNoOfTelecallers] = useState('5');
-  const [email, setEmail] = useState('');
+  const [noOfTelecallers, setNoOfTelecallers] = useState(prefillNoOfTelecallers ? prefillNoOfTelecallers.toString() : '5');
+  const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState('');
+  const [planType, setPlanType] = useState('monthly'); // 'monthly' or 'annual'
 
   // Status States
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successData, setSuccessData] = useState(null);
+
+  useEffect(() => {
+    if (renewalMode && prefillEmail) {
+      setEmail(prefillEmail);
+    }
+    if (renewalMode && prefillNoOfTelecallers) {
+      setNoOfTelecallers(prefillNoOfTelecallers.toString());
+    }
+  }, [renewalMode, prefillEmail, prefillNoOfTelecallers]);
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -36,8 +46,14 @@ const RegisterCompany = ({ onBack, theme }) => {
     setError('');
     setLoading(true);
 
-    if (!name || !nature || !email || !password || !noOfTelecallers) {
+    if (!renewalMode && (!name || !nature || !password)) {
       setError('Please fill in all fields.');
+      setLoading(false);
+      return;
+    }
+
+    if (!email || !noOfTelecallers) {
+      setError('Please fill in all required fields.');
       setLoading(false);
       return;
     }
@@ -61,8 +77,12 @@ const RegisterCompany = ({ onBack, theme }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(renewalMode ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
         },
-        body: JSON.stringify({ noOfTelecallers: telecallersCount }),
+        body: JSON.stringify({ 
+          noOfTelecallers: telecallersCount,
+          planType: planType
+        }),
       });
 
       const orderData = await orderRes.json();
@@ -76,23 +96,29 @@ const RegisterCompany = ({ onBack, theme }) => {
         amount: orderData.amount,
         currency: 'INR',
         name: 'Eazzio Auto Dialer',
-        description: `Setup Fee for ${telecallersCount} Telecallers`,
+        description: renewalMode 
+          ? `Subscription Renewal for ${telecallersCount} seats (${planType === 'annual' ? 'Annual' : 'Monthly'})`
+          : `Setup Fee for ${telecallersCount} Telecallers`,
         order_id: orderData.orderId,
         handler: async function (response) {
           setLoading(true);
           try {
-            // 4. Verify payment and finalize registration
-            const registerRes = await fetch(`${API_BASE_URL}/api/auth/register-company-with-payment`, {
+            // 4. Verify payment and finalize registration or renewal
+            const endpoint = renewalMode 
+              ? `${API_BASE_URL}/api/auth/renew-subscription-with-payment`
+              : `${API_BASE_URL}/api/auth/register-company-with-payment`;
+
+            const registerRes = await fetch(endpoint, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
+                ...(renewalMode ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
               },
               body: JSON.stringify({
-                name,
-                nature,
+                ...(renewalMode ? {} : { name, nature, password }),
                 noOfTelecallers: telecallersCount,
                 email,
-                password,
+                planType,
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature
@@ -101,10 +127,16 @@ const RegisterCompany = ({ onBack, theme }) => {
 
             const registerData = await registerRes.json();
             if (!registerRes.ok) {
-              throw new Error(registerData.error || 'Failed to verify payment and register company.');
+              throw new Error(registerData.error || 'Failed to verify payment and process registration.');
             }
 
-            setSuccessData(registerData);
+            if (renewalMode) {
+              if (onRenewalSuccess) {
+                onRenewalSuccess(registerData);
+              }
+            } else {
+              setSuccessData(registerData);
+            }
           } catch (err) {
             setError(err.message);
           } finally {
@@ -112,7 +144,7 @@ const RegisterCompany = ({ onBack, theme }) => {
           }
         },
         prefill: {
-          name: name + ' Admin',
+          name: renewalMode ? '' : (name + ' Admin'),
           email: email
         },
         theme: {
@@ -168,13 +200,17 @@ const RegisterCompany = ({ onBack, theme }) => {
           </div>
           <div style={styles.detailRow}>
             <span style={styles.detailLabel}>Telecallers Count:</span>
-            <span style={styles.detailVal}>{noOfTelecallers}</span>
+            <span style={styles.detailVal}>{noOfTelecallers} seats</span>
+          </div>
+          <div style={styles.detailRow}>
+            <span style={styles.detailLabel}>Plan Subscribed:</span>
+            <span style={{ ...styles.detailVal, textTransform: 'capitalize' }}>{planType} Billing</span>
           </div>
         </div>
 
-        <button 
-          onClick={onBack} 
-          className="btn btn-primary" 
+        <button
+          onClick={onBack}
+          className="btn btn-primary"
           style={{ width: '100%', height: '56px', fontSize: '1.1rem', borderRadius: '12px', marginTop: '1rem' }}
         >
           Return to Login
@@ -187,17 +223,21 @@ const RegisterCompany = ({ onBack, theme }) => {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
         {onBack && (
-          <button 
-            onClick={onBack} 
+          <button
+            onClick={onBack}
             style={styles.backBtn}
-            title="Go Back"
+            title={renewalMode ? "Logout" : "Go Back"}
           >
             <ArrowLeft size={20} color="var(--text-primary)" />
           </button>
         )}
         <div>
-          <h2 style={{ color: 'var(--text-primary)', fontSize: '1.8rem', fontWeight: '800', margin: 0 }}>Register Company</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>Create a new business portal on Eazzio</p>
+          <h2 style={{ color: 'var(--text-primary)', fontSize: '1.8rem', fontWeight: '800', margin: 0 }}>
+            {renewalMode ? "Renew Subscription" : "Register Company"}
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>
+            {renewalMode ? "Select plan and seats to renew your portal" : "Create a new business portal on Eazzio"}
+          </p>
         </div>
       </div>
 
@@ -208,54 +248,87 @@ const RegisterCompany = ({ onBack, theme }) => {
           </div>
         )}
 
-        <div className="form-group">
-          <label style={styles.label}>Company Name</label>
-          <div style={styles.inputWrapper}>
-            <Briefcase size={18} style={styles.inputIcon} />
-            <input 
-              type="text" 
-              placeholder="e.g. Acme Corporation" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              style={styles.input}
-              required
-            />
-          </div>
-        </div>
+        {!renewalMode && (
+          <>
+            <div className="form-group">
+              <label style={styles.label}>Company Name</label>
+              <div style={styles.inputWrapper}>
+                <Briefcase size={18} style={styles.inputIcon} />
+                <input
+                  type="text"
+                  placeholder="e.g. Acme Corporation"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+            </div>
 
-        <div className="form-group">
-          <label style={styles.label}>Nature of Company</label>
-          <div style={styles.inputWrapper}>
-            <Building2 size={18} style={styles.inputIcon} />
-            <input 
-              type="text" 
-              placeholder="e.g. Sales, Real Estate, Support" 
-              value={nature}
-              onChange={(e) => setNature(e.target.value)}
-              style={styles.input}
-              required
-            />
-          </div>
-        </div>
+            <div className="form-group">
+              <label style={styles.label}>Nature of Company</label>
+              <div style={styles.inputWrapper}>
+                <Building2 size={18} style={styles.inputIcon} />
+                <input
+                  type="text"
+                  placeholder="e.g. Sales, Real Estate, Support"
+                  value={nature}
+                  onChange={(e) => setNature(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="form-group">
           <label style={styles.label}>Number of Telecallers</label>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <div style={{ ...styles.inputWrapper, flex: 1 }}>
-              <Users size={18} style={styles.inputIcon} />
-              <input 
-                type="number" 
-                min="1"
-                placeholder="e.g. 5" 
-                value={noOfTelecallers}
-                onChange={(e) => setNoOfTelecallers(e.target.value)}
-                style={styles.input}
-                required
-              />
+          <div style={styles.inputWrapper}>
+            <Users size={18} style={styles.inputIcon} />
+            <input
+              type="number"
+              min="1"
+              placeholder="e.g. 5"
+              value={noOfTelecallers}
+              onChange={(e) => setNoOfTelecallers(e.target.value)}
+              style={styles.input}
+              required
+            />
+          </div>
+        </div>
+
+        {/* Plan Selection Cards */}
+        <div style={{ marginBottom: '0.4rem' }}>
+          <label style={styles.label}>Select Subscription Plan</label>
+          <div className="plan-selection-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '6px' }}>
+            {/* Card 1: Monthly */}
+            <div 
+              onClick={() => setPlanType('monthly')}
+              style={{
+                ...styles.planCard,
+                borderColor: planType === 'monthly' ? '#6366f1' : 'var(--border-color)',
+                backgroundColor: planType === 'monthly' ? 'rgba(99, 102, 241, 0.05)' : 'var(--bg-primary)',
+              }}
+            >
+              <span style={{ fontSize: '1.25rem', fontWeight: '900', color: planType === 'monthly' ? '#6366f1' : 'var(--text-primary)' }}>₹59</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', marginTop: '2px' }}>/ telecaller / month</span>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>billed monthly</span>
             </div>
-            <div style={styles.priceTag}>
-              <span style={{ fontSize: '1.05rem', fontWeight: '800', color: '#10B981' }}>₹49</span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginLeft: '2px' }}>/ telecaller</span>
+
+            {/* Card 2: Annual */}
+            <div 
+              onClick={() => setPlanType('annual')}
+              style={{
+                ...styles.planCard,
+                borderColor: planType === 'annual' ? '#10b981' : 'var(--border-color)',
+                backgroundColor: planType === 'annual' ? 'rgba(16, 185, 129, 0.05)' : 'var(--bg-primary)',
+              }}
+            >
+              <div style={styles.popularBadge}>Best Value</div>
+              <span style={{ fontSize: '1.25rem', fontWeight: '900', color: planType === 'annual' ? '#10b981' : 'var(--text-primary)' }}>₹49</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', marginTop: '2px' }}>/ telecaller / month</span>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>billed annually</span>
             </div>
           </div>
         </div>
@@ -264,45 +337,48 @@ const RegisterCompany = ({ onBack, theme }) => {
           <label style={styles.label}>Admin Email Address</label>
           <div style={styles.inputWrapper}>
             <Mail size={18} style={styles.inputIcon} />
-            <input 
-              type="email" 
-              placeholder="admin@yourcompany.com" 
+            <input
+              type="email"
+              placeholder="admin@yourcompany.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={styles.input}
               required
+              disabled={renewalMode}
             />
           </div>
         </div>
 
-        <div className="form-group">
-          <label style={styles.label}>Admin Password</label>
-          <div style={styles.inputWrapper}>
-            <Lock size={18} style={styles.inputIcon} />
-            <input 
-              type="password" 
-              placeholder="Enter admin password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={styles.input}
-              required
-            />
+        {!renewalMode && (
+          <div className="form-group">
+            <label style={styles.label}>Admin Password</label>
+            <div style={styles.inputWrapper}>
+              <Lock size={18} style={styles.inputIcon} />
+              <input
+                type="password"
+                placeholder="Enter admin password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={styles.input}
+                required
+              />
+            </div>
           </div>
-        </div>
+        )}
 
-        <button 
-          type="submit" 
-          className="btn btn-primary" 
+        <button
+          type="submit"
+          className="btn btn-primary"
           style={{ width: '100%', height: '46px', fontSize: '1.05rem', borderRadius: '10px', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           disabled={loading}
         >
           {loading ? (
             <>
               <RefreshCw size={18} className="animate-spin" />
-              Registering Business...
+              Processing Payment...
             </>
           ) : (
-            'Complete Registration'
+            renewalMode ? 'Pay & Renew Subscription' : 'Complete Registration'
           )}
         </button>
       </form>
@@ -364,17 +440,34 @@ const styles = {
     color: 'var(--text-primary)',
     outline: 'none',
     transition: 'all 0.2s',
+    disabled: {
+      opacity: 0.6,
+      cursor: 'not-allowed',
+    }
   },
-  priceTag: {
+  planCard: {
+    border: '2px solid var(--border-color)',
+    borderRadius: '10px',
+    padding: '14px',
+    cursor: 'pointer',
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '0 12px',
-    height: '40px',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    border: '1px solid rgba(16, 185, 129, 0.25)',
-    borderRadius: '8px',
-    flexShrink: 0,
+    transition: 'all 0.2s ease',
+    position: 'relative',
+  },
+  popularBadge: {
+    position: 'absolute',
+    top: '-8px',
+    right: '8px',
+    backgroundColor: '#10b981',
+    color: '#fff',
+    fontSize: '0.6rem',
+    fontWeight: '800',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    textTransform: 'uppercase',
   },
   errorAlert: {
     backgroundColor: 'rgba(239, 68, 68, 0.12)',

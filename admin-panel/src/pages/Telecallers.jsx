@@ -29,6 +29,11 @@ const Telecallers = () => {
   const [isPayingForEdit, setIsPayingForEdit] = useState(false);
   const [pendingEditCaller, setPendingEditCaller] = useState(null); // caller awaiting payment
 
+  // Telecaller limit exceed payment states
+  const [isPayingForLimit, setIsPayingForLimit] = useState(false);
+  const [pendingCaller, setPendingCaller] = useState(null); // { name, email }
+  const [limitErrorDetails, setLimitErrorDetails] = useState(null); // { allowedLimit, rate, planType }
+
   // Success / Error alerts
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
@@ -83,6 +88,17 @@ const Telecallers = () => {
       const data = await response.json();
       
       if (!response.ok) {
+        if (response.status === 403 && data.error === 'limit_exceeded') {
+          // Open the Pay & Register modal
+          setPendingCaller({ name, email });
+          setLimitErrorDetails({
+            allowedLimit: data.allowedLimit,
+            rate: data.rate,
+            planType: data.planType
+          });
+          setIsPayingForLimit(true);
+          return;
+        }
         throw new Error(data.error || 'Failed to add telecaller.');
       }
 
@@ -193,6 +209,93 @@ const Telecallers = () => {
     } catch (err) {
       setFormError(err.message);
       setPendingEditCaller(null);
+    }
+  };
+
+  const handlePayAndAddCaller = async () => {
+    setFormError('');
+    setIsPayingForLimit(false);
+
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error('Failed to load Razorpay SDK. Please check your internet connection.');
+
+      // Create extra telecaller order on backend
+      const orderRes = await fetch(`${API_BASE_URL}/api/auth/razorpay-extra-telecaller-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create payment order.');
+
+      // Open Razorpay Checkout for extra seat charge
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: 'INR',
+        name: 'Eazzio Auto Dialer',
+        description: `Extra Telecaller Seat — ₹${orderData.rate} (${limitErrorDetails.planType === 'annual' ? 'Billed Annually' : 'Billed Monthly'})`,
+        order_id: orderData.orderId,
+        handler: async function (response) {
+          setLoading(true);
+          try {
+            // Verify payment and add the telecaller
+            const addRes = await fetch(`${API_BASE_URL}/api/auth/add-extra-telecaller-with-payment`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify({
+                name: pendingCaller.name,
+                email: pendingCaller.email,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+
+            const addData = await addRes.json();
+            if (!addRes.ok) throw new Error(addData.error || 'Failed to verify payment and add extra telecaller.');
+
+            setFormSuccess('Payment successful! Extra telecaller registered and seat limit increased.');
+            setName('');
+            setEmail('');
+            setPassword('');
+            fetchTelecallers();
+            setTimeout(() => {
+              setIsModalOpen(false);
+              setFormSuccess('');
+              setPendingCaller(null);
+              setLimitErrorDetails(null);
+            }, 2500);
+
+          } catch (err) {
+            setFormError(err.message);
+          } finally {
+            setLoading(false);
+          }
+        },
+        prefill: { email: '' },
+        theme: { color: '#6366f1' },
+        modal: {
+          ondismiss: function () {
+            setFormError('Payment was cancelled. Telecaller seat was not added.');
+            setPendingCaller(null);
+            setLimitErrorDetails(null);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      setFormError(err.message);
+      setPendingCaller(null);
+      setLimitErrorDetails(null);
     }
   };
 
@@ -686,6 +789,77 @@ const Telecallers = () => {
               >
                 <CreditCard size={16} />
                 Pay &#8377;20 &amp; Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Confirmation Modal - Extra Telecaller Limit */}
+      {isPayingForLimit && pendingCaller && limitErrorDetails && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '420px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ 
+                width: '64px', height: '64px', borderRadius: '50%', 
+                backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                border: '2px solid rgba(99, 102, 241, 0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 1rem auto'
+              }}>
+                <UserPlus size={30} color="#6366f1" />
+              </div>
+              <h2 style={{ color: 'var(--text-primary)', fontSize: '1.3rem', fontWeight: '800', margin: 0 }}>
+                Seat Limit Reached
+              </h2>
+            </div>
+
+            <div style={{
+              backgroundColor: 'rgba(99, 102, 241, 0.08)',
+              border: '1px solid rgba(99, 102, 241, 0.25)',
+              borderRadius: '10px',
+              padding: '1rem',
+              marginBottom: '1.25rem'
+            }}>
+              <p style={{ color: 'var(--text-primary)', fontSize: '0.9rem', margin: 0, lineHeight: '1.5' }}>
+                You have reached your limit of <strong>{limitErrorDetails.allowedLimit} telecallers</strong>.
+                Adding another telecaller requires purchasing an additional seat under your <strong style={{ textTransform: 'capitalize' }}>{limitErrorDetails.planType} plan</strong>.
+              </p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: '8px', margin: '8px 0 0 0' }}>
+                Registering: <strong style={{ color: 'var(--text-primary)' }}>{pendingCaller.name} ({pendingCaller.email})</strong>
+              </p>
+            </div>
+
+            <div style={{
+              backgroundColor: 'var(--bg-primary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '10px',
+              padding: '1rem',
+              marginBottom: '1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Extra Seat Charge</span>
+              <span style={{ color: '#10b981', fontWeight: '800', fontSize: '1.2rem' }}>&#8377;{limitErrorDetails.rate}</span>
+            </div>
+
+            <div className="modal-actions">
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={() => { setIsPayingForLimit(false); setPendingCaller(null); setLimitErrorDetails(null); }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={handlePayAndAddCaller}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <CreditCard size={16} />
+                Pay &#8377;{limitErrorDetails.rate} &amp; Add Seat
               </button>
             </div>
           </div>

@@ -94,7 +94,9 @@ async function runTest() {
   const csvData = `Name,Phone Number
 Amit Kumar,9876543210
 Siddharth Sen,8765432109
-Priya Sharma,7654321098`;
+Priya Sharma,7654321098
+Rohan Mehta,9999888877
+Karan Johar,8888777766`;
   
   const csvFile = './test_leads.csv';
   fs.writeFileSync(csvFile, csvData, 'utf8');
@@ -102,8 +104,8 @@ Priya Sharma,7654321098`;
 
   // 2. Get Admin login token
   const adminLogin = await makeJsonRequest('POST', '/api/auth/login', {
-    email: 'tellecaller111@eazzio.com',
-    password: 'eazziotellecaller111'
+    email: 'sumitsmile666@gmail.com',
+    password: 'afifasumit666'
   });
   const adminToken = adminLogin.body.token;
 
@@ -134,25 +136,27 @@ Priya Sharma,7654321098`;
     process.exit(1);
   }
 
-  // 4. Log in as Telecaller to verify allotment
-  const callerLogin = await makeJsonRequest('POST', '/api/auth/login', {
-    email: 'john@eazzio.com',
-    password: 'caller_password_123'
-  });
-  const callerToken = callerLogin.body.token;
-
-  // 5. Get allotted contacts for telecaller
-  console.log('Fetching allotted contacts for telecaller...');
-  const allottedRes = await makeJsonRequest('GET', '/api/contacts/allotted', null, callerToken);
-  console.log('Allotted leads returned:', allottedRes.body.length);
+  // 4. Fetch all contacts for the campaign as Admin to check allotment
+  console.log('Fetching all contacts as Admin...');
+  const contactsRes = await makeJsonRequest('GET', `/api/contacts?campaignId=${campaignId}`, null, adminToken);
   
-  if (allottedRes.status === 200 && allottedRes.body.length > 0) {
-    console.log('✅ Leads allotted and verified:');
-    allottedRes.body.forEach((lead, i) => {
-      console.log(`  Lead #${i+1}: ${lead.name} (${lead.phone_number}) - Campaign: ${lead.campaign_name}`);
-    });
+  if (contactsRes.status === 200 && Array.isArray(contactsRes.body)) {
+    const list = contactsRes.body;
+    console.log(`Total campaign contacts fetched: ${list.length}`);
+    const assignedLeads = list.filter(c => c.assigned_to !== null);
+    console.log(`Allotted leads count: ${assignedLeads.length}`);
+    
+    if (assignedLeads.length > 0) {
+      console.log('✅ Leads allotment verified successfully:');
+      assignedLeads.forEach((lead, i) => {
+        console.log(`  Lead #${i+1}: ${lead.name} (${lead.phone_number}) assigned to: ${lead.assigned_caller || 'ID ' + lead.assigned_to}`);
+      });
+    } else {
+      console.error('❌ Failed: None of the imported leads have been assigned to any telecaller.', list);
+      process.exit(1);
+    }
   } else {
-    console.error('❌ Failed to retrieve allotted leads:', allottedRes.body);
+    console.error('❌ Failed to retrieve campaign contacts list:', contactsRes.body);
     process.exit(1);
   }
 

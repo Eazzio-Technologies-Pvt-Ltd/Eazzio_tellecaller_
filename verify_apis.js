@@ -61,8 +61,8 @@ async function runTests() {
   try {
     console.log('Testing Admin Login...');
     const res = await makeRequest('POST', '/api/auth/login', {
-      email: 'tellecaller111@eazzio.com',
-      password: 'eazziotellecaller111'
+      email: 'sumitsmile666@gmail.com',
+      password: 'afifasumit666'
     });
     
     if (res.status === 200 && res.body.token) {
@@ -101,7 +101,8 @@ async function runTests() {
     console.log('Testing Telecaller Login...');
     const res = await makeRequest('POST', '/api/auth/login', {
       email: 'john@eazzio.com',
-      password: 'caller_password_123'
+      password: 'caller_password_123',
+      companyRegNum: 'EAZ-397728'
     });
 
     if (res.status === 200 && res.body.token) {
