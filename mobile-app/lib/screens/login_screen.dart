@@ -13,6 +13,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  final _companyRegController = TextEditingController();
   
   bool _isLoading = false;
   String? _errorMessage;
@@ -20,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() {
     _emailController.dispose();
+    _companyRegController.dispose();
     super.dispose();
   }
 
@@ -35,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // Perform API authentication
       final result = await ApiService.login(
         _emailController.text.trim(),
-        '', // Password not required for telecallers
+        _companyRegController.text.trim(),
       );
 
       if (result['success'] == true) {
@@ -280,6 +282,51 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 20),
                         ],
+
+                        // Company Registration Number Field
+                        TextFormField(
+                          controller: _companyRegController,
+                          style: TextStyle(color: textColor),
+                          keyboardType: TextInputType.text,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: InputDecoration(
+                            labelText: 'Company Registration Code',
+                            labelStyle: TextStyle(color: labelColor),
+                            hintText: 'e.g. EAZ-123456',
+                            hintStyle: const TextStyle(color: Color(0xFF4B5563)),
+                            prefixIcon: Icon(Icons.business_sharp, color: labelColor),
+                            filled: true,
+                            fillColor: fieldFillColor,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: isDark ? const Color(0xFF222435) : const Color(0xFFCBD5E1),
+                                width: 1,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: isDark ? const Color(0xFF222435) : const Color(0xFFCBD5E1),
+                                width: 1,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter Company Registration Code';
+                            }
+                            if (!value.trim().toUpperCase().startsWith('EAZ-')) {
+                              return 'Must start with EAZ- Prefix';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
 
                         // Mobile Number Field
                         TextFormField(

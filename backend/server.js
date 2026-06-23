@@ -15,6 +15,36 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_eazzio_telecaller_system_2026';
+
+// Tenant DB Selection Middleware
+app.use((req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  let companyRegNum = null;
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded.companyRegNum) {
+        companyRegNum = decoded.companyRegNum;
+      }
+    } catch (err) {
+      // Ignored: auth middleware handles token validation
+    }
+  }
+  
+  // Extract registration number from request body if available (e.g. login)
+  if (!companyRegNum && req.body && req.body.companyRegNum) {
+    companyRegNum = req.body.companyRegNum;
+  }
+  
+  db.dbStorage.run({ companyRegNum }, () => {
+    next();
+  });
+});
+
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -39,26 +69,49 @@ app.get('/health', (req, res) => {
 // Background job to check and mark inactive telecallers as offline (due to network/app close)
 async function checkOfflineTelecallers() {
   try {
-    const isPg = db.dbType === 'postgres';
-    const checkSql = isPg
-      ? `SELECT id, name FROM users WHERE role = 'telecaller' AND status != 'offline' AND last_active_at < NOW() - INTERVAL '35 seconds'`
-      : `SELECT id, name FROM users WHERE role = 'telecaller' AND status != 'offline' AND last_active_at < datetime('now', '-35 seconds')`;
-      
-    const result = await db.query(checkSql);
-    for (const row of result.rows) {
-      console.log(`[StatusMonitor] Telecaller ${row.name} (ID: ${row.id}) inactive for >35s. Setting status to offline.`);
-      
-      // Update status to offline
-      await db.query(
-        'UPDATE users SET status = $1, last_active_at = CURRENT_TIMESTAMP WHERE id = $2',
-        ['offline', row.id]
-      );
-      
-      // Insert notification
-      await db.query(
-        'INSERT INTO admin_notifications (message) VALUES ($1)',
-        [`Telecaller ${row.name} went offline (connection lost)`]
-      );
+    // 1. Fetch all companies from main database
+    let companies = [];
+    try {
+      const companiesResult = await db.queryMain('SELECT reg_num FROM companies');
+      companies = companiesResult.rows;
+    } catch (dbErr) {
+      // If table doesn't exist yet, ignore
+    }
+
+    const checkOfflineForTenant = async (regNum) => {
+      const isPg = db.dbType === 'postgres';
+      const checkSql = isPg
+        ? `SELECT id, name FROM users WHERE role = 'telecaller' AND status != 'offline' AND last_active_at < NOW() - INTERVAL '35 seconds'`
+        : `SELECT id, name FROM users WHERE role = 'telecaller' AND status != 'offline' AND last_active_at < datetime('now', '-35 seconds')`;
+        
+      const result = await db.query(checkSql);
+      for (const row of result.rows) {
+        console.log(`[StatusMonitor][${regNum || 'Main'}] Telecaller ${row.name} (ID: ${row.id}) inactive for >35s. Setting status to offline.`);
+        
+        // Update status to offline
+        await db.query(
+          'UPDATE users SET status = $1, last_active_at = CURRENT_TIMESTAMP WHERE id = $2',
+          ['offline', row.id]
+        );
+        
+        // Insert notification
+        await db.query(
+          'INSERT INTO admin_notifications (message) VALUES ($1)',
+          [`Telecaller ${row.name} went offline (connection lost)`]
+        );
+      }
+    };
+
+    // Run for main/default DB (regNum: null)
+    await db.dbStorage.run({ companyRegNum: null }, async () => {
+      await checkOfflineForTenant(null);
+    });
+
+    // Run for each company DB
+    for (const company of companies) {
+      await db.dbStorage.run({ companyRegNum: company.reg_num }, async () => {
+        await checkOfflineForTenant(company.reg_num);
+      });
     }
   } catch (err) {
     console.error('Error in checkOfflineTelecallers background job:', err);

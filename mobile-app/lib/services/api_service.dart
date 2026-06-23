@@ -67,12 +67,16 @@ class ApiService {
   static bool get isAuthenticated => _token != null;
 
   // User Auth - Login
-  static Future<Map<String, dynamic>> login(String email, String password) async {
+  static Future<Map<String, dynamic>> login(String email, String companyRegNum) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/api/auth/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
+        body: jsonEncode({
+          'email': email,
+          'password': '',
+          'companyRegNum': companyRegNum
+        }),
       ).timeout(const Duration(seconds: 7));
 
       final Map<String, dynamic> data = jsonDecode(response.body);

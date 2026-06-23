@@ -637,6 +637,8 @@ tr:hover td {
 
   body {
     font-size: 14px;
+    width: 100vw;
+    overflow-x: hidden;
   }
 
   h1 {
@@ -650,10 +652,71 @@ tr:hover td {
 
   .main-content {
     padding: 0.75rem !important;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   .glass-card {
     padding: 1rem !important;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Tables: auto-scroll container overflow */
+  table, .table {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  /* Stack header elements vertically on mobile */
+  div[style*="display: flex"][style*="justify-content: space-between"],
+  div[style*="display:flex"][style*="justifycontent: spacebetween"],
+  .page-header,
+  div[style*="justify-content: space-between"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    display: flex !important;
+  }
+
+  /* Make action buttons in headers take full width */
+  div[style*="display: flex"][style*="justify-content: space-between"] button,
+  div[style*="justify-content: space-between"] button,
+  .page-header button {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-top: 4px;
+  }
+
+  /* Modal responsive wrapper */
+  .modal-overlay {
+    padding: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .modal-content {
+    padding: 1.25rem !important;
+    width: 100% !important;
+    max-width: 380px !important;
+    border-radius: 12px !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
+  }
+
+  .modal-actions {
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-top: 1.25rem !important;
+  }
+
+  .modal-actions button {
+    width: 100% !important;
+    margin-left: 0 !important;
   }
 
   /* Stat cards */
@@ -666,6 +729,7 @@ tr:hover td {
   .stat-card {
     gap: 0.75rem !important;
     padding: 1rem !important;
+    width: 100% !important;
   }
 
   .stat-icon-wrapper {

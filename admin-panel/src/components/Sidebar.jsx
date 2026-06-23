@@ -10,21 +10,31 @@ import {
   Sun,
   Moon,
   Key,
-  LayoutGrid
+  LayoutGrid,
+  IndianRupee
 } from 'lucide-react';
 
 import Logo from './Logo';
 
 const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, isOpen, onClose }) => {
-  const menuItems = [
-    { id: 'dashboard',    label: 'Dashboard',      icon: LayoutDashboard },
-    { id: 'telecallers',  label: 'Telecallers',    icon: Users },
-    { id: 'monitor-grid', label: 'Monitor Grid',   icon: LayoutGrid },
-    { id: 'accounts',    label: 'Accounts Info',   icon: Key },
-    { id: 'campaigns',   label: 'Campaigns',       icon: PhoneOutgoing },
-    { id: 'contacts',    label: 'Contacts',        icon: Contact2 },
-    { id: 'call-logs',   label: 'Call Logs',       icon: History },
-  ];
+  const isSuperadmin = user && (user.companyRegNum === null || user.email === 'tellecaller111@eazzio.com');
+
+  const menuItems = isSuperadmin
+    ? [
+        { id: 'dashboard',        label: 'Dashboard',           icon: LayoutDashboard },
+        { id: 'monitor-grid',     label: 'Monitor Grid',         icon: LayoutGrid },
+        { id: 'billing',          label: 'Money',                icon: IndianRupee },
+      ]
+    : [
+        { id: 'dashboard',    label: 'Dashboard',      icon: LayoutDashboard },
+        { id: 'telecallers',  label: 'Telecallers',    icon: Users },
+        { id: 'monitor-grid', label: 'Monitor Grid',   icon: LayoutGrid },
+        { id: 'accounts',    label: 'Accounts Info',   icon: Key },
+        { id: 'billing',     label: 'Billing',         icon: IndianRupee },
+        { id: 'campaigns',   label: 'Campaigns',       icon: PhoneOutgoing },
+        { id: 'contacts',    label: 'Contacts',        icon: Contact2 },
+        { id: 'call-logs',   label: 'Call Logs',       icon: History },
+      ];
 
   return (
     <aside style={styles.sidebar} className={isOpen ? 'open' : ''}>
@@ -82,7 +92,9 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
           </div>
           <div style={styles.profileInfo}>
             <div style={styles.profileName}>{user.name}</div>
-            <div style={styles.profileRole}>Administrator</div>
+            <div style={styles.profileRole} title={isSuperadmin ? 'Super Administrator' : `Company Registration Code: ${user.companyRegNum}`}>
+              {isSuperadmin ? 'Super Admin' : `Code: ${user.companyRegNum}`}
+            </div>
           </div>
           <button onClick={onLogout} style={styles.logoutBtn} title="Logout">
             <LogOut size={18} color="var(--text-secondary)" />

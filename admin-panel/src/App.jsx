@@ -8,6 +8,9 @@ import Contacts from './pages/Contacts';
 import CallLogs from './pages/CallLogs';
 import TelecallerAccounts from './pages/TelecallerAccounts';
 import MonitorGrid from './pages/MonitorGrid';
+import RegisterCompany from './components/RegisterCompany';
+import Companies from './pages/Companies';
+import BillingPage from './pages/BillingPage';
 import { Mail, Lock, LogIn, AlertCircle, Menu, X } from 'lucide-react';
 import Logo from './components/Logo';
 
@@ -17,6 +20,8 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [loginType, setLoginType] = useState('company'); // 'company' or 'superadmin'
   
   // Login Form States
   const [email, setEmail] = useState('');
@@ -110,9 +115,24 @@ const App = () => {
   };
 
   const renderActivePage = () => {
+    // 1. Eazzio Admin Pages (Superadmin)
+    if (user && (user.companyRegNum === null || user.email === 'tellecaller111@eazzio.com')) {
+      switch (activeTab) {
+        case 'dashboard':
+          return <Dashboard setActiveTab={setActiveTab} theme={theme} user={user} />;
+        case 'monitor-grid':
+          return <Companies />;
+        case 'billing':
+          return <BillingPage theme={theme} user={user} />;
+        default:
+          return <Dashboard setActiveTab={setActiveTab} theme={theme} user={user} />;
+      }
+    }
+
+    // 2. Company Admin Pages (Original)
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard setActiveTab={setActiveTab} theme={theme} />;
+        return <Dashboard setActiveTab={setActiveTab} theme={theme} user={user} />;
       case 'telecallers':
         return <Telecallers />;
       case 'monitor-grid':
@@ -125,8 +145,10 @@ const App = () => {
         return <CallLogs />;
       case 'accounts':
         return <TelecallerAccounts />;
+      case 'billing':
+        return <BillingPage theme={theme} user={user} />;
       default:
-        return <Dashboard setActiveTab={setActiveTab} theme={theme} />;
+        return <Dashboard setActiveTab={setActiveTab} theme={theme} user={user} />;
     }
   };
 
@@ -140,66 +162,117 @@ const App = () => {
           : 'linear-gradient(to bottom, rgba(248, 250, 252, 0.82), rgba(241, 245, 249, 0.94)), url("/login-bg.png")'
       }}>
         <div style={styles.loginBackgroundDecoration}></div>
-        <div className="login-glass-card" style={styles.loginCard}>
-          <div style={styles.loginHeader}>
-            <Logo theme={theme} mode="login" />
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginTop: '10px' }}>SIM-Based Auto Dialing Admin Panel</p>
-          </div>
-
-          <form onSubmit={handleLogin} style={{ marginTop: '2.5rem' }}>
-            {loginError && (
-              <div style={styles.errorAlert}>
-                <AlertCircle size={18} style={{ flexShrink: 0 }} />
-                <span>{loginError}</span>
+        <div className="login-glass-card" style={{
+          ...styles.loginCard,
+          padding: isRegistering ? '2rem 2.25rem' : '3.5rem 3rem'
+        }}>
+          {isRegistering ? (
+            <RegisterCompany onBack={() => setIsRegistering(false)} theme={theme} />
+          ) : (
+            <>
+              <div style={styles.loginHeader}>
+                <Logo theme={theme} mode="login" />
+                <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginTop: '10px' }}>SIM-Based Auto Dialing Admin Panel</p>
               </div>
-            )}
 
-            <div className="form-group" style={{ marginBottom: '2.25rem' }}>
-              <label style={{ fontSize: '1.05rem', fontWeight: '600', marginBottom: '10px', color: 'var(--text-secondary)' }}>Email Address</label>
-              <div style={styles.inputWrapper}>
-                <Mail size={22} style={styles.inputIcon} />
-                <input 
-                  type="email" 
-                  placeholder="Enter admin mail" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="input-with-icon"
-                  style={styles.inputWithIcon}
-                />
+              {/* Login Type Selection Tabs */}
+              <div style={styles.loginTypeTabs}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginType('superadmin');
+                    setEmail(''); // Keep empty as requested
+                    setPassword('');
+                  }}
+                  style={{
+                    ...styles.loginTypeTab,
+                    ...(loginType === 'superadmin' ? styles.loginTypeTabActive : {})
+                  }}
+                >
+                  Superadmin Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginType('company');
+                    setEmail('');
+                    setPassword('');
+                  }}
+                  style={{
+                    ...styles.loginTypeTab,
+                    ...(loginType === 'company' ? styles.loginTypeTabActive : {})
+                  }}
+                >
+                  Company Login
+                </button>
               </div>
-            </div>
 
-            <div className="form-group" style={{ marginBottom: '3.0rem' }}>
-              <label style={{ fontSize: '1.05rem', fontWeight: '600', marginBottom: '10px', color: 'var(--text-secondary)' }}>Password</label>
-              <div style={styles.inputWrapper}>
-                <Lock size={22} style={styles.inputIcon} />
-                <input 
-                  type="password" 
-                  placeholder="Enter your admin password" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="input-with-icon"
-                  style={styles.inputWithIcon}
-                />
+              <form onSubmit={handleLogin} style={{ marginTop: '1.5rem' }}>
+                {loginError && (
+                  <div style={styles.errorAlert}>
+                    <AlertCircle size={18} style={{ flexShrink: 0 }} />
+                    <span>{loginError}</span>
+                  </div>
+                )}
+
+                <div className="form-group" style={{ marginBottom: '2.25rem' }}>
+                  <label style={{ fontSize: '1.05rem', fontWeight: '600', marginBottom: '10px', color: 'var(--text-secondary)' }}>Email Address</label>
+                  <div style={styles.inputWrapper}>
+                    <Mail size={22} style={styles.inputIcon} />
+                    <input 
+                      type="email" 
+                      placeholder={loginType === 'superadmin' ? 'Enter superadmin mail' : 'Enter company admin mail'} 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="input-with-icon"
+                      style={styles.inputWithIcon}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '3.0rem' }}>
+                  <label style={{ fontSize: '1.05rem', fontWeight: '600', marginBottom: '10px', color: 'var(--text-secondary)' }}>Password</label>
+                  <div style={styles.inputWrapper}>
+                    <Lock size={22} style={styles.inputIcon} />
+                    <input 
+                      type="password" 
+                      placeholder="Enter password" 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="input-with-icon"
+                      style={styles.inputWithIcon}
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  style={{ width: '100%', height: '60px', fontSize: '1.2rem', borderRadius: '12px' }}
+                  disabled={loggingIn}
+                >
+                  {loggingIn ? (
+                    'Authenticating...'
+                  ) : (
+                    <>
+                      <LogIn size={22} />
+                      Access Dashboard
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <div style={{ textAlign: 'center', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>New to Eazzio? </span>
+                <button 
+                  onClick={() => setIsRegistering(true)}
+                  style={{ background: 'none', border: 'none', color: '#6366f1', fontWeight: '700', cursor: 'pointer', fontSize: '0.95rem', padding: 0 }}
+                >
+                  Register Company
+                </button>
               </div>
-            </div>
-
-            <button 
-              type="submit" 
-              className="btn btn-primary" 
-              style={{ width: '100%', height: '60px', fontSize: '1.2rem', borderRadius: '12px' }}
-              disabled={loggingIn}
-            >
-              {loggingIn ? (
-                'Authenticating...'
-              ) : (
-                <>
-                  <LogIn size={22} />
-                  Access Dashboard
-                </>
-              )}
-            </button>
-          </form>
+            </>
+          )}
         </div>
       </div>
     );
@@ -315,6 +388,35 @@ const styles = {
     width: '100%',
     height: '60px',
     borderRadius: '12px',
+  },
+  loginTypeTabs: {
+    display: 'flex',
+    borderRadius: '10px',
+    backgroundColor: 'var(--bg-primary)',
+    border: '1px solid var(--border-color)',
+    padding: '4px',
+    marginTop: '1.5rem',
+    marginBottom: '0.5rem',
+    width: '100%',
+  },
+  loginTypeTab: {
+    flex: 1,
+    padding: '10px 0',
+    fontSize: '0.9rem',
+    fontWeight: '600',
+    borderRadius: '8px',
+    border: 'none',
+    backgroundColor: 'transparent',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    textAlign: 'center',
+    outline: 'none',
+  },
+  loginTypeTabActive: {
+    backgroundColor: '#6366f1',
+    color: '#ffffff',
+    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
   },
 };
 

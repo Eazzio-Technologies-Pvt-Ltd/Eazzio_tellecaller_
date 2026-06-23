@@ -11,10 +11,13 @@ import {
   ArrowUpRight,
   Bell,
   Settings,
-  Play
+  Play,
+  IndianRupee,
+  Users,
+  Trash2
 } from 'lucide-react';
 
-const Dashboard = ({ setActiveTab, theme }) => {
+const Dashboard = ({ setActiveTab, theme, user }) => {
   const isLight = theme === 'light';
   const [data, setData] = useState(null);
   const [recentLogs, setRecentLogs] = useState([]);
@@ -109,6 +112,27 @@ const Dashboard = ({ setActiveTab, theme }) => {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       };
 
+      // If Superadmin, fetch company stats and company details in parallel
+      if (user && user.companyRegNum === null) {
+        const [statsRes, companiesRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/auth/superadmin-stats`, { headers }),
+          fetch(`${API_BASE_URL}/api/auth/companies`, { headers })
+        ]);
+        
+        if (!statsRes.ok || !companiesRes.ok) {
+          throw new Error('Failed to retrieve platform analytics');
+        }
+        
+        const superStats = await statsRes.json();
+        const companiesList = await companiesRes.json();
+        
+        setData({
+          ...superStats,
+          companies: companiesList
+        });
+        return;
+      }
+
       const queryParams = selectedTelecaller ? `?telecallerId=${selectedTelecaller}` : '';
 
       // Fetch analytics, logs, and notifications in parallel
@@ -141,6 +165,32 @@ const Dashboard = ({ setActiveTab, theme }) => {
     }
   };
 
+  const handleDeleteCompany = async (companyId, companyName) => {
+    if (!window.confirm(`Are you sure you want to delete "${companyName}"? This will permanently delete their database, and their administrators and telecallers will not be able to log in.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/companies/${companyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete company.');
+      }
+
+      alert(result.message || 'Company deleted successfully.');
+      fetchDashboardData();
+    } catch (err) {
+      alert(`Error deleting company: ${err.message}`);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
     // Poll analytics every 8 seconds for real-time monitoring
@@ -169,6 +219,139 @@ const Dashboard = ({ setActiveTab, theme }) => {
     return <div style={{ color: '#ef4444', textAlign: 'center', marginTop: '4rem' }}>Error: {error}</div>;
   }
 
+  // Superadmin dashboard early return
+  if (user && (user.companyRegNum === null || user.email === 'tellecaller111@eazzio.com')) {
+    return (
+      <div>
+        <div style={{ ...styles.dashboardHeader, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ margin: 0 }}>Eazzio Platform Administration</h1>
+            <p className="subtitle" style={{ marginTop: '6px' }}>Consolidated platform metrics, company registrations, and billing.</p>
+          </div>
+          <div style={{
+            padding: '6px 14px',
+            borderRadius: '8px',
+            border: isLight ? '1px solid rgba(14, 165, 233, 0.4)' : '1px solid rgba(56, 189, 248, 0.4)',
+            backgroundColor: isLight ? 'rgba(14, 165, 233, 0.08)' : 'rgba(56, 189, 248, 0.08)',
+            color: isLight ? '#0284c7' : '#38bdf8',
+            fontSize: '0.85rem',
+            fontWeight: '700',
+            letterSpacing: '1px',
+            textTransform: 'uppercase'
+          }}>
+            SUPERADMIN
+          </div>
+        </div>
+
+        {/* Grid Cards */}
+        <div className="grid-stats" style={{ marginBottom: '2.5rem' }}>
+          {/* Total Registered Companies Card */}
+          <div className="glass-card stat-card" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1.25rem',
+            border: isLight ? '2px solid rgba(99, 102, 241, 0.18)' : '1px solid var(--border-color)',
+            boxShadow: isLight ? '0 4px 12px rgba(99, 102, 241, 0.06)' : 'var(--shadow-sm)'
+          }}>
+            <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#6366F1', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Briefcase size={22} />
+            </div>
+            <div className="stat-info">
+              <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Registered Companies</span>
+              <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: '#6366F1', marginTop: '2px' }}>{data.totalCompanies || 0}</span>
+            </div>
+          </div>
+
+          {/* Total Telecallers Added Card */}
+          <div className="glass-card stat-card" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1.25rem',
+            border: isLight ? '2px solid rgba(16, 185, 129, 0.18)' : '1px solid var(--border-color)',
+            boxShadow: isLight ? '0 4px 12px rgba(16, 185, 129, 0.06)' : 'var(--shadow-sm)'
+          }}>
+            <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#10B981', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Users size={22} />
+            </div>
+            <div className="stat-info">
+              <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Platform Telecallers</span>
+              <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: '#10B981', marginTop: '2px' }}>{data.totalTelecallers || 0}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Company details list with telecaller count */}
+        <div className="glass-card" style={{ padding: '1.75rem', overflowX: 'auto', marginBottom: '2.5rem' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem', fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+            <div style={{ width: '6px', height: '24px', backgroundColor: '#6366f1', borderRadius: '9999px' }}></div>
+            Registered Company Directory
+          </h2>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Company Name</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Reg Code</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Nature of Business</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Admin Email</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Telecallers Count</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase', textAlign: 'center' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.companies && data.companies.map((comp) => (
+                <tr key={comp.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--text-primary)', fontWeight: '700' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', display: 'flex', alignItems: 'center', justify: 'center', fontWeight: '700' }}>
+                        {comp.name.charAt(0).toUpperCase()}
+                      </div>
+                      {comp.name}
+                    </div>
+                  </td>
+                  <td style={{ padding: '16px', fontSize: '0.92rem', color: '#6366f1', fontFamily: 'monospace', fontWeight: '700' }}>
+                    {comp.reg_num}
+                  </td>
+                  <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
+                    {comp.nature}
+                  </td>
+                  <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
+                    {comp.admin_email}
+                  </td>
+                  <td style={{ padding: '16px', fontSize: '0.95rem', color: '#10b981', fontWeight: '800' }}>
+                    {comp.telecaller_count || 0}
+                  </td>
+                  <td style={{ padding: '16px', textAlign: 'center' }}>
+                    <button
+                      onClick={() => handleDeleteCompany(comp.id, comp.name)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        transition: 'background-color 0.2s',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      title="Delete Company"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
   const { overview, callers, campaigns } = data;
   const connectedCount = parseInt(overview.connected_calls || 0);
   const missedCount = parseInt(overview.missed_calls || 0);
@@ -182,8 +365,12 @@ const Dashboard = ({ setActiveTab, theme }) => {
     <div>
       <div style={styles.dashboardHeader}>
         <div>
-          <h1>Operational Analytics Dashboard</h1>
-          <p className="subtitle">Real-time SIM-based calling campaigns and telecaller telemetry metrics.</p>
+          <h1 style={{ margin: 0 }}>Operational Analytics Dashboard</h1>
+          {user && user.companyRegNum && (
+            <p className="subtitle" style={{ marginTop: '6px', fontWeight: '600', color: '#6366f1' }}>
+              Company Registration Code: {user.companyRegNum}
+            </p>
+          )}
         </div>
         <div style={styles.headerActions}>
           <select

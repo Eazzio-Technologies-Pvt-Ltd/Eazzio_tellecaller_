@@ -5,7 +5,7 @@
         <item name="android:windowBackground">@drawable/launch_background</item>
         <!-- Hide the native splash screen icon entirely by making it transparent -->
         <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
-        <item name="android:windowSplashScreenBackground">#0A0B10</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_bg</item>
     </style>
 
     <!-- Theme applied to the Android Window as soon as the process has started -->
