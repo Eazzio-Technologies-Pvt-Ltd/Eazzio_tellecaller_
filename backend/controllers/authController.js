@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_eazzio_te
 // Register User
 exports.register = async (req, res) => {
   const { name, email, password, role } = req.body;
-  
+
   const userRole = role || 'telecaller';
   const finalPassword = password || (userRole === 'telecaller' ? 'telecaller_nopassword' : '');
 

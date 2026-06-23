@@ -132,15 +132,6 @@ async function initializeSchema() {
       called_at ${timestampType}
     )`,
 
-    // Voice files table
-    `CREATE TABLE IF NOT EXISTS voice_files (
-      id ${serialType},
-      campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
-      file_name VARCHAR(100) NOT NULL,
-      file_path ${textType} NOT NULL,
-      uploaded_at ${timestampType}
-    )`,
-
     // Telecaller sessions table
     `CREATE TABLE IF NOT EXISTS telecaller_sessions (
       id ${serialType},
@@ -180,18 +171,38 @@ async function initializeSchema() {
 
   // Create default admin user if none exists
   try {
-    const adminCheck = await query('SELECT * FROM users WHERE email = $1', ['admin@eazzio.com']);
+    const adminCheck = await query('SELECT * FROM users WHERE email = $1', ['tellecaller111@eazzio.com']);
     if (adminCheck.rows.length === 0) {
       const bcrypt = require('bcryptjs');
-      const adminPassHash = await bcrypt.hash('admin123', 10);
+      const adminPassHash = await bcrypt.hash('eazziotellecaller111', 10);
+      
+      // Check if old admin@eazzio.com exists to migrate it
+      const oldAdminCheck = await query('SELECT * FROM users WHERE email = $1', ['admin@eazzio.com']);
+      if (oldAdminCheck.rows.length > 0) {
+        await query(
+          'UPDATE users SET email = $1, password_hash = $2, plain_password = $3, name = $4 WHERE email = $5',
+          ['tellecaller111@eazzio.com', adminPassHash, 'eazziotellecaller111', 'Admin User', 'admin@eazzio.com']
+        );
+        console.log('Migrated default admin user admin@eazzio.com to tellecaller111@eazzio.com / eazziotellecaller111');
+      } else {
+        await query(
+          'INSERT INTO users (name, email, password_hash, plain_password, role) VALUES ($1, $2, $3, $4, $5)',
+          ['Admin User', 'tellecaller111@eazzio.com', adminPassHash, 'eazziotellecaller111', 'admin']
+        );
+        console.log('Created default admin user: tellecaller111@eazzio.com / eazziotellecaller111');
+      }
+    } else {
+      // If tellecaller111@eazzio.com exists, make sure the password hash is correct
+      const bcrypt = require('bcryptjs');
+      const adminPassHash = await bcrypt.hash('eazziotellecaller111', 10);
       await query(
-        'INSERT INTO users (name, email, password_hash, plain_password, role) VALUES ($1, $2, $3, $4, $5)',
-        ['Admin User', 'admin@eazzio.com', adminPassHash, 'admin123', 'admin']
+        'UPDATE users SET password_hash = $1, plain_password = $2 WHERE email = $3',
+        [adminPassHash, 'eazziotellecaller111', 'tellecaller111@eazzio.com']
       );
-      console.log('Created default admin user: admin@eazzio.com / admin123');
+      console.log('Ensured tellecaller111@eazzio.com has the correct password hash');
     }
   } catch (err) {
-    console.error('Error creating default admin user:', err);
+    console.error('Error creating/migrating default admin user:', err);
   }
 
   // Migrate existing users with null plain_password to emailPrefix123

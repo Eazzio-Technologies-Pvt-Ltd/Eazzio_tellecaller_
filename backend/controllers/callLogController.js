@@ -202,6 +202,7 @@ exports.getAnalytics = async (req, res) => {
       SELECT 
         u.id, 
         u.name, 
+        u.email, 
         u.status,
         COALESCE(ts.total_working_time, 0) as working_time,
         COALESCE(ts.total_calling_time, 0) as calling_time,

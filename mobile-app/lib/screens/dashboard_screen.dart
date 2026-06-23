@@ -1,9 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:eazzio_telecaller/services/api_service.dart';
 import 'package:eazzio_telecaller/services/telemetry_service.dart';
+import 'package:eazzio_telecaller/services/call_service.dart';
 import 'package:eazzio_telecaller/screens/calling_screen.dart';
 import 'package:eazzio_telecaller/screens/login_screen.dart';
+import 'package:eazzio_telecaller/main.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -14,15 +19,281 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final TelemetryService _telemetry = TelemetryService();
+  final CallService _callService = CallService();
   Timer? _uiRefreshTimer;
+  List<Map<String, dynamic>> _availableSims = [];
+  bool _loadingSims = false;
+
+  Future<void> _fetchAndSelectSim() async {
+    final status = await Permission.phone.request();
+    if (!status.isGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Phone State permission is required to select SIM slots.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _loadingSims = true;
+    });
+
+    try {
+      const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
+      final List<dynamic>? sims = await channel.invokeMethod('getAvailableSims');
+      
+      if (sims != null) {
+        setState(() {
+          _availableSims = sims.map((e) => Map<String, dynamic>.from(e)).toList();
+        });
+      }
+      
+      _showSimPickerDialog();
+    } catch (e) {
+      print('Error fetching sims: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading SIM info: $e')),
+      );
+    } finally {
+      setState(() {
+        _loadingSims = false;
+      });
+    }
+  }
+
+  void _showSimPickerDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Select Calling SIM Slot', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18)),
+        content: _availableSims.isEmpty
+            ? Text('No active SIM cards detected. The app will use the system default dialer.', style: TextStyle(color: subtextColor, fontSize: 14))
+            : Container(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _availableSims.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return ListTile(
+                        title: Text('Default Dialer (System Prompts)', style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                        subtitle: Text('Let Android manage SIM selection', style: TextStyle(color: subtextColor, fontSize: 12)),
+                        leading: Radio<int?>(
+                          value: null,
+                          groupValue: _callService.selectedSlotIndex,
+                          activeColor: const Color(0xFF6366F1),
+                          onChanged: (val) {
+                            _selectSim(null, null, 'Default Dialer');
+                            Navigator.pop(context);
+                          },
+                        ),
+                        onTap: () {
+                          _selectSim(null, null, 'Default Dialer');
+                          Navigator.pop(context);
+                        },
+                      );
+                    }
+                    
+                    final sim = _availableSims[index - 1];
+                    final int slot = sim['slotIndex'] ?? 0;
+                    final int subId = sim['subscriptionId'] ?? -1;
+                    final String carrier = sim['carrierName'] ?? 'Unknown';
+                    final String name = sim['displayName'] ?? 'SIM ${slot + 1}';
+                    
+                    return ListTile(
+                      title: Text('$name ($carrier)', style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                      subtitle: Text('SIM Card Slot ${slot + 1}', style: TextStyle(color: subtextColor, fontSize: 12)),
+                      leading: Radio<int?>(
+                        value: slot,
+                        groupValue: _callService.selectedSlotIndex,
+                        activeColor: const Color(0xFF6366F1),
+                        onChanged: (val) {
+                          _selectSim(slot, subId, '$name ($carrier)');
+                          Navigator.pop(context);
+                        },
+                      ),
+                      onTap: () {
+                        _selectSim(slot, subId, '$name ($carrier)');
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: TextStyle(color: subtextColor)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _selectSim(int? slotIndex, int? subscriptionId, String label) async {
+    await _callService.saveSimSelection(slotIndex, subscriptionId, label);
+    setState(() {});
+  }
+
+  Widget _buildSimSelectionCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+    final Color accentColor = const Color(0xFF6366F1);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? borderColor : accentColor.withOpacity(0.3), width: isDark ? 1 : 2),
+        boxShadow: [
+          BoxShadow(
+            color: accentColor.withOpacity(isDark ? 0.03 : 0.05),
+            blurRadius: isDark ? 4 : 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.sim_card_outlined, color: accentColor, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Calling SIM Option',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: subtextColor,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _callService.selectedSimLabel ?? 'Default Dialer (System Prompts)',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          _loadingSims
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1)),
+                )
+              : TextButton(
+                  onPressed: _fetchAndSelectSim,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    backgroundColor: const Color(0x1F6366F1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text(
+                    'Select SIM',
+                    style: TextStyle(
+                      color: Color(0xFF6366F1),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     // Refresh stats UI every second to update active timer states
     _uiRefreshTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+        _checkShiftCompletion();
+      }
     });
+    // Start telemetry session automatically on entry if not already active
+    if (!_telemetry.isActive) {
+      _telemetry.startSession();
+    }
+  }
+
+  void _checkShiftCompletion() {
+    if (_telemetry.workingTime >= 28800 && !_telemetry.shiftCompleteShown) {
+      _telemetry.shiftCompleteShown = true;
+      _showShiftCompleteDialog();
+    }
+  }
+
+  void _showShiftCompleteDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 28),
+            const SizedBox(width: 10),
+            Text(
+              'Shift Completed!',
+              style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(
+          'Your 8-hour login hours are complete for today. Excellent work! Please log out to end your day.',
+          style: TextStyle(color: subtextColor, fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              _telemetry.stopSession();
+              await ApiService.logout();
+              if (mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
+            },
+            child: const Text(
+              'End Shift & Logout',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -35,83 +306,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final int h = totalSeconds ~/ 3600;
     final int m = (totalSeconds % 3600) ~/ 60;
     
-    return '${h.toString()}:${m.toString().padLeft(2, '0')}';
+    return '${h}h ${m}m';
   }
 
-  String _formatDurationWithTarget(int totalSeconds, String targetStr) {
-    final int h = totalSeconds ~/ 3600;
-    final int m = (totalSeconds % 3600) ~/ 60;
-    
-    final String running = '${h.toString()}:${m.toString().padLeft(2, '0')}';
-    return '$running / $targetStr';
-  }
 
-  Widget _buildMergedBreakIdleCard({
-    required String breakVal,
-    required String idleVal,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF12131A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF222435)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Break Time',
-                style: TextStyle(
-                  color: Color(0xFF9CA3AF),
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Icon(Icons.coffee, color: Color(0xFFA855F7), size: 18),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'BREAK DURATION (MAX 2H)',
-                    style: TextStyle(color: Color(0xFF6B7280), fontSize: 10, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    breakVal,
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    'TOTAL IDLE TIME',
-                    style: TextStyle(color: Color(0xFF6B7280), fontSize: 10, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    idleVal,
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+
 
 
   void _handleSessionToggle() {
@@ -130,19 +329,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _handleLogout() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF12131A),
-        title: const Text('End Work Day?', style: TextStyle(color: Colors.white)),
-        content: const Text(
+        backgroundColor: isDark ? const Color(0xFF12131A) : Colors.white,
+        title: Text('End Work Day?', style: TextStyle(color: textColor)),
+        content: Text(
           'This will stop tracking your timers and sign you out of your account.',
-          style: TextStyle(color: Color(0xFF9CA3AF)),
+          style: TextStyle(color: subtextColor),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF9CA3AF))),
+            child: Text('Cancel', style: TextStyle(color: subtextColor)),
           ),
           TextButton(
             onPressed: () async {
@@ -165,19 +368,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF0A0B10) : Colors.grey[200];
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+    final mutedColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
+
     final statusColor = _telemetry.isActive ? const Color(0xFF10B981) : const Color(0xFF6B7280);
     final statusText = _telemetry.isActive ? 'ACTIVE SESSION' : 'OFFLINE';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0B10),
+      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF12131A),
+        backgroundColor: cardColor,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Caller Dashboard',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              themeNotifier.value == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
+              color: subtextColor,
+            ),
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              if (themeNotifier.value == ThemeMode.dark) {
+                themeNotifier.value = ThemeMode.light;
+                await prefs.setBool('is_light_theme', true);
+              } else {
+                themeNotifier.value = ThemeMode.dark;
+                await prefs.setBool('is_light_theme', false);
+              }
+              setState(() {});
+            },
+            tooltip: 'Toggle Theme',
+          ),
           IconButton(
             icon: const Icon(Icons.power_settings_new, color: Color(0xFFEF4444)),
             onPressed: _handleLogout,
@@ -185,177 +415,281 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Session Status Card
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF12131A),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF222435)),
-              ),
-              child: Row(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildSimSelectionCard(),
+              const SizedBox(height: 16),
+
+              // Timers Row
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Text(
+                    'TELEMETRY METRICS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: mutedColor,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTimerCard(
+                          title: 'Work Time',
+                          value: _formatDuration(_telemetry.workingTime),
+                          target: '8h',
+                          progress: _telemetry.workingTime / 28800,
+                          valueColor: const Color(0xFF6366F1),
+                          icon: Icons.timer,
+                          context: context,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildTimerCard(
+                          title: 'Talk Time',
+                          value: _formatDuration(_telemetry.talkTime),
+                          target: '4h',
+                          progress: _telemetry.talkTime / 14400,
+                          valueColor: const Color(0xFF10B981),
+                          icon: Icons.phone_in_talk,
+                          context: context,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _buildTimerCard(
+                    title: 'Break Time',
+                    value: _formatDuration(_telemetry.breakTime),
+                    target: '2h',
+                    progress: _telemetry.breakTime / 7200,
+                    valueColor: const Color(0xFFA855F7),
+                    icon: Icons.coffee,
+                    context: context,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Call Outcomes Card
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'CALL OUTCOMES TODAY',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: mutedColor,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   Container(
-                    width: 12,
-                    height: 12,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
                     decoration: BoxDecoration(
-                      color: statusColor,
-                      shape: BoxShape.circle,
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: isDark ? borderColor : const Color(0xFF6366F1).withOpacity(0.3), width: isDark ? 1 : 2),
                       boxShadow: [
-                        if (_telemetry.isActive)
-                          BoxShadow(
-                            color: statusColor.withOpacity(0.5),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          )
+                        BoxShadow(
+                          color: const Color(0xFF6366F1).withOpacity(isDark ? 0.03 : 0.05),
+                          blurRadius: isDark ? 4 : 6,
+                          offset: isDark ? const Offset(0, 2) : const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildCallCounter(
+                          label: 'Total Dialed',
+                          count: _telemetry.connectedCalls + _telemetry.missedCalls,
+                          color: const Color(0xFF6366F1),
+                          context: context,
+                        ),
+                        Container(width: 1, height: 56, color: borderColor),
+                        _buildCallCounter(
+                          label: 'Connected',
+                          count: _telemetry.connectedCalls,
+                          color: const Color(0xFF10B981),
+                          context: context,
+                        ),
+                        Container(width: 1, height: 56, color: borderColor),
+                        _buildCallCounter(
+                          label: 'Missed',
+                          count: _telemetry.missedCalls,
+                          color: const Color(0xFFEF4444),
+                          context: context,
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        statusText,
+                ],
+              ),
+              const Spacer(),
+
+              // Core Action Button
+              ElevatedButton(
+                onPressed: _handleSessionToggle,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  backgroundColor: const Color(0xFF6366F1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 6,
+                  shadowColor: const Color(0x666366F1),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _telemetry.isActive ? Icons.play_arrow_outlined : Icons.play_circle_filled,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _telemetry.isActive ? 'Open Calling Workspace' : 'Start Calling Session',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBreakTimeCard({
+    required String value,
+    required String target,
+    required double progress,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+    final mutedColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
+    const valueColor = Color(0xFFA855F7); // Purple
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? borderColor : valueColor.withOpacity(0.3), width: isDark ? 1 : 2),
+        boxShadow: [
+          BoxShadow(
+            color: valueColor.withOpacity(isDark ? 0.03 : 0.05),
+            blurRadius: isDark ? 4 : 6,
+            offset: isDark ? const Offset(0, 2) : const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -20,
+              bottom: -20,
+              child: Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: valueColor.withOpacity(0.04),
+                    width: 8,
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Break Time',
                         style: TextStyle(
-                          fontSize: 13,
+                          color: subtextColor,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: statusColor,
-                          letterSpacing: 0.5,
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  if (_telemetry.isActive)
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        'Working: ${_formatDuration(_telemetry.workingTime)}',
-                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: valueColor.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.coffee, color: valueColor, size: 18),
                       ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Timers Grid
-            const Text(
-              'TELEMETRY METRICS',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF6B7280),
-                letterSpacing: 1.0,
-              ),
-            ),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 1.4,
-              children: [
-                _buildTimerCard(
-                  title: 'Working Time',
-                  value: _formatDurationWithTarget(_telemetry.workingTime, '8:00'),
-                  icon: Icons.timer,
-                  iconColor: const Color(0xFF6366F1),
-                ),
-                _buildTimerCard(
-                  title: 'Calling (Talk)',
-                  value: _formatDurationWithTarget(_telemetry.talkTime, '4:00'),
-                  icon: Icons.phone_in_talk,
-                  iconColor: const Color(0xFF10B981),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildMergedBreakIdleCard(
-              breakVal: _formatDurationWithTarget(_telemetry.breakTime, '2:00'),
-              idleVal: _formatDuration(_telemetry.idleTime),
-            ),
-            const SizedBox(height: 28),
-
-            // Call Outcomes Card
-            const Text(
-              'CALL OUTCOMES TODAY',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF6B7280),
-                letterSpacing: 1.0,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF12131A),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF222435)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildCallCounter(
-                    label: 'Total Dialed',
-                    count: _telemetry.connectedCalls + _telemetry.missedCalls,
-                    color: const Color(0xFF6366F1),
+                    ],
                   ),
-                  Container(width: 1, height: 40, color: const Color(0xFF222435)),
-                  _buildCallCounter(
-                    label: 'Connected',
-                    count: _telemetry.connectedCalls,
-                    color: const Color(0xFF10B981),
-                  ),
-                  Container(width: 1, height: 40, color: const Color(0xFF222435)),
-                  _buildCallCounter(
-                    label: 'Missed',
-                    count: _telemetry.missedCalls,
-                    color: const Color(0xFFEF4444),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 48),
-
-            // Core Action Button
-            ElevatedButton(
-              onPressed: _handleSessionToggle,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                backgroundColor: const Color(0xFF6366F1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 8,
-                shadowColor: const Color(0x666366F1),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    _telemetry.isActive ? Icons.play_arrow_outlined : Icons.play_circle_filled,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 8),
+                  const SizedBox(height: 12),
                   Text(
-                    _telemetry.isActive ? 'Open Calling Workspace' : 'Start Calling Session',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                    'BREAK DURATION (MAX 2H)',
+                    style: TextStyle(color: mutedColor, fontSize: 10, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: value,
+                          style: TextStyle(
+                            color: valueColor,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' / ',
+                          style: TextStyle(
+                            color: mutedColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
+                        TextSpan(
+                          text: target,
+                          style: TextStyle(
+                            color: mutedColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: progress.clamp(0.0, 1.0),
+                      minHeight: 4,
+                      backgroundColor: isDark ? const Color(0xFF1E1F29) : const Color(0xFFE5E7EB),
+                      valueColor: const AlwaysStoppedAnimation<Color>(valueColor),
                     ),
                   ),
                 ],
@@ -370,50 +704,135 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildTimerCard({
     required String title,
     required String value,
+    required String target,
+    required double progress,
+    required Color valueColor,
     required IconData icon,
-    required Color iconColor,
+    required BuildContext context,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+    final mutedColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: 120,
       decoration: BoxDecoration(
-        color: const Color(0xFF12131A),
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF222435)),
+        border: Border.all(color: isDark ? borderColor : valueColor.withOpacity(0.3), width: isDark ? 1 : 2),
+        boxShadow: [
+          BoxShadow(
+            color: valueColor.withOpacity(isDark ? 0.03 : 0.05),
+            blurRadius: isDark ? 4 : 6,
+            offset: isDark ? const Offset(0, 2) : const Offset(0, 3),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: Color(0xFF9CA3AF),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -15,
+              bottom: -15,
+              child: Container(
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: valueColor.withOpacity(0.04),
+                    width: 6,
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
-              Icon(icon, color: iconColor, size: 20),
-            ],
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              color: subtextColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: valueColor.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(icon, color: valueColor, size: 14),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: value,
+                            style: TextStyle(
+                              color: valueColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextSpan(
+                            text: ' / ',
+                            style: TextStyle(
+                              color: mutedColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                          TextSpan(
+                            text: target,
+                            style: TextStyle(
+                              color: mutedColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: progress.clamp(0.0, 1.0),
+                      minHeight: 3,
+                      backgroundColor: isDark ? const Color(0xFF1E1F29) : const Color(0xFFE5E7EB),
+                      valueColor: AlwaysStoppedAnimation<Color>(valueColor),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -422,17 +841,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required String label,
     required int count,
     required Color color,
+    required BuildContext context,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+
     return Column(
       children: [
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13, fontWeight: FontWeight.w500),
+          style: TextStyle(color: subtextColor, fontSize: 12, fontWeight: FontWeight.w500),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           count.toString(),
-          style: TextStyle(color: color, fontSize: 32, fontWeight: FontWeight.bold),
+          style: TextStyle(color: color, fontSize: 26, fontWeight: FontWeight.bold),
         ),
       ],
     );

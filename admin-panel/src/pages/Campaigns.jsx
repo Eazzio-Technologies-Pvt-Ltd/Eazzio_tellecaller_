@@ -6,13 +6,10 @@ const Campaigns = () => {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-  const [selectedCampaignId, setSelectedCampaignId] = useState(null);
 
   // Form states
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [audioFile, setAudioFile] = useState(null);
   
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
@@ -144,57 +141,14 @@ const Campaigns = () => {
     }
   };
 
-  const handleUploadVoiceFile = async (e) => {
-    e.preventDefault();
-    setFormError('');
-    setFormSuccess('');
-
-    if (!audioFile) {
-      setFormError('Please select an audio file.');
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('campaignId', selectedCampaignId);
-    formData.append('file', audioFile);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/campaigns/upload-voice`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to upload audio.');
-      }
-
-      setFormSuccess('Audio broadcast file uploaded successfully!');
-      setAudioFile(null);
-      fetchCampaigns();
-      setTimeout(() => {
-        setIsVoiceModalOpen(false);
-        setFormSuccess('');
-      }, 1500);
-    } catch (err) {
-      setFormError(err.message);
-    }
-  };
-
-  const openVoiceUploadModal = (campaignId) => {
-    setSelectedCampaignId(campaignId);
-    setIsVoiceModalOpen(true);
-  };
+  // Voice broadcast file upload functions removed
 
   return (
     <div>
       <div style={styles.header}>
         <div>
-          <h1>Voice Broadcast & Call Campaigns</h1>
-          <p className="subtitle">Launch auto-calling campaigns and manage broadcast pre-recorded voice files.</p>
+          <h1>Call Campaigns</h1>
+          <p className="subtitle">Launch auto-calling campaigns and manage client lists.</p>
         </div>
         <button className="btn btn-primary" onClick={() => setIsCreateModalOpen(true)}>
           <Plus size={18} />
@@ -214,7 +168,6 @@ const Campaigns = () => {
                   <th>Description</th>
                   <th>Status</th>
                   <th>Progress</th>
-                  <th>Voice Broadcast File</th>
                   <th>Action Controls</th>
                 </tr>
               </thead>
@@ -250,22 +203,7 @@ const Campaigns = () => {
                             <span style={styles.progressText}>{progressPercent}% ({completed}/{total})</span>
                           </div>
                         </td>
-                        <td>
-                          {camp.voice_file_name ? (
-                            <span style={{ color: '#a855f7', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem' }}>
-                              <Volume2 size={16} />
-                              {camp.voice_file_name}
-                            </span>
-                          ) : (
-                            <button 
-                              className="btn btn-secondary" 
-                              style={{ padding: '4px 8px', fontSize: '0.75rem' }}
-                              onClick={() => openVoiceUploadModal(camp.id)}
-                            >
-                              <Upload size={12} /> Upload Audio
-                            </button>
-                          )}
-                        </td>
+
                         <td>
                           <div style={styles.actionsGroup}>
                             {camp.status !== 'completed' && (
@@ -291,17 +229,6 @@ const Campaigns = () => {
                                 onClick={() => handleCompleteCampaign(camp.id)}
                               >
                                 <CheckCircle2 size={16} color="#10b981" />
-                              </button>
-                            )}
-
-                            {camp.voice_file_name && (
-                              <button 
-                                className="btn btn-secondary"
-                                style={{ padding: '6px 10px', fontSize: '0.75rem' }}
-                                onClick={() => openVoiceUploadModal(camp.id)}
-                                title="Replace Voice File"
-                              >
-                                Replace Audio
                               </button>
                             )}
 
@@ -367,44 +294,7 @@ const Campaigns = () => {
         </div>
       )}
 
-      {/* Modal - Upload Voice File */}
-      {isVoiceModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Music size={20} color="#a855f7" />
-              Upload Voice Broadcast Audio
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
-              Upload a pre-recorded broadcast audio file (.mp3, .wav) to play for this campaign.
-            </p>
 
-            <form onSubmit={handleUploadVoiceFile}>
-              {formError && <div style={styles.errorBanner}>{formError}</div>}
-              {formSuccess && <div style={styles.successBanner}>{formSuccess}</div>}
-
-              <div className="form-group">
-                <label>Select Audio File</label>
-                <input 
-                  type="file" 
-                  accept="audio/*"
-                  onChange={(e) => setAudioFile(e.target.files[0])}
-                  style={{ display: 'block', width: '100%', cursor: 'pointer' }}
-                />
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setIsVoiceModalOpen(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Upload File
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

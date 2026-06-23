@@ -8,7 +8,7 @@ import 'package:flutter/services.dart' show rootBundle;
 
 class ApiService {
   // Loaded from assets/.env
-  static String _baseUrl = kIsWeb ? "http://localhost:5000" : "";
+  static String _baseUrl = kIsWeb ? "http://localhost:5000" : "https://eazzio-tellecaller.onrender.com";
   static String? _token;
   static String? _lastStatus;
 

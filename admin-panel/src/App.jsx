@@ -8,7 +8,7 @@ import Contacts from './pages/Contacts';
 import CallLogs from './pages/CallLogs';
 import TelecallerAccounts from './pages/TelecallerAccounts';
 import MonitorGrid from './pages/MonitorGrid';
-import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
+import { Mail, Lock, LogIn, AlertCircle, Menu, X } from 'lucide-react';
 import Logo from './components/Logo';
 
 const App = () => {
@@ -16,6 +16,7 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Login Form States
   const [email, setEmail] = useState('');
@@ -111,7 +112,7 @@ const App = () => {
   const renderActivePage = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard setActiveTab={setActiveTab} />;
+        return <Dashboard setActiveTab={setActiveTab} theme={theme} />;
       case 'telecallers':
         return <Telecallers />;
       case 'monitor-grid':
@@ -125,7 +126,7 @@ const App = () => {
       case 'accounts':
         return <TelecallerAccounts />;
       default:
-        return <Dashboard setActiveTab={setActiveTab} />;
+        return <Dashboard setActiveTab={setActiveTab} theme={theme} />;
     }
   };
 
@@ -159,9 +160,10 @@ const App = () => {
                 <Mail size={22} style={styles.inputIcon} />
                 <input 
                   type="email" 
-                  placeholder="admin@eazzio.com" 
+                  placeholder="Enter admin mail" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="input-with-icon"
                   style={styles.inputWithIcon}
                 />
               </div>
@@ -173,9 +175,10 @@ const App = () => {
                 <Lock size={22} style={styles.inputIcon} />
                 <input 
                   type="password" 
-                  placeholder="••••••••" 
+                  placeholder="Enter your admin password" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="input-with-icon"
                   style={styles.inputWithIcon}
                 />
               </div>
@@ -205,6 +208,21 @@ const App = () => {
   // Render main dashboard template if authenticated
   return (
     <div className="app-container">
+      <div className="mobile-header">
+        <Logo theme={theme} mode="sidebar" />
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+          className="mobile-menu-toggle"
+          title="Toggle Navigation Menu"
+        >
+          {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      {isSidebarOpen && (
+        <div className="mobile-sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>
+      )}
+
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
@@ -212,6 +230,8 @@ const App = () => {
         onLogout={handleLogout}
         theme={theme}
         toggleTheme={toggleTheme}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
       <main className="main-content">
         {renderActivePage()}

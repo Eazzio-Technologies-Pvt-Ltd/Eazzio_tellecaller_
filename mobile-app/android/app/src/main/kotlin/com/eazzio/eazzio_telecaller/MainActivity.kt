@@ -115,6 +115,102 @@ class MainActivity: FlutterActivity() {
                 } catch (e: Exception) {
                     result.error("CALL_LOG_ERROR", e.message, null)
                 }
+            } else if (call.method == "getAvailableSims") {
+                if (androidx.core.content.ContextCompat.checkSelfPermission(
+                        this,
+                        android.Manifest.permission.READ_PHONE_STATE
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    result.error("PERMISSION_DENIED", "READ_PHONE_STATE permission is required to get SIM info", null)
+                    return@setMethodCallHandler
+                }
+                try {
+                    val simList = mutableListOf<Map<String, Any>>()
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1) {
+                        val subscriptionManager = getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as android.telephony.SubscriptionManager
+                        val activeSubscriptions = subscriptionManager.activeSubscriptionInfoList
+                        if (activeSubscriptions != null) {
+                            for (info in activeSubscriptions) {
+                                val simInfo = mapOf<String, Any>(
+                                    "slotIndex" to info.simSlotIndex,
+                                    "subscriptionId" to info.subscriptionId,
+                                    "displayName" to info.displayName.toString(),
+                                    "carrierName" to info.carrierName.toString()
+                                )
+                                simList.add(simInfo)
+                            }
+                        }
+                    }
+                    result.success(simList)
+                } catch (e: Exception) {
+                    result.error("SIM_ERROR", e.message, null)
+                }
+            } else if (call.method == "dialWithSim") {
+                val phoneNumber = call.argument<String>("phoneNumber")
+                val slotIndex = call.argument<Int>("slotIndex")
+                val subId = call.argument<Int>("subscriptionId")
+                
+                if (phoneNumber == null) {
+                    result.error("BAD_ARGS", "phoneNumber is required", null)
+                    return@setMethodCallHandler
+                }
+                
+                if (androidx.core.content.ContextCompat.checkSelfPermission(
+                        this,
+                        android.Manifest.permission.CALL_PHONE
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    result.error("PERMISSION_DENIED", "CALL_PHONE permission is required to make calls", null)
+                    return@setMethodCallHandler
+                }
+
+                try {
+                    val uri = android.net.Uri.fromParts("tel", phoneNumber, null)
+                    val intent = Intent(Intent.ACTION_CALL, uri)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                        val telecomManager = getSystemService(Context.TELECOM_SERVICE) as android.telecom.TelecomManager
+                        val phoneAccounts = telecomManager.callCapablePhoneAccounts
+                        var targetAccountHandle: android.telecom.PhoneAccountHandle? = null
+
+                        if (subId != null) {
+                            for (handle in phoneAccounts) {
+                                if (handle.id.contains(subId.toString())) {
+                                    targetAccountHandle = handle
+                                    break
+                                }
+                            }
+                        }
+
+                        if (targetAccountHandle == null && slotIndex != null) {
+                            for (handle in phoneAccounts) {
+                                if (handle.id.contains(slotIndex.toString())) {
+                                    targetAccountHandle = handle
+                                    break
+                                }
+                            }
+                            if (targetAccountHandle == null && slotIndex < phoneAccounts.size) {
+                                targetAccountHandle = phoneAccounts[slotIndex]
+                            }
+                        }
+
+                        if (targetAccountHandle != null) {
+                            intent.putExtra(android.telecom.TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, targetAccountHandle)
+                        }
+                    }
+                    
+                    intent.putExtra("com.android.phone.extra.slot", slotIndex ?: 0)
+                    intent.putExtra("simSlot", slotIndex ?: 0)
+                    if (subId != null) {
+                        intent.putExtra("subscription", subId)
+                    }
+
+                    startActivity(intent)
+                    result.success(true)
+                } catch (e: Exception) {
+                    result.error("DIAL_ERROR", e.message, null)
+                }
             } else {
                 result.notImplemented()
             }

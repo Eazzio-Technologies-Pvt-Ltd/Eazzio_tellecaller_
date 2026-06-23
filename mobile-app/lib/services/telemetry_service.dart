@@ -14,6 +14,7 @@ class TelemetryService {
 
   Timer? _timer;
   TelemetryState _currentState = TelemetryState.idle;
+  bool shiftCompleteShown = false;
 
   // Session counters in seconds
   int _workingTime = 0;
@@ -42,20 +43,22 @@ class TelemetryService {
     _currentState = TelemetryState.idle;
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _workingTime++;
+      if (_currentState != TelemetryState.onBreak) {
+        _workingTime++;
+      }
       
       switch (_currentState) {
         case TelemetryState.idle:
           _idleTime++;
-          break;
-        case TelemetryState.calling:
-          _talkTime++;
           break;
         case TelemetryState.onBreak:
           _breakTime++;
           if (_breakTime >= 7200) {
             setBreakState(false);
           }
+          break;
+        case TelemetryState.calling:
+          _talkTime++;
           break;
       }
 
@@ -110,6 +113,7 @@ class TelemetryService {
     _idleTime = 0;
     connectedCalls = 0;
     missedCalls = 0;
+    shiftCompleteShown = false;
   }
 
   // Sync session timer data

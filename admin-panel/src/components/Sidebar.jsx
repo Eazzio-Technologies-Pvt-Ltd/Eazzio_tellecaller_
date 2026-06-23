@@ -15,7 +15,7 @@ import {
 
 import Logo from './Logo';
 
-const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme }) => {
+const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, isOpen, onClose }) => {
   const menuItems = [
     { id: 'dashboard',    label: 'Dashboard',      icon: LayoutDashboard },
     { id: 'telecallers',  label: 'Telecallers',    icon: Users },
@@ -27,7 +27,7 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme }
   ];
 
   return (
-    <aside style={styles.sidebar}>
+    <aside style={styles.sidebar} className={isOpen ? 'open' : ''}>
       {/* Brand Header */}
       <div style={styles.brand}>
         <Logo theme={theme} mode="sidebar" />
@@ -41,7 +41,10 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme }
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                if (onClose) onClose();
+              }}
               style={{
                 ...styles.navItem,
                 ...(isActive ? styles.navItemActive : {}),

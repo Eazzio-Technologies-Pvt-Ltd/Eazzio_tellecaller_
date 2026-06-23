@@ -31,12 +31,10 @@ exports.listCampaigns = async (req, res) => {
         COUNT(con.id) as total_contacts,
         COUNT(CASE WHEN con.status = 'connected' OR con.status = 'completed' THEN 1 END) as completed_contacts,
         COUNT(CASE WHEN con.status = 'pending' THEN 1 END) as pending_contacts,
-        COUNT(CASE WHEN con.status = 'missed' THEN 1 END) as missed_contacts,
-        vf.file_name as voice_file_name
+        COUNT(CASE WHEN con.status = 'missed' THEN 1 END) as missed_contacts
       FROM campaigns c
       LEFT JOIN contacts con ON c.id = con.campaign_id
-      LEFT JOIN voice_files vf ON c.id = vf.campaign_id
-      GROUP BY c.id, vf.file_name
+      GROUP BY c.id
       ORDER BY c.id DESC
     `);
     
@@ -74,38 +72,7 @@ exports.updateCampaignStatus = async (req, res) => {
   }
 };
 
-// Upload Voice Broadcast Audio File
-exports.uploadVoiceFile = async (req, res) => {
-  const { campaignId } = req.body;
-
-  if (!campaignId) {
-    return res.status(400).json({ error: 'Campaign ID is required.' });
-  }
-
-  if (!req.file) {
-    return res.status(400).json({ error: 'Please upload an audio file.' });
-  }
-
-  try {
-    // Delete existing voice file if any for this campaign
-    await db.query('DELETE FROM voice_files WHERE campaign_id = $1', [campaignId]);
-
-    const filePath = `/uploads/voice/${req.file.filename}`;
-    await db.query(
-      'INSERT INTO voice_files (campaign_id, file_name, file_path) VALUES ($1, $2, $3)',
-      [campaignId, req.file.originalname, filePath]
-    );
-
-    res.json({ 
-      message: 'Voice file uploaded successfully.', 
-      fileName: req.file.originalname, 
-      filePath 
-    });
-  } catch (error) {
-    console.error('Upload voice file error:', error);
-    res.status(500).json({ error: 'Server error uploading voice file.' });
-  }
-};
+// Upload Voice Broadcast Audio File removed
 
 // Delete Campaign and all associated data
 exports.deleteCampaign = async (req, res) => {
@@ -117,10 +84,7 @@ exports.deleteCampaign = async (req, res) => {
       return res.status(404).json({ error: 'Campaign not found.' });
     }
 
-    // 1. Delete associated voice files
-    await db.query('DELETE FROM voice_files WHERE campaign_id = $1', [campaignId]);
-
-    // 2. Fetch associated contacts to delete their call logs first
+    // 1. Fetch associated contacts to delete their call logs first
     const contactsRes = await db.query('SELECT id FROM contacts WHERE campaign_id = $1', [campaignId]);
     const contactIds = contactsRes.rows.map(r => r.id);
     

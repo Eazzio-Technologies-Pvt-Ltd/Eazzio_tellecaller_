@@ -16,8 +16,10 @@ const Logo = ({ theme = 'dark', mode = 'sidebar' }) => {
       src={logoSrc} 
       alt="Eazzio Telecaller" 
       style={{
-        width: `${width}px`,
-        height: `${height}px`,
+        width: isSidebar ? `${width}px` : '100%',
+        maxWidth: `${width}px`,
+        height: 'auto',
+        maxHeight: `${height}px`,
         display: 'inline-block',
         objectFit: 'contain',
       }}

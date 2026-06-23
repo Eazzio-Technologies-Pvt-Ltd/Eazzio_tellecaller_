@@ -102,14 +102,30 @@ Priya Sharma,7654321098`;
 
   // 2. Get Admin login token
   const adminLogin = await makeJsonRequest('POST', '/api/auth/login', {
-    email: 'admin@eazzio.com',
-    password: 'admin123'
+    email: 'tellecaller111@eazzio.com',
+    password: 'eazziotellecaller111'
   });
   const adminToken = adminLogin.body.token;
 
+  // Fetch campaigns or create one if none exists
+  console.log('Fetching campaigns...');
+  const campaignsRes = await makeJsonRequest('GET', '/api/campaigns', null, adminToken);
+  let campaignId = null;
+  if (campaignsRes.status === 200 && campaignsRes.body.length > 0) {
+    campaignId = campaignsRes.body[0].id;
+  } else {
+    console.log('Creating a new campaign...');
+    const createRes = await makeJsonRequest('POST', '/api/campaigns', {
+      name: 'Allotment Test Campaign',
+      description: 'Temporary campaign for allotment verification.'
+    }, adminToken);
+    campaignId = createRes.body.id;
+  }
+  console.log(`Using campaign ID: ${campaignId}`);
+
   // 3. Upload CSV
-  console.log('Uploading CSV to campaign 1...');
-  const uploadRes = await uploadCsv('/api/contacts/import', 1, csvFile, adminToken);
+  console.log(`Uploading CSV to campaign ${campaignId}...`);
+  const uploadRes = await uploadCsv('/api/contacts/import', campaignId, csvFile, adminToken);
   console.log('Upload result code:', uploadRes.status);
   console.log('Upload response body:', uploadRes.body);
 

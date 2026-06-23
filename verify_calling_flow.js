@@ -145,8 +145,8 @@ async function runTest() {
 
   // 6. Login as Admin
   const adminLogin = await makeJsonRequest('POST', '/api/auth/login', {
-    email: 'admin@eazzio.com',
-    password: 'admin123'
+    email: 'tellecaller111@eazzio.com',
+    password: 'eazziotellecaller111'
   });
   const adminToken = adminLogin.body.token;
 

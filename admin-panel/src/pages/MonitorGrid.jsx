@@ -123,15 +123,6 @@ const CallerCard = ({ caller, gridSize, isExpanded, onClick }) => {
           labelSize={statLabelSize}
         />
         <StatBox 
-          icon={<Activity size={statIconSize} color="#f59e0b" />} 
-          label="Idle Time" 
-          value={formatDur(caller.idle_time)}    
-          color="#f59e0b" 
-          padding={statBoxPadding}
-          valueSize={statValueSize}
-          labelSize={statLabelSize}
-        />
-        <StatBox 
           icon={<Coffee size={statIconSize} color="#8b5cf6" />} 
           label="Break"     
           value={formatDur(caller.break_time)}   
@@ -139,6 +130,7 @@ const CallerCard = ({ caller, gridSize, isExpanded, onClick }) => {
           padding={statBoxPadding}
           valueSize={statValueSize}
           labelSize={statLabelSize}
+          style={{ gridColumn: 'span 2' }}
         />
       </div>
 
@@ -159,8 +151,8 @@ const CallerCard = ({ caller, gridSize, isExpanded, onClick }) => {
   );
 };
 
-const StatBox = ({ icon, label, value, color, padding, valueSize, labelSize }) => (
-  <div style={{ ...styles.statBox, padding }}>
+const StatBox = ({ icon, label, value, color, padding, valueSize, labelSize, style }) => (
+  <div style={{ ...styles.statBox, padding, ...style }}>
     <div style={styles.statIcon}>{icon}</div>
     <div style={{ ...styles.statValue, color, fontSize: valueSize }}>{value}</div>
     <div style={{ ...styles.statLabel, fontSize: labelSize }}>{label}</div>
@@ -357,7 +349,7 @@ const MonitorGrid = () => {
             </div>
           ) : (
             <>
-              <div style={{ ...styles.grid, gridTemplateColumns: colsStyle }}>
+              <div className="monitor-grid-container" style={{ ...styles.grid, gridTemplateColumns: colsStyle }}>
                 {visible.map(caller => (
                   <CallerCard 
                     key={caller.id} 

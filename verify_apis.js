@@ -61,8 +61,8 @@ async function runTests() {
   try {
     console.log('Testing Admin Login...');
     const res = await makeRequest('POST', '/api/auth/login', {
-      email: 'admin@eazzio.com',
-      password: 'admin123'
+      email: 'tellecaller111@eazzio.com',
+      password: 'eazziotellecaller111'
     });
     
     if (res.status === 200 && res.body.token) {

@@ -14,7 +14,8 @@ import {
   Play
 } from 'lucide-react';
 
-const Dashboard = ({ setActiveTab }) => {
+const Dashboard = ({ setActiveTab, theme }) => {
+  const isLight = theme === 'light';
   const [data, setData] = useState(null);
   const [recentLogs, setRecentLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -338,7 +339,13 @@ const Dashboard = ({ setActiveTab }) => {
       {/* Grid Cards */}
       <div className="grid-stats">
         {/* Total Leads Card */}
-        <div className="glass-card stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        <div className="glass-card stat-card" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.25rem',
+          border: isLight ? '2px solid rgba(124, 58, 237, 0.18)' : '1px solid var(--border-color)',
+          boxShadow: isLight ? '0 4px 12px rgba(124, 58, 237, 0.06)' : 'var(--shadow-sm)'
+        }}>
           <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#7C3AED', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Briefcase size={22} />
           </div>
@@ -349,7 +356,13 @@ const Dashboard = ({ setActiveTab }) => {
         </div>
 
         {/* Talk Time Card */}
-        <div className="glass-card stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        <div className="glass-card stat-card" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.25rem',
+          border: isLight ? '2px solid rgba(71, 85, 105, 0.18)' : '1px solid var(--border-color)',
+          boxShadow: isLight ? '0 4px 12px rgba(71, 85, 105, 0.06)' : 'var(--shadow-sm)'
+        }}>
           <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#1E293B', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Hourglass size={22} />
           </div>
@@ -360,24 +373,36 @@ const Dashboard = ({ setActiveTab }) => {
         </div>
 
         {/* Connected Card */}
-        <div className="glass-card stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        <div className="glass-card stat-card" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.25rem',
+          border: isLight ? '2px solid rgba(6, 182, 212, 0.18)' : '1px solid var(--border-color)',
+          boxShadow: isLight ? '0 4px 12px rgba(6, 182, 212, 0.06)' : 'var(--shadow-sm)'
+        }}>
           <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#06B6D4', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <ArrowUpRight size={22} />
           </div>
           <div className="stat-info">
             <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Connected</span>
-            <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>{overview.connected_calls || 0}</span>
+            <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: isLight ? '#0891B2' : 'var(--text-primary)', marginTop: '2px' }}>{overview.connected_calls || 0}</span>
           </div>
         </div>
 
         {/* Missed Card */}
-        <div className="glass-card stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        <div className="glass-card stat-card" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.25rem',
+          border: isLight ? '2px solid rgba(239, 68, 68, 0.18)' : '1px solid var(--border-color)',
+          boxShadow: isLight ? '0 4px 12px rgba(239, 68, 68, 0.06)' : 'var(--shadow-sm)'
+        }}>
           <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#EF4444', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <PhoneOff size={22} />
           </div>
           <div className="stat-info">
             <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Missed</span>
-            <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>{overview.missed_calls || 0}</span>
+            <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: isLight ? '#DC2626' : 'var(--text-primary)', marginTop: '2px' }}>{overview.missed_calls || 0}</span>
           </div>
         </div>
       </div>

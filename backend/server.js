@@ -36,12 +36,44 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy', database: db.dbType, time: new Date() });
 });
 
+// Background job to check and mark inactive telecallers as offline (due to network/app close)
+async function checkOfflineTelecallers() {
+  try {
+    const isPg = db.dbType === 'postgres';
+    const checkSql = isPg
+      ? `SELECT id, name FROM users WHERE role = 'telecaller' AND status != 'offline' AND last_active_at < NOW() - INTERVAL '35 seconds'`
+      : `SELECT id, name FROM users WHERE role = 'telecaller' AND status != 'offline' AND last_active_at < datetime('now', '-35 seconds')`;
+      
+    const result = await db.query(checkSql);
+    for (const row of result.rows) {
+      console.log(`[StatusMonitor] Telecaller ${row.name} (ID: ${row.id}) inactive for >35s. Setting status to offline.`);
+      
+      // Update status to offline
+      await db.query(
+        'UPDATE users SET status = $1, last_active_at = CURRENT_TIMESTAMP WHERE id = $2',
+        ['offline', row.id]
+      );
+      
+      // Insert notification
+      await db.query(
+        'INSERT INTO admin_notifications (message) VALUES ($1)',
+        [`Telecaller ${row.name} went offline (connection lost)`]
+      );
+    }
+  } catch (err) {
+    console.error('Error in checkOfflineTelecallers background job:', err);
+  }
+}
+
 // Initialize database schema and start server
 db.initializeSchema()
   .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server is running on port ${PORT}`);
       console.log(`- Local address: http://localhost:${PORT}`);
+      
+      // Periodically check for disconnected/inactive telecallers (every 10 seconds)
+      setInterval(checkOfflineTelecallers, 10000);
       
       // Get and print local network IP addresses
       let primaryIp = 'localhost';
