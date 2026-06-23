@@ -494,9 +494,9 @@ const Dashboard = ({ setActiveTab, theme }) => {
       </div>
 
       {/* NEW SIDE-BY-SIDE GRID: Leaderboard & Recent Calls */}
-      <div style={styles.bottomGrid}>
+      <div className="bottom-grid">
         {/* Top Performers Leaderboard Card */}
-        <div className="glass-card" style={{ padding: 0, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div className="glass-card bottom-grid-left" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {/* Purple Gradient Banner Header */}
           <div style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#FFFFFF' }}>
@@ -509,7 +509,7 @@ const Dashboard = ({ setActiveTab, theme }) => {
           </div>
           
           {/* Body */}
-          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="leaderboard-body">
             {topCallers.length === 0 ? (
               <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '1rem' }}>No active telecallers.</div>
             ) : (
@@ -538,8 +538,8 @@ const Dashboard = ({ setActiveTab, theme }) => {
         </div>
 
         {/* Recent Traffic Feed Card */}
-        <div style={{ flex: 1.2, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', padding: '0 4px' }}>
+        <div className="bottom-grid-right" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="dashboard-section-header">
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
               <History size={20} color="#7C3AED" />
               Recent Outbound Call Traffic
@@ -568,19 +568,19 @@ const Dashboard = ({ setActiveTab, theme }) => {
                 const badgeColor = isMissed ? '#EF4444' : '#10B981';
                 
                 return (
-                  <div key={log.id} className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem' }}>
+                  <div key={log.id} className="glass-card log-item-card">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: iconBg, color: iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         {isMissed ? <PhoneOff size={18} /> : <PhoneCall size={18} />}
                       </div>
                       <div>
-                        <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{log.contact_name}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', fontWeight: '500' }}>
+                        <div className="log-item-name">{log.contact_name}</div>
+                        <div className="log-item-meta">
                           {parseDbDate(log.called_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} • {log.telecaller_name.toUpperCase()}
                         </div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div className="log-item-right">
                       {log.recording_url && (
                         <button
                           onClick={() => {
