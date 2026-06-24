@@ -916,3 +916,87 @@ tr:hover td {
   }
 }
 
+/* Print styles to print/download ONLY the invoice card */
+@media print {
+  /* Hide unnecessary elements */
+  .no-print,
+  aside,
+  .mobile-header,
+  .grid-stats,
+  .mobile-sidebar-overlay,
+  button,
+  .theme-toggle-container {
+    display: none !important;
+  }
+
+  /* Reset body, HTML, root, and app container to full screen print layout */
+  html, body, #root, .app-container {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  /* Reset main content container */
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    background: transparent !important;
+  }
+
+  /* Reset invoice card container styles */
+  .invoice-card {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+  }
+
+  /* Force variables to light mode for printing */
+  :root {
+    --bg-primary: #ffffff !important;
+    --bg-secondary: #ffffff !important;
+    --bg-card: #ffffff !important;
+    --border-color: #e2e8f0 !important;
+    --text-primary: #0f172a !important;
+    --text-secondary: #475569 !important;
+    --text-muted: #64748b !important;
+  }
+
+  /* Expand scrollable accounts table to full length for print */
+  .accounts-table-container {
+    max-height: none !important;
+    overflow: visible !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  /* Make sure background graphic colors print correctly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Set printing page margins */
+  @page {
+    size: auto;
+    margin: 15mm;
+  }
+}
+
+

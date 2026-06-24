@@ -108,7 +108,7 @@ const BillingPage = ({ theme, user }) => {
   return (
     <div style={styles.page}>
       {/* Header */}
-      <div style={styles.header}>
+      <div className="no-print" style={styles.header}>
         <div>
           <h1 style={styles.title}>
             <IndianRupee size={26} style={{ marginRight: 10, color: '#f59e0b' }} />
@@ -145,7 +145,7 @@ const BillingPage = ({ theme, user }) => {
         // ── COMPANY ADMIN BILLING VIEW ──────────────────────────────────────────
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Billing Overview stats */}
-          <div className="grid-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+          <div className="grid-stats no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
             <div className="glass-card stat-card" style={{ ...styles.statCard, borderLeft: '4px solid #10b981' }}>
               <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#10b981', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <IndianRupee size={22} />
@@ -190,7 +190,7 @@ const BillingPage = ({ theme, user }) => {
           </div>
 
           {/* Premium Invoice Statement */}
-          <div className="glass-card" style={styles.invoiceCard}>
+          <div className="glass-card invoice-card" style={styles.invoiceCard}>
             <div style={styles.invoiceHeader}>
               <div>
                 <span style={styles.invoiceBadge}>CURRENT INVOICE</span>
@@ -201,7 +201,7 @@ const BillingPage = ({ theme, user }) => {
                   INVOICE CODE: INV-{user.companyRegNum}-{new Date().getMonth() + 1}{new Date().getFullYear()}
                 </span>
               </div>
-              <button onClick={handlePrint} style={styles.printBtn} title="Print Invoice">
+              <button onClick={handlePrint} className="no-print" style={styles.printBtn} title="Print Invoice">
                 <Printer size={16} />
                 <span>Print Statement</span>
               </button>
@@ -274,7 +274,7 @@ const BillingPage = ({ theme, user }) => {
             {/* List of active telecaller accounts charged */}
             <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
               <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '1rem' }}>Active Accounts Listing</h3>
-              <div style={styles.accountsTableContainer}>
+              <div className="accounts-table-container" style={styles.accountsTableContainer}>
                 <table style={styles.table}>
                   <thead>
                     <tr style={{ backgroundColor: 'var(--bg-primary)' }}>
