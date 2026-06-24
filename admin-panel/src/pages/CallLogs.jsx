@@ -152,8 +152,8 @@ const CallLogs = () => {
                           {log.call_status}
                         </span>
                       </td>
-                      <td style={{ fontWeight: '600', color: log.call_status === 'connected' ? 'var(--color-success)' : 'var(--text-muted)' }}>
-                        {log.call_status === 'connected' ? formatDuration(log.duration) : '-'}
+                      <td style={{ fontWeight: '600', color: (log.call_status === 'connected' || log.call_status === 'received') ? 'var(--color-success)' : 'var(--text-muted)' }}>
+                        {(log.call_status === 'connected' || log.call_status === 'received') ? formatDuration(log.duration) : '-'}
                       </td>
                       <td>{log.telecaller_name}</td>
                       <td style={{ color: 'var(--text-secondary)', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.feedback}>

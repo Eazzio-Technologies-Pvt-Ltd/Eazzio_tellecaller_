@@ -21,6 +21,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final TelemetryService _telemetry = TelemetryService();
   final CallService _callService = CallService();
   Timer? _uiRefreshTimer;
+  Timer? _syncTimer;
+  bool _isSyncing = false;
   List<Map<String, dynamic>> _availableSims = [];
   bool _loadingSims = false;
 
@@ -220,6 +222,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Future<void> _syncCallLogs() async {
+    if (_isSyncing || !ApiService.isAuthenticated) return;
+    _isSyncing = true;
+    try {
+      final contacts = await ApiService.fetchAllottedContacts();
+      if (contacts.isEmpty) {
+        _isSyncing = false;
+        return;
+      }
+
+      const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
+      
+      // Check Call Log permission first
+      bool hasCallLogPerm = false;
+      try {
+        hasCallLogPerm = await channel.invokeMethod('checkCallLogPermission') ?? false;
+      } catch (e) {
+        print('Error checking native call log permission: $e');
+      }
+      if (!hasCallLogPerm) {
+        _isSyncing = false;
+        return;
+      }
+
+      final List<dynamic>? logs = await channel.invokeMethod('getRecentCallLogs', {'limit': 50});
+      if (logs == null || logs.isEmpty) {
+        _isSyncing = false;
+        return;
+      }
+
+      for (final log in logs) {
+        if (log is! Map) continue;
+        final String rawNumber = log['number'] ?? '';
+        final String logNum = rawNumber.replaceAll(RegExp(r'\D'), '');
+        if (logNum.isEmpty) continue;
+
+        // Find if this number matches any allotted contact
+        final contact = contacts.firstWhere((c) {
+          final String cNum = c['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
+          return cNum.endsWith(logNum) || logNum.endsWith(cNum);
+        }, orElse: () => null);
+
+        if (contact != null) {
+          final int type = log['type'] ?? 0;
+          final int duration = log['duration'] ?? 0;
+          final int dateMs = log['date'] ?? 0;
+          final DateTime calledAt = DateTime.fromMillisecondsSinceEpoch(dateMs);
+
+          String callStatus = 'missed';
+          if (type == 2) {
+            // Outgoing
+            callStatus = duration > 0 ? 'connected' : 'non-connected';
+          } else if (type == 1) {
+            // Incoming
+            callStatus = duration > 0 ? 'received' : 'missed';
+          } else if (type == 3 || type == 5) {
+            // Missed or Rejected
+            callStatus = 'missed';
+          } else {
+            continue;
+          }
+
+          // Sync to server via submitCallLog API. 
+          // The backend will check if it already exists, avoiding duplicates.
+          await ApiService.submitCallLog(
+            contactId: contact['id'],
+            callStatus: callStatus,
+            duration: duration,
+            feedback: 'Automatically synchronized from device call logs.',
+            followUpDate: null,
+            recordingPath: null,
+            calledAt: calledAt.toUtc().toIso8601String(),
+          );
+        }
+      }
+    } catch (e) {
+      print('[Sync] Error syncing call logs: $e');
+    } finally {
+      _isSyncing = false;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -234,6 +318,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!_telemetry.isActive) {
       _telemetry.startSession();
     }
+
+    // Run first call log sync and start periodic timer
+    _syncCallLogs();
+    _syncTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
+      if (mounted) {
+        _syncCallLogs();
+      }
+    });
   }
 
   void _checkShiftCompletion() {
@@ -299,6 +391,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _uiRefreshTimer?.cancel();
+    _syncTimer?.cancel();
     super.dispose();
   }
 
@@ -507,28 +600,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ],
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    child: Column(
                       children: [
-                        _buildCallCounter(
-                          label: 'Total Dialed',
-                          count: _telemetry.connectedCalls + _telemetry.missedCalls,
-                          color: const Color(0xFF6366F1),
-                          context: context,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            Expanded(
+                              child: _buildCallCounter(
+                                label: 'Connected',
+                                count: _telemetry.connectedCalls,
+                                color: const Color(0xFF10B981),
+                                context: context,
+                              ),
+                            ),
+                            Container(width: 1, height: 40, color: borderColor),
+                            Expanded(
+                              child: _buildCallCounter(
+                                label: 'Non-Connected',
+                                count: _telemetry.nonConnectedCalls,
+                                color: const Color(0xFFF59E0B),
+                                context: context,
+                              ),
+                            ),
+                          ],
                         ),
-                        Container(width: 1, height: 56, color: borderColor),
-                        _buildCallCounter(
-                          label: 'Connected',
-                          count: _telemetry.connectedCalls,
-                          color: const Color(0xFF10B981),
-                          context: context,
-                        ),
-                        Container(width: 1, height: 56, color: borderColor),
-                        _buildCallCounter(
-                          label: 'Missed',
-                          count: _telemetry.missedCalls,
-                          color: const Color(0xFFEF4444),
-                          context: context,
+                        const SizedBox(height: 16),
+                        Divider(color: borderColor, height: 1),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            Expanded(
+                              child: _buildCallCounter(
+                                label: 'Received',
+                                count: _telemetry.receivedCalls,
+                                color: const Color(0xFF06B6D4),
+                                context: context,
+                              ),
+                            ),
+                            Container(width: 1, height: 40, color: borderColor),
+                            Expanded(
+                              child: _buildCallCounter(
+                                label: 'Missed',
+                                count: _telemetry.missedCalls,
+                                color: const Color(0xFFEF4444),
+                                context: context,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

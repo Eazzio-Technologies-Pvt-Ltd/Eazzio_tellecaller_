@@ -101,8 +101,8 @@ async function runTest() {
 
   // 2. Login as Admin to assign a contact to John Telecaller
   const adminLogin = await makeJsonRequest('POST', '/api/auth/login', {
-    email: 'sumitsmile666@gmail.com',
-    password: 'afifasumit666'
+    email: process.env.TEST_ADMIN_EMAIL || 'tellecaller111@eazzio.com',
+    password: process.env.TEST_ADMIN_PASSWORD || 'eazziotellecaller111'
   });
   const adminToken = adminLogin.body.token;
 
@@ -129,10 +129,11 @@ async function runTest() {
   console.log('Contact assigned successfully.');
 
   // 3. Login as John Telecaller
+  console.log('Logging in as John Telecaller...');
   const callerLogin = await makeJsonRequest('POST', '/api/auth/login', {
     email: 'john@eazzio.com',
     password: 'caller_password_123',
-    companyRegNum: 'EAZ-397728'
+    companyRegNum: process.env.TEST_COMPANY_REG_NUM || 'EAZ-552057'
   });
   const callerToken = callerLogin.body.token;
 

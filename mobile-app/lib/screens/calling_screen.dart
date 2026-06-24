@@ -34,7 +34,7 @@ class _CallingScreenState extends State<CallingScreen> {
 
   // Post-Call Post-Workspace States
   bool _showPostCallScreen = false;
-  bool _isCallOutcomeConnected = false;
+  String _detectedCallStatus = 'non-connected';
   final TextEditingController _feedbackController = TextEditingController();
   DateTime? _followUpDate;
   
@@ -222,7 +222,7 @@ class _CallingScreenState extends State<CallingScreen> {
       _callDurationSeconds = 0;
       _followUpDate = null;
       _feedbackController.clear();
-      _isCallOutcomeConnected = false;
+      _detectedCallStatus = 'non-connected';
     });
 
     // Request state updates
@@ -277,22 +277,29 @@ class _CallingScreenState extends State<CallingScreen> {
         if (callDetails != null && callDetails is Map) {
           final String number = callDetails['number'] ?? '';
           final int duration = callDetails['duration'] ?? 0;
+          final int type = callDetails['type'] ?? 0;
           
-          print('[CallLog] Attempt $attempt: Detected number=$number, duration=$duration');
+          print('[CallLog] Attempt $attempt: Detected number=$number, duration=$duration, type=$type');
           
           final String cleanLogNumber = number.replaceAll(RegExp(r'\D'), '');
           
           if (cleanLogNumber.endsWith(contactPhone) || contactPhone.endsWith(cleanLogNumber)) {
             setState(() {
-              if (duration > 0) {
-                _isCallOutcomeConnected = true;
-                _callDurationSeconds = duration; // Sync exact duration from Android call log
+              _callDurationSeconds = duration; // Sync exact duration from Android call log
+              if (type == 2) {
+                // Outgoing
+                _detectedCallStatus = duration > 0 ? 'connected' : 'non-connected';
+              } else if (type == 1) {
+                // Incoming
+                _detectedCallStatus = duration > 0 ? 'received' : 'missed';
+              } else if (type == 3 || type == 5) {
+                // Missed or Rejected
+                _detectedCallStatus = 'missed';
               } else {
-                _isCallOutcomeConnected = false;
-                _callDurationSeconds = 0;
+                _detectedCallStatus = duration > 0 ? 'connected' : 'non-connected';
               }
             });
-            print('[CallLog] Match found on attempt $attempt! Outcome connected: $_isCallOutcomeConnected, Duration: $_callDurationSeconds');
+            print('[CallLog] Match found on attempt $attempt! Outcome: $_detectedCallStatus, Duration: $_callDurationSeconds');
             return; // Exit on successful match
           }
         }
@@ -300,14 +307,14 @@ class _CallingScreenState extends State<CallingScreen> {
       
       // If we reach here, no matching log entry was found
       setState(() {
-        _isCallOutcomeConnected = false;
+        _detectedCallStatus = 'non-connected';
         _callDurationSeconds = 0;
       });
-      print('[CallLog] No matching call log found. Defaulting to Missed (connected=false, duration=0).');
+      print('[CallLog] No matching call log found. Defaulting to non-connected.');
     } catch (e) {
       print('[CallLog] Error retrieving last call log: $e');
       setState(() {
-        _isCallOutcomeConnected = false;
+        _detectedCallStatus = 'non-connected';
         _callDurationSeconds = 0;
       });
     }
@@ -385,7 +392,7 @@ class _CallingScreenState extends State<CallingScreen> {
     if (_contacts.isEmpty || _currentIndex >= _contacts.length) return;
     
     final contact = _contacts[_currentIndex];
-    final bool outcomeConnected = _isCallOutcomeConnected;
+    final String callStatus = _detectedCallStatus;
     final int duration = _callDurationSeconds;
     final String feedback = _feedbackController.text.trim();
     final String? followUp = _followUpDate != null 
@@ -393,16 +400,20 @@ class _CallingScreenState extends State<CallingScreen> {
         : null;
 
     // Track counters in stats
-    if (outcomeConnected) {
+    if (callStatus == 'connected') {
       _telemetry.connectedCalls++;
-    } else {
+    } else if (callStatus == 'non-connected') {
+      _telemetry.nonConnectedCalls++;
+    } else if (callStatus == 'received') {
+      _telemetry.receivedCalls++;
+    } else if (callStatus == 'missed') {
       _telemetry.missedCalls++;
     }
 
     // Submit log payload asynchronously to avoid UI lagging
     ApiService.submitCallLog(
       contactId: contact['id'],
-      callStatus: outcomeConnected ? 'connected' : 'missed',
+      callStatus: callStatus,
       duration: duration,
       feedback: feedback,
       followUpDate: followUp,
@@ -765,97 +776,48 @@ class _CallingScreenState extends State<CallingScreen> {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
           ),
           
-          // Call Outcome Manual Toggle Option
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: fieldFillColor,
+              color: _detectedCallStatus == 'connected' || _detectedCallStatus == 'received'
+                  ? const Color(0x1F10B981)
+                  : const Color(0x1FEF4444),
               borderRadius: BorderRadius.circular(10),
             ),
-            padding: const EdgeInsets.all(4),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isCallOutcomeConnected = true;
-                        if (_callDurationSeconds == 0) {
-                          _callDurationSeconds = 5; // Nominally set to 5s if user toggles to connected from 0
-                        }
-                      });
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: _isCallOutcomeConnected ? const Color(0xFF10B981) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      alignment: Alignment.center,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.check_circle_outline,
-                            size: 16,
-                            color: _isCallOutcomeConnected ? Colors.white : subtextColor,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Connected',
-                            style: TextStyle(
-                              color: _isCallOutcomeConnected ? Colors.white : subtextColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                Icon(
+                  _detectedCallStatus == 'connected' || _detectedCallStatus == 'received'
+                      ? Icons.check_circle
+                      : Icons.cancel,
+                  color: _detectedCallStatus == 'connected' || _detectedCallStatus == 'received'
+                      ? const Color(0xFF10B981)
+                      : const Color(0xFFEF4444),
+                  size: 18,
                 ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isCallOutcomeConnected = false;
-                        _callDurationSeconds = 0;
-                      });
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: !_isCallOutcomeConnected ? const Color(0xFFEF4444) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      alignment: Alignment.center,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.cancel_outlined,
-                            size: 16,
-                            color: !_isCallOutcomeConnected ? Colors.white : subtextColor,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Missed',
-                            style: TextStyle(
-                              color: !_isCallOutcomeConnected ? Colors.white : subtextColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                const SizedBox(width: 8),
+                Text(
+                  _detectedCallStatus == 'connected'
+                      ? 'Detected Outgoing: Connected'
+                      : _detectedCallStatus == 'non-connected'
+                          ? 'Detected Outgoing: Unanswered'
+                          : _detectedCallStatus == 'received'
+                              ? 'Detected Incoming: Answered'
+                              : 'Detected Incoming: Missed',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: _detectedCallStatus == 'connected' || _detectedCallStatus == 'received'
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFFEF4444),
                   ),
                 ),
               ],
             ),
           ),
-
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
 
           // Follow-up Picker
           ListTile(

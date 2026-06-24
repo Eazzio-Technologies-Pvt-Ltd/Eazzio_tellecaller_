@@ -104,8 +104,8 @@ Karan Johar,8888777766`;
 
   // 2. Get Admin login token
   const adminLogin = await makeJsonRequest('POST', '/api/auth/login', {
-    email: 'sumitsmile666@gmail.com',
-    password: 'afifasumit666'
+    email: process.env.TEST_ADMIN_EMAIL || 'tellecaller111@eazzio.com',
+    password: process.env.TEST_ADMIN_PASSWORD || 'eazziotellecaller111'
   });
   const adminToken = adminLogin.body.token;
 

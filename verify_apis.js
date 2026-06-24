@@ -61,8 +61,8 @@ async function runTests() {
   try {
     console.log('Testing Admin Login...');
     const res = await makeRequest('POST', '/api/auth/login', {
-      email: 'sumitsmile666@gmail.com',
-      password: 'afifasumit666'
+      email: process.env.TEST_ADMIN_EMAIL || 'tellecaller111@eazzio.com',
+      password: process.env.TEST_ADMIN_PASSWORD || 'eazziotellecaller111'
     });
     
     if (res.status === 200 && res.body.token) {
@@ -102,7 +102,7 @@ async function runTests() {
     const res = await makeRequest('POST', '/api/auth/login', {
       email: 'john@eazzio.com',
       password: 'caller_password_123',
-      companyRegNum: 'EAZ-397728'
+      companyRegNum: process.env.TEST_COMPANY_REG_NUM || 'EAZ-552057'
     });
 
     if (res.status === 200 && res.body.token) {

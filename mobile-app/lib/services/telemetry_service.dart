@@ -25,6 +25,8 @@ class TelemetryService {
   // Track daily call totals locally for UI representation
   int connectedCalls = 0;
   int missedCalls = 0;
+  int nonConnectedCalls = 0;
+  int receivedCalls = 0;
 
   int get workingTime => _workingTime;
   int get talkTime => _talkTime;
@@ -113,6 +115,8 @@ class TelemetryService {
     _idleTime = 0;
     connectedCalls = 0;
     missedCalls = 0;
+    nonConnectedCalls = 0;
+    receivedCalls = 0;
     shiftCompleteShown = false;
   }
 

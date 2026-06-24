@@ -41,8 +41,8 @@ async function runTest() {
   // 1. Admin Login
   console.log('Logging in as Admin...');
   const adminLogin = await makeJsonRequest('POST', '/api/auth/login', {
-    email: 'sumitsmile666@gmail.com',
-    password: 'afifasumit666'
+    email: process.env.TEST_ADMIN_EMAIL || 'tellecaller111@eazzio.com',
+    password: process.env.TEST_ADMIN_PASSWORD || 'eazziotellecaller111'
   });
   const adminToken = adminLogin.body.token;
 
@@ -58,7 +58,7 @@ async function runTest() {
   console.log(`Logging in test telecaller to go online...`);
   const callerLogin = await makeJsonRequest('POST', '/api/auth/login', {
     email: testEmail,
-    companyRegNum: 'EAZ-397728'
+    companyRegNum: process.env.TEST_COMPANY_REG_NUM || 'EAZ-552057'
   });
   
   // Verify telecaller is online initially

@@ -410,6 +410,9 @@ tr:hover td {
 .badge-pending { background: var(--badge-pending-bg); color: var(--badge-pending-color); }
 .badge-missed { background: var(--badge-missed-bg); color: var(--badge-missed-color); }
 .badge-follow_up { background: var(--badge-follow-bg); color: var(--badge-follow-color); }
+.badge-connected { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
+.badge-non-connected { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.badge-received { background: rgba(16, 185, 129, 0.15); color: #10b981; }
 
 /* Status Indicators */
 .dot {

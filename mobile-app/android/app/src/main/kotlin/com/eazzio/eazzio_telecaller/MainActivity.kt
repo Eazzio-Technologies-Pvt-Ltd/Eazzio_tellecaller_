@@ -211,6 +211,51 @@ class MainActivity: FlutterActivity() {
                 } catch (e: Exception) {
                     result.error("DIAL_ERROR", e.message, null)
                 }
+            } else if (call.method == "getRecentCallLogs") {
+                val limit = call.argument<Int>("limit") ?: 20
+                try {
+                    val cursor = contentResolver.query(
+                        android.provider.CallLog.Calls.CONTENT_URI,
+                        arrayOf(
+                            android.provider.CallLog.Calls.NUMBER,
+                            android.provider.CallLog.Calls.DURATION,
+                            android.provider.CallLog.Calls.TYPE,
+                            android.provider.CallLog.Calls.DATE
+                        ),
+                        null,
+                        null,
+                        "${android.provider.CallLog.Calls.DATE} DESC LIMIT $limit"
+                    )
+                    
+                    val list = mutableListOf<Map<String, Any>>()
+                    if (cursor != null && cursor.moveToFirst()) {
+                        val numberIndex = cursor.getColumnIndex(android.provider.CallLog.Calls.NUMBER)
+                        val durationIndex = cursor.getColumnIndex(android.provider.CallLog.Calls.DURATION)
+                        val typeIndex = cursor.getColumnIndex(android.provider.CallLog.Calls.TYPE)
+                        val dateIndex = cursor.getColumnIndex(android.provider.CallLog.Calls.DATE)
+                        
+                        do {
+                            val number = if (numberIndex != -1) cursor.getString(numberIndex) else ""
+                            val duration = if (durationIndex != -1) cursor.getInt(durationIndex) else 0
+                            val type = if (typeIndex != -1) cursor.getInt(typeIndex) else 0
+                            val date = if (dateIndex != -1) cursor.getLong(dateIndex) else 0L
+                            
+                            val callInfo = mapOf<String, Any>(
+                                "number" to number,
+                                "duration" to duration,
+                                "type" to type,
+                                "date" to date
+                            )
+                            list.add(callInfo)
+                        } while (cursor.moveToNext())
+                        cursor.close()
+                    } else {
+                        cursor?.close()
+                    }
+                    result.success(list)
+                } catch (e: Exception) {
+                    result.error("CALL_LOG_ERROR", e.message, null)
+                }
             } else {
                 result.notImplemented()
             }

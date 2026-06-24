@@ -2,7 +2,7 @@ const db = require('../config/database');
 
 // Create call log & upload call recording
 exports.createCallLog = async (req, res) => {
-  const { contactId, callStatus, duration, feedback, followUpDate } = req.body;
+  const { contactId, callStatus, duration, feedback, followUpDate, calledAt } = req.body;
   const userId = req.user.id;
 
   if (!contactId || !callStatus) {
@@ -10,21 +10,45 @@ exports.createCallLog = async (req, res) => {
   }
 
   try {
+    // 1. Duplicate check based on contactId and calledAt (within a 5-second window)
+    if (calledAt) {
+      const targetTime = new Date(calledAt).getTime();
+      const existingLogs = await db.query(
+        'SELECT id, called_at FROM call_logs WHERE contact_id = $1',
+        [contactId]
+      );
+      
+      let isDuplicate = false;
+      for (const log of existingLogs.rows) {
+        const logTime = new Date(log.called_at).getTime();
+        if (Math.abs(logTime - targetTime) < 5000) {
+          isDuplicate = true;
+          break;
+        }
+      }
+      
+      if (isDuplicate) {
+        return res.status(200).json({ message: 'Call log already synced.' });
+      }
+    }
+
     let recordingUrl = null;
     if (req.file) {
       recordingUrl = `/uploads/recordings/${req.file.filename}`;
     }
 
-    // 1. Insert call log
+    const insertTime = calledAt ? new Date(calledAt) : new Date();
+
+    // 2. Insert call log
     await db.query(
-      `INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, recording_url) 
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [contactId, userId, callStatus, parseInt(duration || 0), feedback || '', recordingUrl]
+      `INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, recording_url, called_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [contactId, userId, callStatus, parseInt(duration || 0), feedback || '', recordingUrl, insertTime]
     );
 
-    // 2. Update contact status & follow up date
+    // 3. Update contact status & follow up date
     let contactStatus = 'completed';
-    if (callStatus === 'missed') {
+    if (callStatus === 'missed' || callStatus === 'non-connected') {
       contactStatus = 'missed';
     }
     
@@ -45,14 +69,35 @@ exports.createCallLog = async (req, res) => {
 
     await db.query(updateSql, params);
 
-    // 3. Increment talk time in today's telecaller session
-    const today = new Date().toISOString().split('T')[0];
-    await db.query(
-      `UPDATE telecaller_sessions 
-       SET total_calling_time = total_calling_time + $1, last_updated_at = CURRENT_TIMESTAMP 
-       WHERE telecaller_id = $2 AND date = $3`,
-      [parseInt(duration || 0), userId, today]
+    // 4. Increment talk time in the call log's day telecaller session
+    const sessionDate = calledAt ? new Date(calledAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    const sessionCheck = await db.query(
+      'SELECT id FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
+      [userId, sessionDate]
     );
+    if (sessionCheck.rows.length === 0) {
+      try {
+        await db.query(
+          `INSERT INTO telecaller_sessions (telecaller_id, date, total_calling_time) 
+           VALUES ($1, $2, $3)`,
+          [userId, sessionDate, parseInt(duration || 0)]
+        );
+      } catch (insertErr) {
+        await db.query(
+          `UPDATE telecaller_sessions 
+           SET total_calling_time = total_calling_time + $1, last_updated_at = CURRENT_TIMESTAMP 
+           WHERE telecaller_id = $2 AND date = $3`,
+          [parseInt(duration || 0), userId, sessionDate]
+        );
+      }
+    } else {
+      await db.query(
+        `UPDATE telecaller_sessions 
+         SET total_calling_time = total_calling_time + $1, last_updated_at = CURRENT_TIMESTAMP 
+         WHERE telecaller_id = $2 AND date = $3`,
+        [parseInt(duration || 0), userId, sessionDate]
+      );
+    }
 
     res.status(201).json({ message: 'Call log saved and contact updated successfully.' });
   } catch (error) {
@@ -152,9 +197,11 @@ exports.getAnalytics = async (req, res) => {
         SELECT
           (SELECT COUNT(*) FROM contacts WHERE assigned_to = $1) as total_contacts,
           (SELECT COUNT(*) FROM call_logs WHERE call_status = 'connected' AND telecaller_id = $2) as connected_calls,
-          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'missed' AND telecaller_id = $3) as missed_calls,
-          (SELECT SUM(duration) FROM call_logs WHERE telecaller_id = $4) as total_talk_time
-      `, [parsedId, parsedId, parsedId, parsedId]);
+          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'non-connected' AND telecaller_id = $3) as non_connected_calls,
+          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'received' AND telecaller_id = $4) as received_calls,
+          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'missed' AND telecaller_id = $5) as missed_calls,
+          (SELECT SUM(duration) FROM call_logs WHERE telecaller_id = $6) as total_talk_time
+      `, [parsedId, parsedId, parsedId, parsedId, parsedId, parsedId]);
 
       campaigns = await db.query(`
         SELECT c.status, COUNT(DISTINCT c.id) as count 
@@ -183,6 +230,8 @@ exports.getAnalytics = async (req, res) => {
         SELECT
           (SELECT COUNT(*) FROM contacts) as total_contacts,
           (SELECT COUNT(*) FROM call_logs WHERE call_status = 'connected') as connected_calls,
+          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'non-connected') as non_connected_calls,
+          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'received') as received_calls,
           (SELECT COUNT(*) FROM call_logs WHERE call_status = 'missed') as missed_calls,
           (SELECT SUM(duration) FROM call_logs) as total_talk_time
       `);

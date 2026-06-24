@@ -354,9 +354,12 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
 
   const { overview, callers, campaigns } = data;
   const connectedCount = parseInt(overview.connected_calls || 0);
+  const nonConnectedCount = parseInt(overview.non_connected_calls || 0);
+  const receivedCount = parseInt(overview.received_calls || 0);
   const missedCount = parseInt(overview.missed_calls || 0);
-  const totalCalls = connectedCount + missedCount;
-  const connectionRate = totalCalls > 0 ? Math.round((connectedCount / totalCalls) * 100) : 0;
+  const totalCalls = connectedCount + nonConnectedCount + receivedCount + missedCount;
+  const successfulCalls = connectedCount + receivedCount;
+  const connectionRate = totalCalls > 0 ? Math.round((successfulCalls / totalCalls) * 100) : 0;
 
   // Sort telecallers by talktime to build the leaderboard
   const topCallers = [...callers].sort((a, b) => b.calling_time - a.calling_time);
@@ -571,8 +574,42 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             <ArrowUpRight size={22} />
           </div>
           <div className="stat-info">
-            <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Connected</span>
+            <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Connected (Outbound)</span>
             <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: isLight ? '#0891B2' : 'var(--text-primary)', marginTop: '2px' }}>{overview.connected_calls || 0}</span>
+          </div>
+        </div>
+
+        {/* Non-Connected Card */}
+        <div className="glass-card stat-card" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.25rem',
+          border: isLight ? '2px solid rgba(245, 158, 11, 0.18)' : '1px solid var(--border-color)',
+          boxShadow: isLight ? '0 4px 12px rgba(245, 158, 11, 0.06)' : 'var(--shadow-sm)'
+        }}>
+          <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#F59E0B', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <PhoneOff size={22} />
+          </div>
+          <div className="stat-info">
+            <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Non-Connected (Outbound)</span>
+            <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: isLight ? '#D97706' : 'var(--text-primary)', marginTop: '2px' }}>{overview.non_connected_calls || 0}</span>
+          </div>
+        </div>
+
+        {/* Received Card */}
+        <div className="glass-card stat-card" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.25rem',
+          border: isLight ? '2px solid rgba(16, 185, 129, 0.18)' : '1px solid var(--border-color)',
+          boxShadow: isLight ? '0 4px 12px rgba(16, 185, 129, 0.06)' : 'var(--shadow-sm)'
+        }}>
+          <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#10B981', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <PhoneCall size={22} />
+          </div>
+          <div className="stat-info">
+            <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Received (Inbound)</span>
+            <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: isLight ? '#059669' : 'var(--text-primary)', marginTop: '2px' }}>{overview.received_calls || 0}</span>
           </div>
         </div>
 
@@ -588,7 +625,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             <PhoneOff size={22} />
           </div>
           <div className="stat-info">
-            <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Missed</span>
+            <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Missed (Inbound)</span>
             <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: isLight ? '#DC2626' : 'var(--text-primary)', marginTop: '2px' }}>{overview.missed_calls || 0}</span>
           </div>
         </div>
@@ -632,14 +669,28 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '220px', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ ...styles.legendDot, backgroundColor: '#00b5e2', width: '10px', height: '10px', borderRadius: '50%' }}></div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '500' }}>Connected</span>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '500' }}>Connected (Outbound)</span>
                 </div>
                 <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{connectedCount}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '220px', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ ...styles.legendDot, backgroundColor: '#f59e0b', width: '10px', height: '10px', borderRadius: '50%' }}></div>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '500' }}>Non-Connected (Outbound)</span>
+                </div>
+                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{nonConnectedCount}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '220px', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ ...styles.legendDot, backgroundColor: '#10b981', width: '10px', height: '10px', borderRadius: '50%' }}></div>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '500' }}>Received (Inbound)</span>
+                </div>
+                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{receivedCount}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '220px', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ ...styles.legendDot, backgroundColor: '#f87171', width: '10px', height: '10px', borderRadius: '50%' }}></div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '500' }}>Missed</span>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '500' }}>Missed (Inbound)</span>
                 </div>
                 <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{missedCount}</span>
               </div>
