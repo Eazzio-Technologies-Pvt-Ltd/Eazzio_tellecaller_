@@ -20,6 +20,7 @@ const Logo = ({ theme = 'dark', mode = 'sidebar' }) => {
         maxWidth: `${width}px`,
         height: 'auto',
         maxHeight: `${height}px`,
+        aspectRatio: '396/46',
         display: 'inline-block',
         objectFit: 'contain',
       }}

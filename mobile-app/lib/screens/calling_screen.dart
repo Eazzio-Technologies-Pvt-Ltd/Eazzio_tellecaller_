@@ -34,7 +34,7 @@ class _CallingScreenState extends State<CallingScreen> {
 
   // Post-Call Post-Workspace States
   bool _showPostCallScreen = false;
-  bool _isCallOutcomeConnected = true;
+  bool _isCallOutcomeConnected = false;
   final TextEditingController _feedbackController = TextEditingController();
   DateTime? _followUpDate;
   
@@ -222,6 +222,7 @@ class _CallingScreenState extends State<CallingScreen> {
       _callDurationSeconds = 0;
       _followUpDate = null;
       _feedbackController.clear();
+      _isCallOutcomeConnected = false;
     });
 
     // Request state updates
@@ -262,43 +263,53 @@ class _CallingScreenState extends State<CallingScreen> {
 
   Future<void> _detectCallOutcome() async {
     try {
-      // Wait 1.5 seconds for Android OS to write the call log entry
-      await Future.delayed(const Duration(milliseconds: 1500));
+      final contact = _contacts[_currentIndex];
+      final String contactPhone = contact['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
       
       const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
-      final dynamic callDetails = await channel.invokeMethod('getLastCallDetails');
       
-      if (callDetails != null && callDetails is Map) {
-        final String number = callDetails['number'] ?? '';
-        final int duration = callDetails['duration'] ?? 0;
+      // Try up to 4 times (total ~3.5 seconds) to retrieve the call log matching the contact
+      for (int attempt = 1; attempt <= 4; attempt++) {
+        await Future.delayed(Duration(milliseconds: attempt == 1 ? 1500 : 600));
         
-        print('[CallLog] Detected last call details: number=$number, duration=$duration');
+        final dynamic callDetails = await channel.invokeMethod('getLastCallDetails');
         
-        // Compare number with the current contact's number
-        final contact = _contacts[_currentIndex];
-        final String contactPhone = contact['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
-        final String cleanLogNumber = number.replaceAll(RegExp(r'\D'), '');
-        
-        // Check if it matches the last digits to handle varying formats / country codes
-        if (cleanLogNumber.endsWith(contactPhone) || contactPhone.endsWith(cleanLogNumber)) {
-          setState(() {
-            if (duration > 0) {
-              _isCallOutcomeConnected = true;
-              _callDurationSeconds = duration; // Sync exact duration from Android call log
-            } else {
-              _isCallOutcomeConnected = false;
-              _callDurationSeconds = 0;
-            }
-          });
-          print('[CallLog] Match found! Outcome connected: $_isCallOutcomeConnected, Duration: $_callDurationSeconds');
-        } else {
-          print('[CallLog] Last call log number ($cleanLogNumber) did not match contact number ($contactPhone).');
+        if (callDetails != null && callDetails is Map) {
+          final String number = callDetails['number'] ?? '';
+          final int duration = callDetails['duration'] ?? 0;
+          
+          print('[CallLog] Attempt $attempt: Detected number=$number, duration=$duration');
+          
+          final String cleanLogNumber = number.replaceAll(RegExp(r'\D'), '');
+          
+          if (cleanLogNumber.endsWith(contactPhone) || contactPhone.endsWith(cleanLogNumber)) {
+            setState(() {
+              if (duration > 0) {
+                _isCallOutcomeConnected = true;
+                _callDurationSeconds = duration; // Sync exact duration from Android call log
+              } else {
+                _isCallOutcomeConnected = false;
+                _callDurationSeconds = 0;
+              }
+            });
+            print('[CallLog] Match found on attempt $attempt! Outcome connected: $_isCallOutcomeConnected, Duration: $_callDurationSeconds');
+            return; // Exit on successful match
+          }
         }
-      } else {
-        print('[CallLog] No call log details returned.');
       }
+      
+      // If we reach here, no matching log entry was found
+      setState(() {
+        _isCallOutcomeConnected = false;
+        _callDurationSeconds = 0;
+      });
+      print('[CallLog] No matching call log found. Defaulting to Missed (connected=false, duration=0).');
     } catch (e) {
       print('[CallLog] Error retrieving last call log: $e');
+      setState(() {
+        _isCallOutcomeConnected = false;
+        _callDurationSeconds = 0;
+      });
     }
   }
 
@@ -753,6 +764,97 @@ class _CallingScreenState extends State<CallingScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
           ),
+          
+          // Call Outcome Manual Toggle Option
+          const SizedBox(height: 16),
+          Container(
+            decoration: BoxDecoration(
+              color: fieldFillColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.all(4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isCallOutcomeConnected = true;
+                        if (_callDurationSeconds == 0) {
+                          _callDurationSeconds = 5; // Nominally set to 5s if user toggles to connected from 0
+                        }
+                      });
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _isCallOutcomeConnected ? const Color(0xFF10B981) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.check_circle_outline,
+                            size: 16,
+                            color: _isCallOutcomeConnected ? Colors.white : subtextColor,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Connected',
+                            style: TextStyle(
+                              color: _isCallOutcomeConnected ? Colors.white : subtextColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isCallOutcomeConnected = false;
+                        _callDurationSeconds = 0;
+                      });
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: !_isCallOutcomeConnected ? const Color(0xFFEF4444) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.cancel_outlined,
+                            size: 16,
+                            color: !_isCallOutcomeConnected ? Colors.white : subtextColor,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Missed',
+                            style: TextStyle(
+                              color: !_isCallOutcomeConnected ? Colors.white : subtextColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 20),
 
           // Follow-up Picker

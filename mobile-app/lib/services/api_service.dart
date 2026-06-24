@@ -3,7 +3,11 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
+import 'package:eazzio_telecaller/screens/login_screen.dart';
+
 class ApiService {
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   static const String _baseUrl = "https://eazzio-tellecaller.onrender.com";
   static String? _token;
   static String? _lastStatus;
@@ -19,6 +23,22 @@ class ApiService {
 
   static String? get token => _token;
   static bool get isAuthenticated => _token != null;
+
+  // Force Logout session on session expiry or multi-device login
+  static Future<void> forceLogout() async {
+    _token = null;
+    _lastStatus = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    await prefs.remove('user_name');
+    await prefs.remove('user_email');
+    
+    // Redirect to login screen
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
+    );
+  }
 
   // User Auth - Login
   static Future<Map<String, dynamic>> login(String email, String companyRegNum) async {
@@ -85,6 +105,9 @@ class ApiService {
       if (response.statusCode == 200) {
         return true;
       } else {
+        if (response.statusCode == 401) {
+          await forceLogout();
+        }
         _lastStatus = null;
         return false;
       }
@@ -107,6 +130,8 @@ class ApiService {
       ).timeout(const Duration(seconds: 7));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await forceLogout();
       }
     } catch (e) {
       print('Error fetching contacts: $e');
@@ -157,7 +182,12 @@ class ApiService {
       }
 
       var response = await request.send().timeout(const Duration(seconds: 15));
-      return response.statusCode == 201;
+      if (response.statusCode == 201) {
+        return true;
+      } else if (response.statusCode == 401) {
+        await forceLogout();
+      }
+      return false;
     } catch (e) {
       print('Error uploading call log: $e');
       return false;
@@ -186,7 +216,13 @@ class ApiService {
           'callingTime': callingTime,
         }),
       ).timeout(const Duration(seconds: 5));
-      return response.statusCode == 200;
+      
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 401) {
+        await forceLogout();
+      }
+      return false;
     } catch (e) {
       print('Telemetry sync error: $e');
       return false;

@@ -30,6 +30,7 @@ class EazzioApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (_, ThemeMode currentMode, __) {
         return MaterialApp(
+          navigatorKey: ApiService.navigatorKey,
           title: 'Eazzio Telecaller',
           debugShowCheckedModeBanner: false,
           themeMode: currentMode,

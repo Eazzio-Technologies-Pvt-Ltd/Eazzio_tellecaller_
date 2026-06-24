@@ -132,6 +132,9 @@ exports.login = async (req, res) => {
         { expiresIn: '1d' }
       );
 
+      // Save token to database for single device session verification
+      await db.query('UPDATE users SET current_token = $1 WHERE id = $2', [token, user.id]);
+
       return res.json({
         token,
         user: {
@@ -535,7 +538,7 @@ exports.deleteCompany = async (req, res) => {
     db.closeCompanyConnection(reg_num);
 
     // 2. Delete SQLite database file
-    const dbPath = path.resolve(__dirname, '..', 'databases', `company_${reg_num}.sqlite`);
+    const dbPath = path.resolve(db.getDatabasesDir(), `company_${reg_num}.sqlite`);
     try {
       if (fs.existsSync(dbPath)) {
         fs.unlinkSync(dbPath);

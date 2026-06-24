@@ -4,7 +4,7 @@ const db = require('../config/database');
 
 // Import contacts from CSV file
 exports.importContacts = async (req, res) => {
-  const { campaignId, assignedToUserId } = req.body;
+  const { campaignId, assignedToUserId, allotmentType, selectedTelecallerIds } = req.body;
 
   if (!campaignId) {
     return res.status(400).json({ error: 'Please specify a campaignId.' });
@@ -36,7 +36,7 @@ exports.importContacts = async (req, res) => {
           return res.status(400).json({ error: 'No valid contacts found in the CSV.' });
         }
 
-        const assignTo = (assignedToUserId && assignedToUserId !== 'null' && assignedToUserId !== '') 
+        const assignTo = (allotmentType === 'single' && assignedToUserId && assignedToUserId !== 'null' && assignedToUserId !== '') 
             ? parseInt(assignedToUserId) 
             : null;
 
@@ -48,8 +48,27 @@ exports.importContacts = async (req, res) => {
           );
         }
 
-        // Trigger auto-allotment of these new contacts ONLY if we did not manually allot them
-        if (!assignTo) {
+        // Handle allotment
+        if (allotmentType === 'selected') {
+          let targetTelecallerIds = [];
+          if (selectedTelecallerIds) {
+            try {
+              if (typeof selectedTelecallerIds === 'string') {
+                targetTelecallerIds = JSON.parse(selectedTelecallerIds);
+              } else {
+                targetTelecallerIds = selectedTelecallerIds;
+              }
+            } catch (e) {
+              if (typeof selectedTelecallerIds === 'string') {
+                targetTelecallerIds = selectedTelecallerIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+              }
+            }
+          }
+          await allotCampaignContactsToSubgroup(campaignId, targetTelecallerIds);
+        } else if (allotmentType === 'single' && assignTo) {
+          // Already assigned in insert loop
+        } else {
+          // Default: split equally among all
           await autoAllotCampaignContacts(campaignId);
         }
 
@@ -102,6 +121,33 @@ const autoAllotCampaignContacts = async (campaignId) => {
   }
 
   console.log(`Auto-allotted ${contacts.length} contacts to ${telecallers.length} telecallers.`);
+};
+
+// Allot campaign contacts to a custom subgroup of telecallers
+const allotCampaignContactsToSubgroup = async (campaignId, telecallerIds) => {
+  if (!telecallerIds || telecallerIds.length === 0) {
+    return;
+  }
+  // Get unassigned contacts in this campaign
+  const unassignedResult = await db.query(
+    "SELECT id FROM contacts WHERE campaign_id = $1 AND assigned_to IS NULL",
+    [campaignId]
+  );
+  const contacts = unassignedResult.rows;
+  if (contacts.length === 0) {
+    return;
+  }
+
+  let callerIndex = 0;
+  for (const contact of contacts) {
+    const telecallerId = parseInt(telecallerIds[callerIndex]);
+    await db.query(
+      'UPDATE contacts SET assigned_to = $1 WHERE id = $2',
+      [telecallerId, contact.id]
+    );
+    callerIndex = (callerIndex + 1) % telecallerIds.length;
+  }
+  console.log(`Subgroup-allotted ${contacts.length} contacts to ${telecallerIds.length} telecallers.`);
 };
 
 // Trigger manual allotment for all unassigned contacts

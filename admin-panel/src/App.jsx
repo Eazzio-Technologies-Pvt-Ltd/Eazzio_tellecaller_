@@ -261,7 +261,7 @@ const App = () => {
                       setPassword('');
                       setLoginError('');
                     }}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', fontSize: '0.82rem', padding: 0, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', fontSize: '0.82rem', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
                   >
                     <ShieldCheck size={14} />
                     Partner Login
@@ -274,7 +274,7 @@ const App = () => {
                       setPassword('');
                       setLoginError('');
                     }}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', fontSize: '0.82rem', padding: 0, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', fontSize: '0.82rem', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
                   >
                     <ArrowLeft size={14} />
                     Company Login
@@ -379,7 +379,9 @@ const styles = {
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
     position: 'relative',
-    overflow: 'hidden',
+    overflowY: 'auto',
+    padding: '2rem 1rem',
+    boxSizing: 'border-box',
   },
   loginBackgroundDecoration: {
     position: 'absolute',

@@ -15,13 +15,21 @@ const dbStorage = new AsyncLocalStorage();
 // Cache for company-specific SQLite database connections
 const companyConnections = {};
 
+// Helper to resolve company-specific databases directory (dynamic persistent storage support)
+function getDatabasesDir() {
+  const baseDir = process.env.SQLITE_FILE 
+    ? path.dirname(path.resolve(process.env.SQLITE_FILE)) 
+    : path.join(__dirname, '..');
+  return path.join(baseDir, 'databases');
+}
+
 // Helper to get active database connection based on AsyncLocalStorage context
 function getActiveDb() {
   const store = dbStorage.getStore();
   if (store && store.companyRegNum && dbType === 'sqlite') {
     const regNum = store.companyRegNum;
     if (!companyConnections[regNum]) {
-      const sqliteFile = path.join(__dirname, '..', 'databases', `company_${regNum}.sqlite`);
+      const sqliteFile = path.join(getDatabasesDir(), `company_${regNum}.sqlite`);
       const dir = path.dirname(sqliteFile);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
@@ -55,13 +63,26 @@ const sqliteAll = (dbConn, sql, params = []) => {
 
 if (dbType === 'postgres') {
   console.log('Database Config: Using PostgreSQL');
-  pgPool = new Pool({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-  });
+  const connectionString = process.env.DATABASE_URL || process.env.NEON_DB_URL;
+  if (connectionString) {
+    pgPool = new Pool({
+      connectionString,
+      ssl: {
+        rejectUnauthorized: false
+      }
+    });
+  } else {
+    pgPool = new Pool({
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      ssl: {
+        rejectUnauthorized: false
+      }
+    });
+  }
 } else {
   console.log('Database Config: Using SQLite');
   const sqliteFile = path.resolve(process.env.SQLITE_FILE || path.join(__dirname, '..', 'database.sqlite'));
@@ -80,6 +101,17 @@ if (dbType === 'postgres') {
  */
 async function query(text, params = []) {
   if (dbType === 'postgres') {
+    const store = dbStorage.getStore();
+    if (store && store.companyRegNum) {
+      const schemaName = `company_${store.companyRegNum}`;
+      const client = await pgPool.connect();
+      try {
+        await client.query(`SET search_path TO "${schemaName}", "public"`);
+        return await client.query(text, params);
+      } finally {
+        client.release();
+      }
+    }
     return await pgPool.query(text, params);
   } else {
     const dbConn = getActiveDb();
@@ -103,7 +135,13 @@ async function query(text, params = []) {
  */
 async function queryMain(text, params = []) {
   if (dbType === 'postgres') {
-    return await pgPool.query(text, params);
+    const client = await pgPool.connect();
+    try {
+      await client.query('SET search_path TO "public"');
+      return await client.query(text, params);
+    } finally {
+      client.release();
+    }
   } else {
     // Translate $1, $2 -> ? for SQLite
     const sqliteText = text.replace(/\$\d+/g, '?');
@@ -234,6 +272,37 @@ async function initializeSchema() {
     // Column already exists, ignore
   }
 
+  // Add current_token column to users table in main database
+  try {
+    await queryMain('ALTER TABLE users ADD COLUMN current_token TEXT');
+    console.log('Added current_token column to users table in main database.');
+  } catch (err) {
+    // Column already exists, ignore
+  }
+
+  // Migrate all dynamic company databases to add current_token column (SQLite only)
+  try {
+    const databasesDir = getDatabasesDir();
+    if (dbType === 'sqlite' && fs.existsSync(databasesDir)) {
+      const files = fs.readdirSync(databasesDir);
+      for (const file of files) {
+        if (file.startsWith('company_') && file.endsWith('.sqlite')) {
+          const sqliteFile = path.join(databasesDir, file);
+          const compDb = new sqlite3.Database(sqliteFile);
+          await new Promise((resolve) => {
+            compDb.run('ALTER TABLE users ADD COLUMN current_token TEXT', [], (err) => {
+              compDb.close();
+              resolve();
+            });
+          });
+          console.log(`Migrated company database ${file} to add current_token.`);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error migrating dynamic company databases:', err);
+  }
+
   // Add edit_count column if it doesn't exist in companies table
   try {
     await queryMain('ALTER TABLE companies ADD COLUMN edit_count INTEGER DEFAULT 0');
@@ -317,7 +386,105 @@ async function initializeSchema() {
  * Initializes schema and sets up tables inside a new SQLite file for a newly registered company.
  */
 async function initializeCompanySchema(regNum, companyName, adminEmail, adminPasswordHash, adminPlainPassword) {
-  const sqliteFile = path.join(__dirname, '..', 'databases', `company_${regNum}.sqlite`);
+  if (dbType === 'postgres') {
+    const schemaName = `company_${regNum}`;
+    const client = await pgPool.connect();
+    try {
+      await client.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
+      await client.query(`SET search_path TO "${schemaName}"`);
+      
+      const serialType = 'SERIAL PRIMARY KEY';
+      const textType = 'TEXT';
+      const timestampType = 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP';
+      const dateType = 'DATE DEFAULT CURRENT_DATE';
+
+      const schemas = [
+        // Users table
+        `CREATE TABLE IF NOT EXISTS users (
+          id ${serialType},
+          name VARCHAR(100) NOT NULL,
+          email VARCHAR(100) UNIQUE NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          role VARCHAR(20) DEFAULT 'telecaller',
+          status VARCHAR(20) DEFAULT 'offline',
+          last_active_at ${timestampType},
+          created_at ${timestampType},
+          plain_password VARCHAR(255),
+          current_token TEXT
+        )`,
+
+        // Campaigns table
+        `CREATE TABLE IF NOT EXISTS campaigns (
+          id ${serialType},
+          name VARCHAR(100) NOT NULL,
+          description ${textType},
+          status VARCHAR(20) DEFAULT 'pending',
+          created_by INTEGER REFERENCES users(id),
+          created_at ${timestampType}
+        )`,
+
+        // Contacts table
+        `CREATE TABLE IF NOT EXISTS contacts (
+          id ${serialType},
+          campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
+          name VARCHAR(100) NOT NULL,
+          phone_number VARCHAR(20) NOT NULL,
+          status VARCHAR(20) DEFAULT 'pending',
+          assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          last_called_at ${timestampType},
+          follow_up_date ${timestampType},
+          created_at ${timestampType}
+        )`,
+
+        // Call logs table
+        `CREATE TABLE IF NOT EXISTS call_logs (
+          id ${serialType},
+          contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+          telecaller_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          call_status VARCHAR(20) NOT NULL,
+          duration INTEGER DEFAULT 0,
+          feedback ${textType},
+          recording_url ${textType},
+          called_at ${timestampType}
+        )`,
+
+        // Telecaller sessions table
+        `CREATE TABLE IF NOT EXISTS telecaller_sessions (
+          id ${serialType},
+          telecaller_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          date ${dateType},
+          total_working_time INTEGER DEFAULT 0,
+          total_calling_time INTEGER DEFAULT 0,
+          total_idle_time INTEGER DEFAULT 0,
+          total_break_time INTEGER DEFAULT 0,
+          last_updated_at ${timestampType}
+        )`,
+
+        // Admin notifications table
+        `CREATE TABLE IF NOT EXISTS admin_notifications (
+          id ${serialType},
+          message ${textType} NOT NULL,
+          created_at ${timestampType}
+        )`
+      ];
+
+      for (const sql of schemas) {
+        await client.query(sql);
+      }
+
+      await client.query(
+        'INSERT INTO users (name, email, password_hash, plain_password, role) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (email) DO NOTHING',
+        [companyName + ' Admin', adminEmail, adminPasswordHash, adminPlainPassword, 'admin']
+      );
+
+      console.log(`[Database] Company PostgreSQL schema "${schemaName}" initialized successfully.`);
+    } finally {
+      client.release();
+    }
+    return;
+  }
+
+  const sqliteFile = path.join(getDatabasesDir(), `company_${regNum}.sqlite`);
   const dir = path.dirname(sqliteFile);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -341,7 +508,8 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
       status VARCHAR(20) DEFAULT 'offline',
       last_active_at ${timestampType},
       created_at ${timestampType},
-      plain_password VARCHAR(255)
+      plain_password VARCHAR(255),
+      current_token TEXT
     )`,
 
     // Campaigns table
@@ -417,7 +585,7 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
     compDb,
     'INSERT OR IGNORE INTO users (name, email, password_hash, plain_password, role) VALUES (?, ?, ?, ?, ?)',
     [companyName + ' Admin', adminEmail, adminPasswordHash, adminPlainPassword, 'admin']
-  );
+      );
 
   await new Promise((resolve) => compDb.close(resolve));
   console.log(`[Database] Company database schema initialized successfully for: ${regNum}`);
@@ -427,7 +595,19 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
  * Helper to fetch the number of telecallers inside a company's SQLite database file.
  */
 async function getCompanyTelecallerCount(regNum) {
-  const sqliteFile = path.join(__dirname, '..', 'databases', `company_${regNum}.sqlite`);
+  if (dbType === 'postgres') {
+    const schemaName = `company_${regNum}`;
+    const client = await pgPool.connect();
+    try {
+      await client.query(`SET search_path TO "${schemaName}"`);
+      const res = await client.query("SELECT COUNT(*) as count FROM users WHERE role = 'telecaller'");
+      return parseInt(res.rows[0].count) || 0;
+    } finally {
+      client.release();
+    }
+  }
+
+  const sqliteFile = path.join(getDatabasesDir(), `company_${regNum}.sqlite`);
   if (!fs.existsSync(sqliteFile)) return 0;
   
   return new Promise((resolve) => {
@@ -461,6 +641,7 @@ module.exports = {
   initializeCompanySchema,
   getCompanyTelecallerCount,
   closeCompanyConnection,
+  getDatabasesDir,
   dbStorage,
   dbType,
 };

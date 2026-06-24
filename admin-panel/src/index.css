@@ -635,6 +635,11 @@ tr:hover td {
     --card-radius: 12px;
   }
 
+  .plan-selection-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
   body {
     font-size: 14px;
     width: 100vw;

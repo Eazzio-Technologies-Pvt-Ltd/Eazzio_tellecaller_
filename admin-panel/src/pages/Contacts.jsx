@@ -259,10 +259,6 @@ const Contacts = () => {
               Trigger Allotment
             </button>
           )}
-          <button className="btn btn-primary" onClick={() => setIsImportModalOpen(true)}>
-            <Upload size={18} />
-            Import Contacts (CSV)
-          </button>
         </div>
       </div>
 
@@ -372,70 +368,7 @@ const Contacts = () => {
         )}
       </div>
 
-      {/* CSV Import Modal */}
-      {isImportModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2>Import Contacts CSV</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-              Upload a comma-separated value (.csv) list containing columns: <strong>Name</strong> and <strong>Phone</strong> (or <strong>Phone Number</strong>).
-            </p>
 
-            <form onSubmit={handleImportContacts}>
-              {formError && <div style={styles.errorBanner}>{formError}</div>}
-              {formSuccess && <div style={styles.successBanner}>{formSuccess}</div>}
-
-              <div className="form-group">
-                <label>Select Campaign</label>
-                <select 
-                  value={importCampaignId}
-                  onChange={(e) => setImportCampaignId(e.target.value)}
-                  style={{ width: '100%' }}
-                >
-                  <option value="">Choose Campaign...</option>
-                  {campaigns.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Specific Telecaller Selector */}
-              <div className="form-group">
-                <label>Assign to Specific Telecaller (Optional)</label>
-                <select 
-                  value={importAssignTo}
-                  onChange={(e) => setImportAssignTo(e.target.value)}
-                  style={{ width: '100%' }}
-                >
-                  <option value="">Auto Allot (Round-Robin)</option>
-                  {telecallers.map(tc => (
-                    <option key={tc.id} value={tc.id}>{tc.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>CSV File</label>
-                <input 
-                  type="file" 
-                  accept=".csv"
-                  onChange={(e) => setCsvFile(e.target.files[0])}
-                  style={{ display: 'block', width: '100%', cursor: 'pointer' }}
-                />
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setIsImportModalOpen(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={importing}>
-                  {importing ? 'Importing...' : 'Upload Contacts'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Campaign Assignment Modal */}
       {isAssignCampaignModalOpen && (

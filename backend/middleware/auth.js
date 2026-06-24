@@ -9,7 +9,7 @@ module.exports = (roles = []) => {
     roles = [roles];
   }
 
-  return (req, res, next) => {
+  return async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // "Bearer <token>"
 
@@ -20,6 +20,17 @@ module.exports = (roles = []) => {
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
       req.user = decoded;
+
+      // Single active session check for telecallers
+      if (req.user.role === 'telecaller') {
+        const userCheck = await db.query('SELECT current_token FROM users WHERE id = $1', [req.user.id]);
+        if (userCheck.rows.length > 0) {
+          const currentToken = userCheck.rows[0].current_token;
+          if (currentToken && currentToken !== token) {
+            return res.status(401).json({ error: 'multiple_logins', message: 'You have logged in on another device.' });
+          }
+        }
+      }
 
       // Check user role if roles array is defined
       if (roles.length > 0 && !roles.includes(req.user.role)) {
