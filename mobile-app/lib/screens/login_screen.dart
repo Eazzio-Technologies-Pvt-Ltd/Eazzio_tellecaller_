@@ -73,120 +73,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _showServerSettingsDialog() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF111827);
-    final labelColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
-    final urlController = TextEditingController(text: ApiService.baseUrl);
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(
-            'Server Settings',
-            style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Enter the backend server URL:',
-                style: TextStyle(fontSize: 13, color: labelColor),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: urlController,
-                style: TextStyle(color: textColor),
-                decoration: InputDecoration(
-                  hintText: 'e.g. http://192.168.1.100:5000',
-                  hintStyle: const TextStyle(color: Color(0xFF4B5563)),
-                  filled: true,
-                  fillColor: isDark ? const Color(0xFF1A1B24) : const Color(0xFFF3F4F6),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(
-                      color: isDark ? const Color(0xFF222435) : const Color(0xFFCBD5E1),
-                      width: 1,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(
-                      color: isDark ? const Color(0xFF222435) : const Color(0xFFCBD5E1),
-                      width: 1,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Loaded from assets/.env',
-                style: TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Current URL: ${ApiService.baseUrl}',
-                style: const TextStyle(fontSize: 11, color: Color(0xFF6366F1)),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: TextStyle(color: labelColor)),
-            ),
-            TextButton(
-              onPressed: () async {
-                // Clear manual override so app uses the auto-synced assets/.env URL
-                await ApiService.clearServerUrlOverride();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Reset — using auto-synced URL from assets/.env'),
-                      backgroundColor: Color(0xFF374151),
-                    ),
-                  );
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Reset', style: TextStyle(color: Color(0xFFEF4444))),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6366F1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () async {
-                String newUrl = urlController.text.trim();
-                if (newUrl.isNotEmpty) {
-                  await ApiService.setServerUrl(newUrl);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Server URL updated to: $newUrl'),
-                        backgroundColor: const Color(0xFF10B981),
-                      ),
-                    );
-                    Navigator.pop(context);
-                  }
-                }
-              },
-              child: const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -202,13 +88,6 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings, color: labelColor),
-            tooltip: 'Server Settings',
-            onPressed: _showServerSettingsDialog,
-          ),
-        ],
       ),
       body: SafeArea(
         child: Center(
@@ -225,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: SizedBox(
                       height: 250,
                       child: Image.asset(
-                        isDark ? 'assets/logo-dark.png' : 'assets/logo.png',
+                        isDark ? 'assets/logo.png' : 'assets/logo_light.png',
                         fit: BoxFit.contain,
                       ),
                     ),

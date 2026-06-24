@@ -21,7 +21,7 @@ function getActiveDb() {
   if (store && store.companyRegNum && dbType === 'sqlite') {
     const regNum = store.companyRegNum;
     if (!companyConnections[regNum]) {
-      const sqliteFile = path.resolve(`./databases/company_${regNum}.sqlite`);
+      const sqliteFile = path.join(__dirname, '..', 'databases', `company_${regNum}.sqlite`);
       const dir = path.dirname(sqliteFile);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
@@ -64,7 +64,7 @@ if (dbType === 'postgres') {
   });
 } else {
   console.log('Database Config: Using SQLite');
-  const sqliteFile = path.resolve(process.env.SQLITE_FILE || './database.sqlite');
+  const sqliteFile = path.resolve(process.env.SQLITE_FILE || path.join(__dirname, '..', 'database.sqlite'));
   // Ensure directory exists
   const dir = path.dirname(sqliteFile);
   if (!fs.existsSync(dir)) {
@@ -317,7 +317,7 @@ async function initializeSchema() {
  * Initializes schema and sets up tables inside a new SQLite file for a newly registered company.
  */
 async function initializeCompanySchema(regNum, companyName, adminEmail, adminPasswordHash, adminPlainPassword) {
-  const sqliteFile = path.resolve(`./databases/company_${regNum}.sqlite`);
+  const sqliteFile = path.join(__dirname, '..', 'databases', `company_${regNum}.sqlite`);
   const dir = path.dirname(sqliteFile);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -427,7 +427,7 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
  * Helper to fetch the number of telecallers inside a company's SQLite database file.
  */
 async function getCompanyTelecallerCount(regNum) {
-  const sqliteFile = path.resolve(`./databases/company_${regNum}.sqlite`);
+  const sqliteFile = path.join(__dirname, '..', 'databases', `company_${regNum}.sqlite`);
   if (!fs.existsSync(sqliteFile)) return 0;
   
   return new Promise((resolve) => {

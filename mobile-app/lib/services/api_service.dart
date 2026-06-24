@@ -3,64 +3,18 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/services.dart' show rootBundle;
-
 class ApiService {
-  // Loaded from assets/.env
-  static String _baseUrl = kIsWeb ? "http://localhost:5000" : "https://eazzio-tellecaller.onrender.com";
+  static const String _baseUrl = "https://eazzio-tellecaller.onrender.com";
   static String? _token;
   static String? _lastStatus;
 
   static String get baseUrl => _baseUrl;
 
-  // Initialize service settings — reads URL from assets/.env
+  // Initialize service settings
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // Step 1: Always load fresh URL from bundled assets/.env
-    try {
-      final envString = await rootBundle.loadString('assets/.env');
-      for (var line in envString.split('\n')) {
-        final trimmed = line.trim();
-        if (trimmed.startsWith('API_URL=')) {
-          final url = trimmed.substring('API_URL='.length).trim();
-          if (url.isNotEmpty) {
-            _baseUrl = url;
-            print('[ApiService] URL from assets/.env: $_baseUrl');
-          }
-        }
-      }
-    } catch (e) {
-      print('[ApiService] Could not load assets/.env: $e');
-    }
-
-    // Step 2: Manual override via Settings dialog takes highest priority
-    final savedUrl = prefs.getString('server_url');
-    if (savedUrl != null && savedUrl.isNotEmpty) {
-      _baseUrl = savedUrl;
-      print('[ApiService] Manual override URL: $_baseUrl');
-    }
-
     _token = prefs.getString('auth_token');
     print('[ApiService] Using server: $_baseUrl');
-  }
-
-  static Future<void> setServerUrl(String url) async {
-    String cleanUrl = url.trim();
-    if (cleanUrl.endsWith('/')) {
-      cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
-    }
-    _baseUrl = cleanUrl;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('server_url', _baseUrl);
-  }
-
-  // Clears manual override and reloads URL from assets/.env
-  static Future<void> clearServerUrlOverride() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('server_url');
-    await init(); // Reload from assets/.env
   }
 
   static String? get token => _token;
