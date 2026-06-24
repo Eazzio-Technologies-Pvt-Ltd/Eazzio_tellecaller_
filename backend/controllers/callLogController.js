@@ -74,11 +74,20 @@ exports.syncTelemetry = async (req, res) => {
     );
 
     if (sessionCheck.rows.length === 0) {
-      await db.query(
-        `INSERT INTO telecaller_sessions (telecaller_id, date, total_working_time, total_idle_time, total_break_time, total_calling_time) 
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [userId, today, workingTime || 0, idleTime || 0, breakTime || 0, callingTime || 0]
-      );
+      try {
+        await db.query(
+          `INSERT INTO telecaller_sessions (telecaller_id, date, total_working_time, total_idle_time, total_break_time, total_calling_time) 
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [userId, today, workingTime || 0, idleTime || 0, breakTime || 0, callingTime || 0]
+        );
+      } catch (insertErr) {
+        await db.query(
+          `UPDATE telecaller_sessions 
+           SET total_working_time = $1, total_idle_time = $2, total_break_time = $3, total_calling_time = $4, last_updated_at = CURRENT_TIMESTAMP
+           WHERE telecaller_id = $5 AND date = $6`,
+          [workingTime || 0, idleTime || 0, breakTime || 0, callingTime || 0, userId, today]
+        );
+      }
     } else {
       await db.query(
         `UPDATE telecaller_sessions 
@@ -204,12 +213,22 @@ exports.getAnalytics = async (req, res) => {
         u.name, 
         u.email, 
         u.status,
-        COALESCE(ts.total_working_time, 0) as working_time,
-        COALESCE(ts.total_calling_time, 0) as calling_time,
-        COALESCE(ts.total_idle_time, 0) as idle_time,
-        COALESCE(ts.total_break_time, 0) as break_time
+        COALESCE(ts.working_time, 0) as working_time,
+        COALESCE(ts.calling_time, 0) as calling_time,
+        COALESCE(ts.idle_time, 0) as idle_time,
+        COALESCE(ts.break_time, 0) as break_time
       FROM users u
-      LEFT JOIN telecaller_sessions ts ON u.id = ts.telecaller_id AND ts.date = CURRENT_DATE
+      LEFT JOIN (
+        SELECT 
+          telecaller_id,
+          MAX(total_working_time) as working_time,
+          MAX(total_calling_time) as calling_time,
+          MAX(total_idle_time) as idle_time,
+          MAX(total_break_time) as break_time
+        FROM telecaller_sessions
+        WHERE date = CURRENT_DATE
+        GROUP BY telecaller_id
+      ) ts ON u.id = ts.telecaller_id
       WHERE u.role = 'telecaller'
     `);
 

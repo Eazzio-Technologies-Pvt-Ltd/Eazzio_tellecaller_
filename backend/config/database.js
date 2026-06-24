@@ -244,7 +244,8 @@ async function initializeSchema() {
       total_calling_time INTEGER DEFAULT 0,
       total_idle_time INTEGER DEFAULT 0,
       total_break_time INTEGER DEFAULT 0,
-      last_updated_at ${timestampType}
+      last_updated_at ${timestampType},
+      UNIQUE (telecaller_id, date)
     )`,
 
     // Admin notifications table
@@ -488,7 +489,8 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
           total_calling_time INTEGER DEFAULT 0,
           total_idle_time INTEGER DEFAULT 0,
           total_break_time INTEGER DEFAULT 0,
-          last_updated_at ${timestampType}
+          last_updated_at ${timestampType},
+          UNIQUE (telecaller_id, date)
         )`,
 
         // Admin notifications table
@@ -587,7 +589,8 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
       total_calling_time INTEGER DEFAULT 0,
       total_idle_time INTEGER DEFAULT 0,
       total_break_time INTEGER DEFAULT 0,
-      last_updated_at ${timestampType}
+      last_updated_at ${timestampType},
+      UNIQUE (telecaller_id, date)
     )`,
 
     // Admin notifications table

@@ -119,10 +119,15 @@ exports.login = async (req, res) => {
         [user.id, today]
       );
       if (sessionCheck.rows.length === 0) {
-        await db.query(
-          'INSERT INTO telecaller_sessions (telecaller_id, date) VALUES ($1, $2)',
-          [user.id, today]
-        );
+        try {
+          await db.query(
+            'INSERT INTO telecaller_sessions (telecaller_id, date) VALUES ($1, $2)',
+            [user.id, today]
+          );
+        } catch (insertErr) {
+          // Ignore unique constraint violation (session already exists)
+          console.log(`[Session] Session already exists for telecaller ID ${user.id} on date ${today}`);
+        }
       }
 
       // Generate token with companyRegNum
