@@ -214,8 +214,8 @@ async function initializeSchema() {
     `CREATE TABLE IF NOT EXISTS contacts (
       id ${serialType},
       campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
-      name VARCHAR(100) NOT NULL,
-      phone_number VARCHAR(20) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      phone_number VARCHAR(50) NOT NULL,
       status VARCHAR(20) DEFAULT 'pending',
       assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
       last_called_at ${timestampType},
@@ -379,6 +379,37 @@ async function initializeSchema() {
     console.error('Error updating existing null plain_passwords:', err);
   }
 
+  // Migrate contacts table column limits in main database and all dynamic PostgreSQL schemas
+  try {
+    if (dbType === 'postgres') {
+      // 1. Alter public database contacts table
+      await queryMain('ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)');
+      await queryMain('ALTER TABLE contacts ALTER COLUMN name TYPE VARCHAR(255)');
+      console.log('Migrated public contacts table column types to VARCHAR(50) and VARCHAR(255).');
+
+      // 2. Alter dynamic schemas
+      const companiesRes = await queryMain('SELECT reg_num FROM companies');
+      for (const row of companiesRes.rows) {
+        const schemaName = `company_${row.reg_num}`;
+        try {
+          const client = await pgPool.connect();
+          try {
+            await client.query(`SET search_path TO "${schemaName}"`);
+            await client.query('ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)');
+            await client.query('ALTER TABLE contacts ALTER COLUMN name TYPE VARCHAR(255)');
+            console.log(`Migrated contacts table column types to VARCHAR(50) and VARCHAR(255) in schema: ${schemaName}`);
+          } finally {
+            client.release();
+          }
+        } catch (schemaErr) {
+          console.error(`Failed to migrate schema ${schemaName}:`, schemaErr.message);
+        }
+      }
+    }
+  } catch (migrationErr) {
+    console.error('Error during contacts table columns migration:', migrationErr.message);
+  }
+
   console.log('Database schema initialization completed successfully.');
 }
 
@@ -427,8 +458,8 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
         `CREATE TABLE IF NOT EXISTS contacts (
           id ${serialType},
           campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
-          name VARCHAR(100) NOT NULL,
-          phone_number VARCHAR(20) NOT NULL,
+          name VARCHAR(255) NOT NULL,
+          phone_number VARCHAR(50) NOT NULL,
           status VARCHAR(20) DEFAULT 'pending',
           assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
           last_called_at ${timestampType},
@@ -526,8 +557,8 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
     `CREATE TABLE IF NOT EXISTS contacts (
       id ${serialType},
       campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
-      name VARCHAR(100) NOT NULL,
-      phone_number VARCHAR(20) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      phone_number VARCHAR(50) NOT NULL,
       status VARCHAR(20) DEFAULT 'pending',
       assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
       last_called_at ${timestampType},

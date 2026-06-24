@@ -19,12 +19,43 @@ exports.importContacts = async (req, res) => {
   fs.createReadStream(req.file.path)
     .pipe(csv())
     .on('data', (row) => {
-      // Expect columns: Name, Phone (or Phone Number)
-      const name = row.Name || row.name || row.Name || 'Unknown';
-      const phone = row.Phone || row.phone || row['Phone Number'] || row['phone_number'];
-      
-      if (phone) {
-        contactsToInsert.push({ name, phone });
+      // Normalize all keys to lowercase, trimming whitespace and stripping UTF-8 BOM if present
+      const normalizedRow = {};
+      for (const key of Object.keys(row)) {
+        const cleanKey = key.trim().replace(/^\ufeff/, '').toLowerCase();
+        normalizedRow[cleanKey] = row[key];
+      }
+
+      // Find name value using normalized keys and common synonyms
+      const nameVal = normalizedRow['name'] || 
+                      normalizedRow['full name'] || 
+                      normalizedRow['fullname'] || 
+                      normalizedRow['contact name'] || 
+                      normalizedRow['customer name'] || 
+                      normalizedRow['lead name'] || 
+                      'Unknown';
+
+      // Find phone value using normalized keys and common synonyms
+      const phoneVal = normalizedRow['phone'] || 
+                       normalizedRow['phone number'] || 
+                       normalizedRow['phonenumber'] || 
+                       normalizedRow['phone_number'] || 
+                       normalizedRow['mobile'] || 
+                       normalizedRow['mobile number'] || 
+                       normalizedRow['mobilenumber'] || 
+                       normalizedRow['mobile_number'] || 
+                       normalizedRow['contact'] || 
+                       normalizedRow['contact number'] || 
+                       normalizedRow['contactnumber'] || 
+                       normalizedRow['contact_number'] || 
+                       normalizedRow['number'];
+
+      if (phoneVal) {
+        const cleanName = String(nameVal).trim() || 'Unknown';
+        const cleanPhone = String(phoneVal).trim();
+        if (cleanPhone) {
+          contactsToInsert.push({ name: cleanName, phone: cleanPhone });
+        }
       }
     })
     .on('end', async () => {
