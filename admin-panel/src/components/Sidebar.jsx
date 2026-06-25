@@ -40,12 +40,7 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
         { id: 'help-desk',   label: 'Help Desk',       icon: LifeBuoy },
       ];
 
-  const menuItems = rawMenuItems.filter(item => {
-    if (item.id === 'monitor-grid' && !isSuperadmin && user && user.planType === 'annual') {
-      return false;
-    }
-    return true;
-  });
+  const menuItems = rawMenuItems;
 
   const isDemoUser = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-');
 
