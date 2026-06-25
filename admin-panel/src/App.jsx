@@ -231,12 +231,12 @@ const App = () => {
       case 'telecallers':
         return <Telecallers />;
       case 'monitor-grid':
-        if (user && user.planType === 'annual') {
+        if (user && user.planType === 'monthly') {
           return (
             <div className="glass-card" style={{ padding: '3rem 2rem', textAlign: 'center', maxWidth: '600px', margin: '2rem auto' }}>
               <h2 style={{ fontSize: '1.8rem', fontWeight: '850', color: 'var(--text-primary)' }}>🔒 Growth Feature Locked</h2>
               <p style={{ color: 'var(--text-secondary)', marginTop: '12px', fontSize: '1.05rem', lineHeight: '1.5' }}>
-                The Live Monitor & Audit Grid is only available to subscribers on the **Growth Dialer** plan.
+                The Live Monitor & Audit Grid is only available to subscribers on the **Growth Plan**.
               </p>
               <p style={{ color: 'var(--text-muted)', marginTop: '8px', fontSize: '0.92rem' }}>
                 Upgrade today to track live caller states, break times, and active talk time metrics.

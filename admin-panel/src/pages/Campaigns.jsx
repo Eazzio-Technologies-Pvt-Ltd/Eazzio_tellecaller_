@@ -185,7 +185,7 @@ const Campaigns = ({ user }) => {
     else if (currentStatus === 'paused') nextStatus = 'active';
     else if (currentStatus === 'pending') nextStatus = 'active';
 
-    if (nextStatus === 'active' && user && user.planType === 'annual') {
+    if (nextStatus === 'active' && user && user.planType === 'monthly') {
       const activeCount = campaigns.filter(c => c.status === 'active').length;
       if (activeCount >= 5) {
         alert('Starter Plan Limit Reached: You can have at most 5 active campaigns at the same time. Please pause one of your active campaigns or upgrade your plan in the Billing page to activate more.');

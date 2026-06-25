@@ -58,7 +58,7 @@ exports.updateCampaignStatus = async (req, res) => {
   try {
     if (status === 'active' && req.user.companyRegNum) {
       const compCheck = await db.queryMain('SELECT plan_type FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
-      if (compCheck.rows.length > 0 && compCheck.rows[0].plan_type === 'annual') {
+      if (compCheck.rows.length > 0 && compCheck.rows[0].plan_type === 'monthly') {
         const activeRes = await db.query("SELECT COUNT(*) as count FROM campaigns WHERE status = 'active'");
         const activeCount = parseInt(activeRes.rows[0].count) || 0;
         if (activeCount >= 5) {

@@ -161,7 +161,7 @@ const CallLogs = ({ user }) => {
                       </td>
                       <td>
                         {log.recording_url ? (
-                          user && user.planType === 'annual' ? (
+                          user && user.planType === 'monthly' ? (
                             <button
                               className="btn btn-secondary"
                               style={{ padding: '6px 12px', fontSize: '0.82rem', color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}

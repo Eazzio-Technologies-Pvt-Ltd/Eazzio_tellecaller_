@@ -357,6 +357,7 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
                 backgroundColor: planType === 'monthly' ? 'rgba(99, 102, 241, 0.05)' : 'var(--bg-primary)',
               }}
             >
+              <div style={{ fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', color: planType === 'monthly' ? '#6366f1' : 'var(--text-secondary)', marginBottom: '4px' }}>Starter Plan</div>
               <span style={{ fontSize: '1.25rem', fontWeight: '900', color: planType === 'monthly' ? '#6366f1' : 'var(--text-primary)' }}>₹59</span>
               <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', marginTop: '2px' }}>/ telecaller / month</span>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>billed monthly</span>
@@ -372,6 +373,7 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
               }}
             >
               <div style={styles.popularBadge}>Best Value</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', color: planType === 'annual' ? '#10b981' : 'var(--text-secondary)', marginBottom: '4px' }}>Growth Plan</div>
               <span style={{ fontSize: '1.25rem', fontWeight: '900', color: planType === 'annual' ? '#10b981' : 'var(--text-primary)' }}>₹49</span>
               <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', marginTop: '2px' }}>/ telecaller / month</span>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>billed annually</span>
