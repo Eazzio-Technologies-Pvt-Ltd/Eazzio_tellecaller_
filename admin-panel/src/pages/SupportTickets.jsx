@@ -108,10 +108,10 @@ const SupportTickets = () => {
         <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{
             width: '44px', height: '44px', borderRadius: '10px', flexShrink: 0,
-            background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)',
+            background: 'var(--color-primary-glow)', border: '1px solid var(--color-primary-glow)',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
           }}>
-            <Filter size={20} color="#6366f1" />
+            <Filter size={20} color="var(--color-primary)" />
           </div>
           <div>
             <div style={{ fontSize: '1.5rem', fontWeight: '800' }}>{tickets.length}</div>

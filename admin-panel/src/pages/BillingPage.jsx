@@ -158,13 +158,13 @@ const BillingPage = ({ theme, user }) => {
               </div>
             </div>
 
-            <div className="glass-card stat-card" style={{ ...styles.statCard, borderLeft: '4px solid #6366f1' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#6366f1', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div className="glass-card stat-card" style={{ ...styles.statCard, borderLeft: '4px solid var(--color-primary)' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Users size={22} />
               </div>
               <div className="stat-info">
                 <span className="stat-label" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600' }}>REGISTERED SEAT LIMIT</span>
-                <span className="stat-value" style={{ fontSize: '1.8rem', fontWeight: '900', color: '#6366f1', marginTop: '2px' }}>
+                <span className="stat-value" style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--color-primary)', marginTop: '2px' }}>
                   {noOfTelecallers} seats
                 </span>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -218,7 +218,7 @@ const BillingPage = ({ theme, user }) => {
               </div>
               <div style={styles.invoiceRow}>
                 <span style={styles.invLabel}>Subscription End:</span>
-                <span style={{ ...styles.invVal, fontWeight: '700', color: '#6366f1' }}>{formatDate(subscriptionEnd)}</span>
+                <span style={{ ...styles.invVal, fontWeight: '700', color: 'var(--color-primary)' }}>{formatDate(subscriptionEnd)}</span>
               </div>
               <div style={styles.invoiceRow}>
                 <span style={styles.invLabel}>Payment Status:</span>
@@ -340,12 +340,12 @@ const BillingPage = ({ theme, user }) => {
             </div>
 
             <div className="glass-card stat-card" style={styles.statCardBlue}>
-              <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#6366f1', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Users size={24} />
               </div>
               <div className="stat-info">
                 <span className="stat-label" style={{ color: 'var(--text-muted)' }}>TOTAL PLATFORM TELECALLERS</span>
-                <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '900', color: '#6366f1', marginTop: '2px' }}>
+                <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '900', color: 'var(--color-primary)', marginTop: '2px' }}>
                   {stats.totalTelecallers} callers
                 </span>
               </div>
@@ -399,7 +399,7 @@ const BillingPage = ({ theme, user }) => {
                       </td>
                       <td style={styles.td}>{comp.nature}</td>
                       <td style={{ ...styles.td, color: 'var(--text-primary)' }}>
-                        <strong style={{ color: '#6366f1' }}>{callerCount}</strong>
+                        <strong style={{ color: 'var(--color-primary)' }}>{callerCount}</strong>
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: '4px' }}>/ {seats} seats</span>
                       </td>
                       <td style={styles.td}>
@@ -477,7 +477,7 @@ const styles = {
     width: 28,
     height: 28,
     border: '3px solid var(--border-color)',
-    borderTopColor: '#6366f1',
+    borderTopColor: 'var(--color-primary)',
     borderRadius: '50%',
     animation: 'spin 0.8s linear infinite',
   },
@@ -503,7 +503,7 @@ const styles = {
     borderLeft: '4px solid #f59e0b',
   },
   statCardBlue: {
-    borderLeft: '4px solid #6366f1',
+    borderLeft: '4px solid var(--color-primary)',
   },
   invoiceCard: {
     backgroundColor: 'var(--bg-secondary)',
@@ -598,8 +598,8 @@ const styles = {
     width: '32px',
     height: '32px',
     borderRadius: '8px',
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    color: '#6366f1',
+    backgroundColor: 'var(--color-primary-glow)',
+    color: 'var(--color-primary)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -612,7 +612,7 @@ const styles = {
     padding: '4px 8px',
     borderRadius: '6px',
     border: '1px solid var(--border-color)',
-    color: '#6366f1',
+    color: 'var(--color-primary)',
     fontWeight: '700',
   },
 };

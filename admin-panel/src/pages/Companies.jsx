@@ -136,7 +136,7 @@ const Companies = () => {
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>
-            <Building size={26} style={{ marginRight: 10, color: '#6366f1' }} />
+            <Building size={26} style={{ marginRight: 10, color: 'var(--color-primary)' }} />
             Live Monitor Grid (Companies)
           </h1>
           <p style={styles.subtitle}>Overview, columns controls, deletion, and telecaller selection dashboard</p>
@@ -283,7 +283,7 @@ const Companies = () => {
                       <Users size={14} style={{ marginRight: '6px' }} />
                       Telecallers Added
                     </div>
-                    <span style={{ ...styles.itemValue, fontWeight: '700', color: '#6366f1' }}>
+                    <span style={{ ...styles.itemValue, fontWeight: '700', color: 'var(--color-primary)' }}>
                       {addedTelecallers} callers
                     </span>
                   </div>
@@ -385,7 +385,7 @@ const Companies = () => {
               {/* Telecallers list section */}
               <div style={styles.modalSection}>
                 <h4 style={styles.sectionTitle}>
-                  <Users size={16} style={{ marginRight: '6px', color: '#6366f1' }} />
+                  <Users size={16} style={{ marginRight: '6px', color: 'var(--color-primary)' }} />
                   Telecallers Selection/Directory inside Company DB
                 </h4>
                 
@@ -416,10 +416,10 @@ const Companies = () => {
                       <tbody>
                         {telecallers.map(tc => {
                           const statusBg = tc.status === 'online' ? 'rgba(16, 185, 129, 0.12)' : 
-                                           tc.status === 'calling' ? 'rgba(99, 102, 241, 0.12)' :
+                                           tc.status === 'calling' ? 'var(--color-primary-glow)' :
                                            tc.status === 'break' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(107, 114, 128, 0.08)';
                           const statusColor = tc.status === 'online' ? '#10b981' : 
-                                              tc.status === 'calling' ? '#6366f1' :
+                                              tc.status === 'calling' ? 'var(--color-primary)' :
                                               tc.status === 'break' ? '#f59e0b' : '#6b7280';
                           return (
                             <tr key={tc.id} style={styles.telecallerRow}>
@@ -572,10 +572,10 @@ const styles = {
     transition: 'all 0.2s',
   },
   gridBtnActive: {
-    background: '#6366f1',
+    background: 'var(--color-primary)',
     color: '#fff',
-    border: '1px solid #6366f1',
-    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
+    border: '1px solid var(--color-primary)',
+    boxShadow: 'var(--shadow-glow)',
   },
   loaderBox: {
     display: 'flex',
@@ -588,7 +588,7 @@ const styles = {
     width: 28,
     height: 28,
     border: '3px solid var(--border-color)',
-    borderTopColor: '#6366f1',
+    borderTopColor: 'var(--color-primary)',
     borderRadius: '50%',
     animation: 'spin 0.8s linear infinite',
   },
@@ -635,7 +635,7 @@ const styles = {
     width: '46px',
     height: '46px',
     borderRadius: '12px',
-    backgroundColor: '#6366f1',
+    backgroundColor: 'var(--color-primary)',
     color: '#fff',
     display: 'flex',
     alignItems: 'center',
@@ -661,7 +661,7 @@ const styles = {
     fontWeight: '700',
     backgroundColor: 'var(--bg-primary)',
     border: '1px solid var(--border-color)',
-    color: '#6366f1',
+    color: 'var(--color-primary)',
     padding: '3px 8px',
     borderRadius: '6px',
     width: 'fit-content',
@@ -777,7 +777,7 @@ const styles = {
     width: '44px',
     height: '44px',
     borderRadius: '10px',
-    backgroundColor: '#6366f1',
+    backgroundColor: 'var(--color-primary)',
     color: '#fff',
     display: 'flex',
     alignItems: 'center',
@@ -794,7 +794,7 @@ const styles = {
   modalRegCode: {
     fontSize: '0.75rem',
     fontWeight: '700',
-    color: '#6366f1',
+    color: 'var(--color-primary)',
     letterSpacing: '0.5px',
   },
   modalCloseBtn: {

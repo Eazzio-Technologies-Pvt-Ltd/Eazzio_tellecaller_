@@ -250,15 +250,15 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             display: 'flex',
             alignItems: 'center',
             gap: '1.25rem',
-            border: isLight ? '2px solid rgba(99, 102, 241, 0.18)' : '1px solid var(--border-color)',
-            boxShadow: isLight ? '0 4px 12px rgba(99, 102, 241, 0.06)' : 'var(--shadow-sm)'
+            border: isLight ? '2px solid var(--color-primary-glow)' : '1px solid var(--border-color)',
+            boxShadow: isLight ? 'var(--shadow-glow)' : 'var(--shadow-sm)'
           }}>
-            <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#6366F1', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Briefcase size={22} />
             </div>
             <div className="stat-info">
               <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Registered Companies</span>
-              <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: '#6366F1', marginTop: '2px' }}>{data.totalCompanies || 0}</span>
+              <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--color-primary)', marginTop: '2px' }}>{data.totalCompanies || 0}</span>
             </div>
           </div>
 
@@ -283,7 +283,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
         {/* Company details list with telecaller count */}
         <div className="glass-card" style={{ padding: '1.75rem', overflowX: 'auto', marginBottom: '2.5rem' }}>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem', fontSize: '1.25rem', color: 'var(--text-primary)' }}>
-            <div style={{ width: '6px', height: '24px', backgroundColor: '#6366f1', borderRadius: '9999px' }}></div>
+            <div style={{ width: '6px', height: '24px', backgroundColor: 'var(--color-primary)', borderRadius: '9999px' }}></div>
             Registered Company Directory
           </h2>
 
@@ -303,13 +303,13 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
                 <tr key={comp.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--text-primary)', fontWeight: '700' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', display: 'flex', alignItems: 'center', justify: 'center', fontWeight: '700' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'var(--color-primary-glow)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justify: 'center', fontWeight: '700' }}>
                         {comp.name.charAt(0).toUpperCase()}
                       </div>
                       {comp.name}
                     </div>
                   </td>
-                  <td style={{ padding: '16px', fontSize: '0.92rem', color: '#6366f1', fontFamily: 'monospace', fontWeight: '700' }}>
+                  <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--color-primary)', fontFamily: 'monospace', fontWeight: '700' }}>
                     {comp.reg_num}
                   </td>
                   <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
@@ -370,7 +370,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
         <div>
           <h1 style={{ margin: 0 }}>Operational Analytics Dashboard</h1>
           {user && user.companyRegNum && (
-            <p className="subtitle" style={{ marginTop: '6px', fontWeight: '600', color: '#6366f1' }}>
+            <p className="subtitle" style={{ marginTop: '6px', fontWeight: '600', color: 'var(--color-primary)' }}>
               Company Registration Code: {user.companyRegNum}
             </p>
           )}
@@ -1021,7 +1021,7 @@ const styles = {
     fontSize: '0.9rem',
   },
   campaignCount: {
-    color: '#6366f1',
+    color: 'var(--color-primary)',
     fontWeight: '600',
     fontSize: '0.9rem',
   },
