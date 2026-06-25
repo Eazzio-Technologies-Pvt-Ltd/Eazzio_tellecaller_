@@ -179,11 +179,11 @@ const BillingPage = ({ theme, user }) => {
               </div>
               <div className="stat-info">
                 <span className="stat-label" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600' }}>ACTIVE BILLING PLAN</span>
-                <span className="stat-value" style={{ fontSize: '1.6rem', fontWeight: '900', color: '#f59e0b', marginTop: '2px', textTransform: 'capitalize' }}>
-                  {planType} Plan
+                <span className="stat-value" style={{ fontSize: '1.6rem', fontWeight: '900', color: '#f59e0b', marginTop: '2px' }}>
+                  {planType === 'annual' ? 'Starter Plan' : 'Growth Plan'}
                 </span>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  ₹{pricePerTelecaller} / seat / month
+                  ₹{pricePerTelecaller} / seat / {planType === 'annual' ? 'year' : 'month'}
                 </span>
               </div>
             </div>
@@ -241,9 +241,9 @@ const BillingPage = ({ theme, user }) => {
                 <tbody>
                   <tr style={styles.tr}>
                     <td style={{ ...styles.td, fontWeight: '700', color: 'var(--text-primary)' }}>
-                      {planType === 'annual' ? 'Annual Plan Telecaller Seats (12-Month Pre-paid)' : 'Monthly Plan Telecaller Seats (1-Month Subscription)'}
+                      {planType === 'annual' ? 'Starter Plan Telecaller Seats (Annual Billing — 1 Year)' : 'Growth Plan Telecaller Seats (Monthly Billing)'}
                     </td>
-                    <td style={styles.td}>₹{pricePerTelecaller} / seat / mo {planType === 'annual' && '(billed annually)'}</td>
+                    <td style={styles.td}>₹{pricePerTelecaller} / seat / {planType === 'annual' ? 'year' : 'month'}</td>
                     <td style={styles.td}>{noOfTelecallers} seats purchased</td>
                     <td style={{ ...styles.td, textAlign: 'right', fontWeight: '800', color: '#10b981' }}>
                       ₹{planType === 'annual' ? noOfTelecallers * pricePerTelecaller * 12 : noOfTelecallers * pricePerTelecaller}

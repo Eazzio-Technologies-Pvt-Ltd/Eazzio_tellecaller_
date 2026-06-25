@@ -9,7 +9,7 @@ const Logo = ({ theme = 'dark', mode = 'sidebar' }) => {
   // Aspect ratio is 396/46 = ~8.6, height set proportionally
   const height = isSidebar ? 23 : 56;
   
-  const logoSrc = theme === 'dark' ? '/logo-dark.png' : '/logo-light.png';
+  const logoSrc = theme === 'dark' ? '/logo-light.png' : '/logo-dark.png';
 
   return (
     <img 

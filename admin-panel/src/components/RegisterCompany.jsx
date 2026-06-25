@@ -167,6 +167,52 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
     }
   };
 
+  const handleFreeDemoRegister = async (e) => {
+    if (e) e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    if (!name || !nature || !password || !email || !noOfTelecallers) {
+      setError('Please fill in all fields.');
+      setLoading(false);
+      return;
+    }
+
+    const telecallersCount = parseInt(noOfTelecallers) || 0;
+    if (telecallersCount <= 0) {
+      setError('Please enter a valid number of telecallers.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const registerRes = await fetch(`${API_BASE_URL}/api/auth/register-company`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          nature,
+          password,
+          noOfTelecallers: telecallersCount,
+          email,
+        }),
+      });
+
+      const registerData = await registerRes.json();
+      if (!registerRes.ok) {
+        throw new Error(registerData.error || 'Failed to register demo company.');
+      }
+
+      setSuccessData(registerData);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Render Success State
   if (successData) {
     return (
@@ -381,6 +427,25 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
             renewalMode ? 'Pay & Renew Subscription' : 'Complete Registration'
           )}
         </button>
+
+        {!renewalMode && (
+          <button
+            type="button"
+            onClick={handleFreeDemoRegister}
+            className="btn btn-secondary"
+            style={{ width: '100%', height: '46px', fontSize: '1.05rem', borderRadius: '10px', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <RefreshCw size={18} className="animate-spin" />
+                Registering Demo...
+              </>
+            ) : (
+              'Register Free Trial Demo (No Payment)'
+            )}
+          </button>
+        )}
       </form>
 
       <style>{`

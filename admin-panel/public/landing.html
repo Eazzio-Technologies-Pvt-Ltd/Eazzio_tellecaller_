@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eazzio FAST - SIM-Based Auto Dialer & CRM</title>
+  <meta name="description" content="Eazzio FAST is the ultimate SIM-based telecalling auto-dialer and CRM to upgrade productivity, manage campaigns, and supercharge sales.">
+  <link rel="stylesheet" href="/landing.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="container nav-container">
+      <a href="#" class="logo-wrapper">
+        <!-- Render light logo (logo-light.png) when dark mode is on, render dark logo (logo-dark.png) when light mode is on -->
+        <img src="/logo-light.png" alt="Eazzio Logo" class="logo-img logo-for-dark-mode">
+        <img src="/logo-dark.png" alt="Eazzio Logo" class="logo-img logo-for-light-mode">
+      </a>
+      
+      <ul class="nav-menu">
+        <li><a href="#features" class="nav-link">Features</a></li>
+        <li><a href="#solutions" class="nav-link">Solutions</a></li>
+        <li><a href="#pricing" class="nav-link">Pricing</a></li>
+        <li><a href="#faq" class="nav-link">FAQs</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <!-- Theme Toggle Button -->
+        <button class="theme-toggle-btn" title="Toggle Dark/Light Mode" aria-label="Toggle theme">
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6.8 6.8 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+        </button>
+        
+        <a href="/?login=true" target="_parent" class="btn btn-login">Login</a>
+        <a href="#pricing" class="btn btn-primary">Get Started</a>
+      </div>
+
+      <button class="mobile-nav-toggle" aria-label="Toggle navigation menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="section hero-section">
+    <div class="container hero-grid">
+      <div class="hero-content">
+        <h1 class="hero-title">The only SIM-based <span>telecalling dialer</span> & CRM you'll ever need.</h1>
+        <p class="hero-subtitle">A full-featured Auto Dialer and Telecalling CRM to upgrade productivity, manage campaigns, and supercharge outreach sales.</p>
+        
+        <div class="hero-checkmarks">
+          <div class="hero-check-item">
+            <span class="check-icon">✓</span>
+            <span>Dedicated customer support & onboarding</span>
+          </div>
+          <div class="hero-check-item">
+            <span class="check-icon">✓</span>
+            <span>100+ Integrations & instant API logs</span>
+          </div>
+          <div class="hero-check-item">
+            <span class="check-icon">✓</span>
+            <span>40,000+ Happy agents using our platform</span>
+          </div>
+        </div>
+
+        <div class="hero-cta-wrapper">
+          <div>
+            <a href="/?demo=true" target="_parent" class="btn btn-warning">REQUEST DEMO</a>
+          </div>
+          <span class="hero-cta-subtext">Setup in minutes. Scale as you grow. No credit card required.</span>
+        </div>
+      </div>
+
+      <div class="hero-image-wrapper">
+        <div class="hero-image-glow"></div>
+        <!-- Mockup illustration built using CSS inside mockup container -->
+        <div class="hero-mockup" style="background-color: var(--bg-tertiary); border: 2px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; box-shadow: var(--card-shadow); width: 100%;">
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+            <div style="display: flex; gap: 6px;">
+              <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #ef4444;"></span>
+              <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #f59e0b;"></span>
+              <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #10b981;"></span>
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px;">EAZZIO FAST DASHBOARD</div>
+          </div>
+          
+          <!-- Mock Stats -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+            <div style="background-color: var(--bg-secondary); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+              <div style="font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase;">Active Callers</div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-accent); margin-top: 4px;">42</div>
+            </div>
+            <div style="background-color: var(--bg-secondary); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+              <div style="font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase;">Total Calls</div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-primary-light); margin-top: 4px;">1,248</div>
+            </div>
+            <div style="background-color: var(--bg-secondary); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+              <div style="font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase;">Connected</div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: #10b981; margin-top: 4px;">84%</div>
+            </div>
+          </div>
+
+          <!-- Mock Chart Graphic -->
+          <div style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 16px; height: 160px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.72rem; font-weight: 600;">Call Conversion Velocity</span>
+              <span style="font-size: 0.65rem; color: #10b981; font-weight: 700;">+24% Up</span>
+            </div>
+            <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 100px; padding-top: 10px;">
+              <div style="width: 25px; height: 30%; background-color: var(--color-primary-light); border-radius: 4px 4px 0 0;"></div>
+              <div style="width: 25px; height: 45%; background-color: var(--color-primary-light); border-radius: 4px 4px 0 0;"></div>
+              <div style="width: 25px; height: 60%; background-color: var(--color-accent); border-radius: 4px 4px 0 0;"></div>
+              <div style="width: 25px; height: 85%; background-color: var(--color-accent); border-radius: 4px 4px 0 0;"></div>
+              <div style="width: 25px; height: 70%; background-color: var(--color-primary-light); border-radius: 4px 4px 0 0;"></div>
+              <div style="width: 25px; height: 95%; background-color: var(--color-accent); border-radius: 4px 4px 0 0;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Clients Section -->
+  <section class="clients-section">
+    <div class="container">
+      <div class="clients-title">Trusted by leading enterprises & sales teams from</div>
+      <div class="clients-logo-track">
+        <!-- Beautiful CSS text logos acting as high contrast brand clients -->
+        <span style="font-weight: 800; font-size: 1.25rem; letter-spacing: 1px; color: var(--text-muted);">SAHU GROUP</span>
+        <span style="font-weight: 700; font-size: 1.25rem; font-family: sans-serif; color: var(--text-muted); border: 2px solid var(--border-color); padding: 4px 10px; border-radius: 4px;">LENDEN</span>
+        <span style="font-weight: 800; font-size: 1.15rem; color: var(--text-muted); text-transform: uppercase;">LABOUR LAW ADV</span>
+        <span style="font-style: italic; font-weight: 800; font-size: 1.3rem; color: var(--text-muted);">pumpumpum</span>
+        <span style="font-weight: 600; font-size: 1.2rem; color: var(--text-muted);">DavaDost</span>
+        <span style="font-weight: 800; font-size: 1.25rem; letter-spacing: -0.5px; color: var(--text-muted);">RAINBOW PROP</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Highlight Section with Video Mockup -->
+  <section id="solutions" class="section highlight-section">
+    <div class="highlight-bg-glow"></div>
+    <div class="container">
+      <div class="highlight-header">
+        <span class="highlight-tagline">Dialer & CRM Integrated</span>
+        <h2 class="highlight-title">Everything a telecaller needs - all at their fingertips</h2>
+        <p style="color: var(--text-secondary);">Empower your team with automated calling workflows, live break-states tracking, custom calling scripts, and direct lead distributions.</p>
+      </div>
+
+      <div class="highlight-video-container">
+        <div class="video-mock-thumbnail">
+          <button class="video-play-btn" aria-label="Play video demo">▶</button>
+          <div class="video-intro-text">Eazzio FAST - Smarter Telecalling, Better Results</div>
+        </div>
+      </div>
+
+      <div class="highlight-cards-grid">
+        <div class="highlight-card">
+          <div class="highlight-card-icon">☎</div>
+          <h3 class="highlight-card-title">100% Support & Training</h3>
+          <p class="highlight-card-desc">Our onboarding team will be by your side every step of the way, giving you 200% setup and operational assistance.</p>
+        </div>
+        <div class="highlight-card">
+          <div class="highlight-card-icon">⚡</div>
+          <h3 class="highlight-card-title">1000+ Easy Integrations</h3>
+          <p class="highlight-card-desc">Integrations will never be a hassle. Connect your CRM, Google Sheets, or custom backend APIs instantly.</p>
+        </div>
+        <div class="highlight-card">
+          <div class="highlight-card-icon">👥</div>
+          <h3 class="highlight-card-title">40,000+ Active Users</h3>
+          <p class="highlight-card-desc">Users across multiple industries increased their calling conversions by up to 72% using our automated dialer.</p>
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin-top: 48px;">
+        <a href="/?demo=true" target="_parent" class="btn btn-warning">REQUEST DEMO</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="section">
+    <div class="container">
+      <div class="features-header">
+        <h2 class="features-title">Features Built for Success</h2>
+        <p class="features-subtitle">All you need for automated outbound calling and team management.</p>
+      </div>
+
+      <div class="features-list">
+        <!-- Feature 1: Dialer -->
+        <div class="feature-item">
+          <div class="feature-img-wrapper">
+            <!-- Simulated Dialer Screen -->
+            <div style="background-color: var(--bg-tertiary); padding: 24px; border-radius: var(--radius-sm); width: 100%; max-width: 320px; box-shadow: var(--card-shadow); text-align: center;">
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px;">Auto Dialer Active</div>
+              <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 4px;">Rahul Sharma</div>
+              <div style="font-size: 0.85rem; color: var(--color-accent); font-weight: 600; margin-bottom: 20px;">DIALING +91 98765 43210</div>
+              
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background-color: var(--bg-secondary); display: flex; items: center; justify-content: center; font-size: 1.2rem; align-items: center; margin: 0 auto;">🎙️</div>
+                <div style="width: 48px; height: 48px; border-radius: 50%; background-color: var(--bg-secondary); display: flex; items: center; justify-content: center; font-size: 1.2rem; align-items: center; margin: 0 auto;">🔇</div>
+                <div style="width: 48px; height: 48px; border-radius: 50%; background-color: var(--bg-secondary); display: flex; items: center; justify-content: center; font-size: 1.2rem; align-items: center; margin: 0 auto;">⏸️</div>
+              </div>
+              <div style="background-color: #ef4444; color: #ffffff; padding: 12px; border-radius: var(--radius-sm); font-weight: 700; cursor: pointer;">HANG UP</div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">SIM-Based Auto Dialer</h3>
+            <p class="feature-desc">Increase call attempts by up to 200% with an automated outbound calling process. Be it status-wise calling, click-to-dial, or campaign-based auto calling, choose your preferred calling option from our auto dialer.</p>
+            <div>
+              <a href="#pricing" class="btn btn-secondary">Learn More</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 2: Integrations -->
+        <div class="feature-item reverse">
+          <div class="feature-img-wrapper">
+            <!-- Simulated Node Network -->
+            <div style="display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 320px;">
+              <div style="display: flex; align-items: center; gap: 12px; background-color: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <span style="font-size: 1.5rem;">📊</span>
+                <div style="text-align: left;">
+                  <div style="font-size: 0.8rem; font-weight: 600;">CRM Platform</div>
+                  <div style="font-size: 0.65rem; color: #10b981;">Connected & Active</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px; background-color: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <span style="font-size: 1.5rem;">📄</span>
+                <div style="text-align: left;">
+                  <div style="font-size: 0.8rem; font-weight: 600;">Google Sheets</div>
+                  <div style="font-size: 0.65rem; color: #10b981;">Sync Complete</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px; background-color: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <span style="font-size: 1.5rem;">🔗</span>
+                <div style="text-align: left;">
+                  <div style="font-size: 0.8rem; font-weight: 600;">Webhooks / APIs</div>
+                  <div style="font-size: 0.65rem; color: #10b981;">Logs transferring live</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">No-Code Integrations</h3>
+            <p class="feature-desc">Benefit from a real-time, no code integration process. Get custom integrations and effortlessly connect your Eazzio account with your preferred platforms or CRM service provider.</p>
+            <div>
+              <a href="#pricing" class="btn btn-secondary">Learn More</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 3: Customer Engagement -->
+        <div class="feature-item">
+          <div class="feature-img-wrapper">
+            <!-- Chat bubble simulation -->
+            <div style="background-color: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-sm); width: 100%; max-width: 320px; box-shadow: var(--card-shadow); display: flex; flex-direction: column; gap: 12px;">
+              <div style="background-color: var(--bg-secondary); padding: 10px; border-radius: 8px 8px 8px 0; text-align: left; max-width: 85%;">
+                <div style="font-size: 0.8rem; font-weight: 600; color: var(--color-accent); margin-bottom: 2px;">Whatsapp Bot</div>
+                <div style="font-size: 0.82rem; color: var(--text-primary);">Hello! Your call with Eazzio agent has concluded. Here is your ticket copy.</div>
+              </div>
+              <div style="background-color: var(--color-primary-glow); border: 1px solid rgba(var(--color-primary-rgb), 0.15); padding: 10px; border-radius: 8px 8px 0 8px; text-align: left; max-width: 85%; align-self: flex-end;">
+                <div style="font-size: 0.8rem; font-weight: 600; color: var(--color-primary-light); margin-bottom: 2px;">Customer</div>
+                <div style="font-size: 0.82rem; color: var(--text-primary);">Thanks, got the link!</div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">Multichannel Engagement</h3>
+            <p class="feature-desc">Make the most of customer interaction. Build pre-defined message templates and customizable scripts. Send SMS and WhatsApp automation right after concluding call logs - all without saving any contact information on agent devices.</p>
+            <div>
+              <a href="#pricing" class="btn btn-secondary">Learn More</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 4: Team Management -->
+        <div class="feature-item reverse">
+          <div class="feature-img-wrapper">
+            <!-- Simulated Leaderboard grid -->
+            <div style="background-color: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-sm); width: 100%; max-width: 320px; box-shadow: var(--card-shadow); text-align: left;">
+              <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 16px;">Top Performers Today</div>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                  <span style="font-size: 0.8rem; font-weight: 600;">1. Priya Patel</span>
+                  <span style="font-size: 0.8rem; color: #10b981; font-weight: 700;">180 Calls</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                  <span style="font-size: 0.8rem; font-weight: 600;">2. Amit Mishra</span>
+                  <span style="font-size: 0.8rem; color: #10b981; font-weight: 700;">162 Calls</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 4px;">
+                  <span style="font-size: 0.8rem; font-weight: 600;">3. Joy D'souza</span>
+                  <span style="font-size: 0.8rem; color: #10b981; font-weight: 700;">145 Calls</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">Real-Time Team Auditing</h3>
+            <p class="feature-desc">Know what and how your telecallers are doing through real-time reporting. Get instant call metrics, break logs, active talk time metrics, and performance charts to drive higher levels of productivity.</p>
+            <div>
+              <a href="#pricing" class="btn btn-secondary">Learn More</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 5: Lead Management -->
+        <div class="feature-item">
+          <div class="feature-img-wrapper">
+            <!-- Simulated CRM List -->
+            <div style="background-color: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-sm); width: 100%; max-width: 320px; box-shadow: var(--card-shadow); text-align: left; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                <div style="font-size: 0.75rem; font-weight: 600;">Karan Johar</div>
+                <span style="font-size: 0.65rem; padding: 2px 6px; background-color: rgba(245,158,11,0.12); color: #f59e0b; border-radius: 4px; font-weight: 700;">HIGH PRIORITY</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                <div style="font-size: 0.75rem; font-weight: 600;">Ananya Pandey</div>
+                <span style="font-size: 0.65rem; padding: 2px 6px; background-color: rgba(16,185,129,0.12); color: #10b981; border-radius: 4px; font-weight: 700;">NEW LEAD</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                <div style="font-size: 0.75rem; font-weight: 600;">Ranveer Singh</div>
+                <span style="font-size: 0.65rem; padding: 2px 6px; background-color: rgba(124,58,237,0.12); color: var(--color-primary-light); border-radius: 4px; font-weight: 700;">FOLLOW UP</span>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">Smart Lead Management</h3>
+            <p class="feature-desc">From lead allocation to setting priority weights to accessing live call history logs, ensure a 360-degree lead environment. Stay in absolute control by distributing and tracking leads on a unified dashboard.</p>
+            <div>
+              <a href="#pricing" class="btn btn-secondary">Learn More</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 6: Reporting -->
+        <div class="feature-item reverse">
+          <div class="feature-img-wrapper">
+            <!-- Simulated report dashboard element -->
+            <div style="background-color: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-sm); width: 100%; max-width: 320px; box-shadow: var(--card-shadow); text-align: left;">
+              <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 12px;">Call Log Recordings</div>
+              <div style="background-color: var(--bg-secondary); padding: 12px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border-color);">
+                <div>
+                  <div style="font-size: 0.75rem; font-weight: 600;">Call_Recording_489.mp3</div>
+                  <div style="font-size: 0.62rem; color: var(--text-muted); margin-top: 2px;">Duration: 2m 45s</div>
+                </div>
+                <span style="font-size: 1.25rem; color: var(--color-primary); cursor: pointer;">▶️</span>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">Deep Call Analytics</h3>
+            <p class="feature-desc">Eazzio makes it easy to dive deep into team progress and lead conversions. Access robust logs, audio recording playbacks, call outcomes tracking, and daily exported summaries instantly.</p>
+            <div>
+              <a href="#pricing" class="btn btn-secondary">Learn More</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Section -->
+  <section id="pricing" class="section pricing-section">
+    <div class="container">
+      <div class="pricing-header">
+        <h2 class="pricing-title">Flexible Pricing Plans</h2>
+        <p class="pricing-subtitle">Select the option that best fits your sales and calling volume goals.</p>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Starter Plan (Yearly) -->
+        <div class="pricing-card">
+          <h3 class="pricing-plan-name">Starter Plan</h3>
+          <div class="pricing-price">₹49 <span>/ user / year</span></div>
+          <p class="pricing-plan-desc">Billed annually. Essential auto-dialing capabilities for small campaigns and teams.</p>
+          <ul class="pricing-features-list">
+            <li class="pricing-feature-item"><span>✓</span> SIM-Based Auto Dialer</li>
+            <li class="pricing-feature-item"><span>✓</span> 5 Active Campaigns</li>
+            <li class="pricing-feature-item"><span>✓</span> Basic Call Logs &amp; History</li>
+            <li class="pricing-feature-item"><span>✓</span> Standard Lead Import</li>
+            <li class="pricing-feature-item unavailable"><span>✗</span> Call Recording</li>
+            <li class="pricing-feature-item unavailable"><span>✗</span> Whatsapp Integrations</li>
+          </ul>
+          <a href="/?login=true&register=true" target="_parent" class="btn btn-secondary" style="margin-top: auto;">Get Started</a>
+        </div>
+
+        <!-- Growth Dialer (Monthly) — MOST POPULAR -->
+        <div class="pricing-card popular">
+          <span class="pricing-popular-badge">Most Popular</span>
+          <h3 class="pricing-plan-name">Growth Dialer</h3>
+          <div class="pricing-price">₹59 <span>/ user / month</span></div>
+          <p class="pricing-plan-desc">Billed monthly. Advanced CRM integrations, analytics, and team monitoring.</p>
+          <ul class="pricing-features-list">
+            <li class="pricing-feature-item"><span>✓</span> SIM-Based Auto Dialer</li>
+            <li class="pricing-feature-item"><span>✓</span> Unlimited Active Campaigns</li>
+            <li class="pricing-feature-item"><span>✓</span> Live Monitor &amp; Audit Grid</li>
+            <li class="pricing-feature-item"><span>✓</span> Call Recording Storage</li>
+            <li class="pricing-feature-item"><span>✓</span> Whatsapp post-call scripts</li>
+            <li class="pricing-feature-item"><span>✓</span> Priority Customer Support</li>
+          </ul>
+          <a href="/?login=true&register=true" target="_parent" class="btn btn-primary" style="margin-top: auto;">Get Started</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section id="faq" class="section faq-section">
+    <div class="container">
+      <div class="faq-header">
+        <h2 class="faq-title">Frequently Asked Questions</h2>
+        <p class="faq-subtitle">Get answers to standard questions about our auto-dialer and CRM.</p>
+      </div>
+
+      <div class="faq-list">
+        <!-- FAQ 1 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>What is a SIM-based auto dialer?</span>
+            <span class="faq-toggle-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              A SIM-based auto dialer connects your web-admin panel to a mobile app on the caller's phone. It places outbound calls directly utilizing the mobile SIM card's calling pack rather than expensive VoIP charges, allowing you to run unlimited calling campaigns cheaply.
+            </div>
+          </div>
+        </div>
+
+        <!-- FAQ 2 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>How do we sync leads from our CRM?</span>
+            <span class="faq-toggle-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              Eazzio supports lead sync directly from Google Sheets or standard CRM systems using webhook API endpoints. You can also import leads directly via CSV uploads inside the admin panel.
+            </div>
+          </div>
+        </div>
+
+        <!-- FAQ 3 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Can we record calls placed by agents?</span>
+            <span class="faq-toggle-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              Yes. The mobile calling application automatically records conversations and uploads the audio logs securely to your Eazzio web dashboard for review, quality assurance, and training.
+            </div>
+          </div>
+        </div>
+
+        <!-- FAQ 4 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Is there a calling limit on SIM cards?</span>
+            <span class="faq-toggle-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              The daily calling limits are determined entirely by your mobile carrier plan (e.g. Jio, Airtel, Vodafone). Eazzio FAST itself imposes no limits on the number of automated calls placed.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom CTA -->
+  <section class="section cta-section">
+    <div class="cta-glow"></div>
+    <div class="container cta-container">
+      <h2 class="cta-title">Upgrade your outbound sales velocity today.</h2>
+      <p class="cta-desc">Launch campaigns, assign contacts to agents, and watch conversions grow.</p>
+      <div>
+        <a href="/?demo=true" target="_parent" class="btn btn-warning">REQUEST DEMO NOW</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="/logo-light.png" alt="Eazzio Logo" class="footer-logo-img logo-for-dark-mode">
+          <img src="/logo-dark.png" alt="Eazzio Logo" class="footer-logo-img logo-for-light-mode">
+          <p class="footer-brand-desc">SIM-based automated dialing dashboard and customer CRM for modern sales groups.</p>
+        </div>
+        
+        <div>
+          <h4 class="footer-col-title">Features</h4>
+          <ul class="footer-links">
+            <li><a href="#features" class="footer-link">SIM Auto Dialer</a></li>
+            <li><a href="#features" class="footer-link">Lead Manager</a></li>
+            <li><a href="#features" class="footer-link">Team Monitor</a></li>
+            <li><a href="#features" class="footer-link">Analytics Reports</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Solutions</h4>
+          <ul class="footer-links">
+            <li><a href="#solutions" class="footer-link">Real-Estate Outreach</a></li>
+            <li><a href="#solutions" class="footer-link">Financial Services</a></li>
+            <li><a href="#solutions" class="footer-link">Lead Conversions</a></li>
+            <li><a href="#solutions" class="footer-link">Support Operations</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Support</h4>
+          <ul class="footer-links">
+            <li><a href="#faq" class="footer-link">FAQ Guide</a></li>
+            <li><a href="/?login=true" target="_parent" class="footer-link">Admin login</a></li>
+            <li><a href="/?login=true&type=superadmin" target="_parent" class="footer-link">Partner login</a></li>
+            <li><a href="mailto:support@eazzio.com" class="footer-link">support@eazzio.com</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>© 2026 Eazzio Technologies Pvt. Ltd. All rights reserved.</span>
+        <span>Made with ❤️ for outbound operations.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/landing.js"></script>
+</body>
+</html>

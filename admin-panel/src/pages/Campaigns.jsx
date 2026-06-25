@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import API_BASE_URL from '../config/api';
 import { Plus, Play, Pause, CheckCircle2, Upload, Music, Volume2, Trash2, User, Users, UserCheck, Check, UploadCloud, X } from 'lucide-react';
 
-const Campaigns = () => {
+const Campaigns = ({ user }) => {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -185,6 +185,14 @@ const Campaigns = () => {
     else if (currentStatus === 'paused') nextStatus = 'active';
     else if (currentStatus === 'pending') nextStatus = 'active';
 
+    if (nextStatus === 'active' && user && user.planType === 'annual') {
+      const activeCount = campaigns.filter(c => c.status === 'active').length;
+      if (activeCount >= 5) {
+        alert('Starter Plan Limit Reached: You can have at most 5 active campaigns at the same time. Please pause one of your active campaigns or upgrade your plan in the Billing page to activate more.');
+        return;
+      }
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/campaigns/${campaignId}/status`, {
         method: 'PUT',
@@ -197,6 +205,9 @@ const Campaigns = () => {
 
       if (response.ok) {
         fetchCampaigns();
+      } else {
+        const errData = await response.json();
+        alert(errData.error || 'Failed to update campaign status.');
       }
     } catch (err) {
       console.error('Error changing campaign status:', err);

@@ -11,7 +11,9 @@ import {
   Moon,
   Key,
   LayoutGrid,
-  IndianRupee
+  IndianRupee,
+  LifeBuoy,
+  Headphones
 } from 'lucide-react';
 
 import Logo from './Logo';
@@ -19,10 +21,11 @@ import Logo from './Logo';
 const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, isOpen, onClose }) => {
   const isSuperadmin = user && (user.companyRegNum === null || user.email === 'tellecaller111@eazzio.com');
 
-  const menuItems = isSuperadmin
+  const rawMenuItems = isSuperadmin
     ? [
         { id: 'dashboard',        label: 'Dashboard',           icon: LayoutDashboard },
         { id: 'monitor-grid',     label: 'Monitor Grid',         icon: LayoutGrid },
+        { id: 'support',          label: 'Support',              icon: Headphones },
         { id: 'billing',          label: 'Money',                icon: IndianRupee },
       ]
     : [
@@ -34,10 +37,23 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
         { id: 'campaigns',   label: 'Campaigns',       icon: PhoneOutgoing },
         { id: 'contacts',    label: 'Contacts',        icon: Contact2 },
         { id: 'call-logs',   label: 'Call Logs',       icon: History },
+        { id: 'help-desk',   label: 'Help Desk',       icon: LifeBuoy },
       ];
 
+  const menuItems = rawMenuItems.filter(item => {
+    if (item.id === 'monitor-grid' && !isSuperadmin && user && user.planType === 'annual') {
+      return false;
+    }
+    return true;
+  });
+
+  const isDemoUser = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-');
+
   return (
-    <aside style={styles.sidebar} className={isOpen ? 'open' : ''}>
+    <aside style={{
+      ...styles.sidebar,
+      ...(isDemoUser ? { top: '38px', height: 'calc(100vh - 38px)' } : {})
+    }} className={isOpen ? 'open' : ''}>
       {/* Brand Header */}
       <div style={styles.brand}>
         <Logo theme={theme} mode="sidebar" />

@@ -11,7 +11,9 @@ import MonitorGrid from './pages/MonitorGrid';
 import RegisterCompany from './components/RegisterCompany';
 import Companies from './pages/Companies';
 import BillingPage from './pages/BillingPage';
-import { Mail, Lock, LogIn, AlertCircle, Menu, X, ShieldCheck, ArrowLeft } from 'lucide-react';
+import HelpDesk from './pages/HelpDesk';
+import SupportTickets from './pages/SupportTickets';
+import { Mail, Lock, LogIn, AlertCircle, Menu, X, ShieldCheck, ArrowLeft, RefreshCw } from 'lucide-react';
 import Logo from './components/Logo';
 
 const App = () => {
@@ -23,6 +25,43 @@ const App = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [subscriptionExpired, setSubscriptionExpired] = useState(false);
   const [loginType, setLoginType] = useState('company'); // 'company' or 'superadmin'
+  const [showLogin, setShowLogin] = useState(false);
+  const [showDemoPage, setShowDemoPage] = useState(false);
+  const [demoName, setDemoName] = useState('');
+  const [demoEmail, setDemoEmail] = useState('');
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoError, setDemoError] = useState('');
+
+  useEffect(() => {
+    const handleUrlParams = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('demo') === 'true') {
+        setShowDemoPage(true);
+        setShowLogin(false);
+        setIsRegistering(false);
+      } else if (params.get('login') === 'true') {
+        setShowDemoPage(false);
+        setShowLogin(true);
+        if (params.get('register') === 'true') {
+          setIsRegistering(true);
+        } else {
+          setIsRegistering(false);
+        }
+        if (params.get('type') === 'superadmin') {
+          setLoginType('superadmin');
+        } else {
+          setLoginType('company');
+        }
+      } else {
+        setShowDemoPage(false);
+        setShowLogin(false);
+      }
+    };
+
+    handleUrlParams();
+    window.addEventListener('popstate', handleUrlParams);
+    return () => window.removeEventListener('popstate', handleUrlParams);
+  }, []);
   
   // Login Form States
   const [email, setEmail] = useState('');
@@ -64,7 +103,11 @@ const App = () => {
         // Check subscription expiry for company admins
         if (userData.companyRegNum && userData.subscriptionEnd) {
           const now = new Date();
-          const expiry = new Date(userData.subscriptionEnd);
+          let expiryStr = userData.subscriptionEnd;
+          if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+            expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+          }
+          const expiry = new Date(expiryStr);
           if (expiry < now) {
             setSubscriptionExpired(true);
           } else {
@@ -119,6 +162,45 @@ const App = () => {
     }
   };
 
+  const handleDemoRequestSubmit = async (e) => {
+    e.preventDefault();
+    setDemoError('');
+    setDemoLoading(true);
+
+    if (!demoName || !demoEmail) {
+      setDemoError('Please provide both name and email.');
+      setDemoLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register-demo-company`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: demoName, email: demoEmail })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initialize demo workspace.');
+      }
+
+      // Auto-login with the returned token & user details
+      localStorage.setItem('token', data.token);
+      setToken(data.token);
+      setUser(data.user);
+      setActiveTab('dashboard');
+      setShowDemoPage(false);
+    } catch (err) {
+      setDemoError(err.message);
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -133,6 +215,8 @@ const App = () => {
           return <Dashboard setActiveTab={setActiveTab} theme={theme} user={user} />;
         case 'monitor-grid':
           return <Companies />;
+        case 'support':
+          return <SupportTickets />;
         case 'billing':
           return <BillingPage theme={theme} user={user} />;
         default:
@@ -147,24 +231,172 @@ const App = () => {
       case 'telecallers':
         return <Telecallers />;
       case 'monitor-grid':
+        if (user && user.planType === 'annual') {
+          return (
+            <div className="glass-card" style={{ padding: '3rem 2rem', textAlign: 'center', maxWidth: '600px', margin: '2rem auto' }}>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: '850', color: 'var(--text-primary)' }}>🔒 Growth Feature Locked</h2>
+              <p style={{ color: 'var(--text-secondary)', marginTop: '12px', fontSize: '1.05rem', lineHeight: '1.5' }}>
+                The Live Monitor & Audit Grid is only available to subscribers on the **Growth Dialer** plan.
+              </p>
+              <p style={{ color: 'var(--text-muted)', marginTop: '8px', fontSize: '0.92rem' }}>
+                Upgrade today to track live caller states, break times, and active talk time metrics.
+              </p>
+              <button 
+                className="btn btn-primary" 
+                style={{ marginTop: '24px', height: '48px', padding: '0 24px', borderRadius: '10px', fontSize: '1rem' }}
+                onClick={() => setActiveTab('billing')}
+              >
+                Upgrade Plan
+              </button>
+            </div>
+          );
+        }
         return <MonitorGrid />;
       case 'campaigns':
-        return <Campaigns />;
+        return <Campaigns user={user} />;
       case 'contacts':
         return <Contacts />;
       case 'call-logs':
-        return <CallLogs />;
+        return <CallLogs user={user} />;
       case 'accounts':
         return <TelecallerAccounts />;
       case 'billing':
         return <BillingPage theme={theme} user={user} />;
+      case 'help-desk':
+        return <HelpDesk user={user} />;
       default:
         return <Dashboard setActiveTab={setActiveTab} theme={theme} user={user} />;
     }
   };
 
-  // Render Login Screen if not authenticated
+  // Render Website / Login Screen if not authenticated
   if (!token || !user) {
+    if (!showLogin && !showDemoPage) {
+      return (
+        <iframe 
+          src="/landing.html" 
+          style={{
+            border: 'none',
+            width: '100vw',
+            height: '100vh',
+            display: 'block',
+            margin: 0,
+            padding: 0,
+            overflow: 'hidden'
+          }}
+          title="Eazzio FAST Telecaller & CRM"
+        />
+      );
+    }
+
+    if (showDemoPage) {
+      return (
+        <div style={{
+          ...styles.loginContainer,
+          backgroundImage: theme === 'dark'
+            ? 'linear-gradient(to bottom, rgba(11, 17, 32, 0.82), rgba(8, 12, 24, 0.94)), url("/login-bg.png")'
+            : 'linear-gradient(to bottom, rgba(248, 250, 252, 0.82), rgba(241, 245, 249, 0.94)), url("/login-bg.png")'
+        }}>
+          <div style={styles.loginBackgroundDecoration}></div>
+          <div className="login-glass-card" style={{
+            ...styles.loginCard,
+            padding: '3rem 2.5rem',
+            maxWidth: '480px'
+          }}>
+            <div style={{ alignSelf: 'flex-start', marginBottom: '1.5rem', display: 'flex', width: '100%' }}>
+              <button
+                onClick={() => {
+                  window.history.pushState({}, '', '/');
+                  setShowDemoPage(false);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: 0,
+                }}
+              >
+                <ArrowLeft size={16} />
+                Back to Website
+              </button>
+            </div>
+
+            <div style={styles.loginHeader}>
+              <Logo theme={theme} mode="login" />
+              <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginTop: '10px' }}>Request 5-Minute Interactive Demo</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: '6px', lineHeight: '1.4' }}>
+                Type your details below to get instant admin access to a fully seeded, read-only demo workspace.
+              </p>
+            </div>
+
+            <form onSubmit={handleDemoRequestSubmit} style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {demoError && (
+                <div style={styles.errorAlert}>
+                  <AlertCircle size={18} style={{ flexShrink: 0 }} />
+                  <span>{demoError}</span>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.92rem', fontWeight: '600', marginBottom: '6px', color: 'var(--text-secondary)', display: 'block' }}>Full Name</label>
+                <div style={styles.inputWrapper}>
+                  <span style={{ position: 'absolute', left: '12px', fontSize: '1.2rem', color: 'var(--text-secondary)' }}>👤</span>
+                  <input 
+                    type="text" 
+                    placeholder="Enter your name" 
+                    value={demoName}
+                    onChange={(e) => setDemoName(e.target.value)}
+                    required
+                    style={{ ...styles.inputWithIcon, paddingLeft: '2.5rem', height: '48px', fontSize: '0.95rem' }}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.92rem', fontWeight: '600', marginBottom: '6px', color: 'var(--text-secondary)', display: 'block' }}>Email Address</label>
+                <div style={styles.inputWrapper}>
+                  <Mail size={18} style={styles.inputIcon} />
+                  <input 
+                    type="email" 
+                    placeholder="Enter your email" 
+                    value={demoEmail}
+                    onChange={(e) => setDemoEmail(e.target.value)}
+                    required
+                    style={{ ...styles.inputWithIcon, paddingLeft: '2.5rem', height: '48px', fontSize: '0.95rem' }}
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                className="btn btn-primary" 
+                style={{ width: '100%', height: '52px', fontSize: '1.05rem', borderRadius: '10px', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                disabled={demoLoading}
+              >
+                {demoLoading ? (
+                  <>
+                    <RefreshCw size={18} className="animate-spin" />
+                    Initializing Demo Workspace...
+                  </>
+                ) : (
+                  <>
+                    <LogIn size={20} />
+                    Start 5-Minute Demo
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={{
         ...styles.loginContainer,
@@ -181,9 +413,34 @@ const App = () => {
             <RegisterCompany onBack={() => setIsRegistering(false)} theme={theme} />
           ) : (
             <>
+              {/* Back to Website button */}
+              <div style={{ alignSelf: 'flex-start', marginBottom: '1.5rem', display: 'flex', width: '100%' }}>
+                <button
+                  onClick={() => {
+                    window.history.pushState({}, '', '/');
+                    setShowLogin(false);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: 0,
+                  }}
+                >
+                  <ArrowLeft size={16} />
+                  Back to Website
+                </button>
+              </div>
+
               <div style={styles.loginHeader}>
                 <Logo theme={theme} mode="login" />
-                <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginTop: '10px' }}>SIM-Based Auto Dialing Admin Panel</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginTop: '10px' }}>SIM-Based Auto Dialer Admin Panel</p>
               </div>
 
               <form onSubmit={handleLogin} style={{ marginTop: '1.5rem' }}>
@@ -333,37 +590,61 @@ const App = () => {
     );
   }
 
+  const isDemoUser = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-');
+
   // Render main dashboard template if authenticated
   return (
-    <div className="app-container">
-      <div className="mobile-header">
-        <Logo theme={theme} mode="sidebar" />
-        <button 
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-          className="mobile-menu-toggle"
-          title="Toggle Navigation Menu"
-        >
-          {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      {isSidebarOpen && (
-        <div className="mobile-sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>
+    <div className="app-container" style={isDemoUser ? { display: 'block' } : {}}>
+      {isDemoUser && (
+        <div style={{
+          backgroundColor: '#ef4444',
+          color: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '0.88rem',
+          fontWeight: '700',
+          padding: '10px',
+          textAlign: 'center',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          gap: '8px',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}>
+          <span>⚠️</span>
+          <span>Interactive Demo Workspace: Read-only mode active. This workspace will be deleted in 5 minutes.</span>
+        </div>
       )}
+      <div style={{ display: 'flex', width: '100%', minHeight: isDemoUser ? 'calc(100vh - 38px)' : '100vh' }}>
+        <div className="mobile-header">
+          <Logo theme={theme} mode="sidebar" />
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+            className="mobile-menu-toggle"
+            title="Toggle Navigation Menu"
+          >
+            {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
 
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        user={user}
-        onLogout={handleLogout}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-      />
-      <main className="main-content">
-        {renderActivePage()}
-      </main>
+        {isSidebarOpen && (
+          <div className="mobile-sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>
+        )}
+
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          user={user}
+          onLogout={handleLogout}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+        <main className="main-content">
+          {renderActivePage()}
+        </main>
+      </div>
     </div>
   );
 };

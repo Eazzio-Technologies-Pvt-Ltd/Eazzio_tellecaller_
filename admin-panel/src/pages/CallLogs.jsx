@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import API_BASE_URL from '../config/api';
 import { Volume2, Play, Search, Calendar, PhoneIncoming } from 'lucide-react';
 
-const CallLogs = () => {
+const CallLogs = ({ user }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -161,14 +161,24 @@ const CallLogs = () => {
                       </td>
                       <td>
                         {log.recording_url ? (
-                          <button 
-                            className={`btn ${activeRecordingUrl === log.recording_url ? 'btn-primary' : 'btn-secondary'}`}
-                            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                            onClick={() => handlePlayRecording(log.recording_url)}
-                          >
-                            <Play size={14} />
-                            {activeRecordingUrl === log.recording_url ? 'Playing' : 'Listen'}
-                          </button>
+                          user && user.planType === 'annual' ? (
+                            <button
+                              className="btn btn-secondary"
+                              style={{ padding: '6px 12px', fontSize: '0.82rem', color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              onClick={() => alert('Call recording playback is a Growth Plan feature. Please upgrade your plan in the Billing page to listen to recordings.')}
+                            >
+                              <span>🔒 Upgrade to Listen</span>
+                            </button>
+                          ) : (
+                            <button 
+                              className={`btn ${activeRecordingUrl === log.recording_url ? 'btn-primary' : 'btn-secondary'}`}
+                              style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                              onClick={() => handlePlayRecording(log.recording_url)}
+                            >
+                              <Play size={14} />
+                              {activeRecordingUrl === log.recording_url ? 'Playing' : 'Listen'}
+                            </button>
+                          )
                         ) : (
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>No recording</span>
                         )}
