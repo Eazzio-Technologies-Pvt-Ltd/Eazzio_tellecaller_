@@ -253,6 +253,19 @@ async function initializeSchema() {
       id ${serialType},
       message ${textType} NOT NULL,
       created_at ${timestampType}
+    )`,
+
+    // Support Tickets table (main database - visible to superadmin across all companies)
+    `CREATE TABLE IF NOT EXISTS support_tickets (
+      id ${serialType},
+      company_reg_num VARCHAR(50) NOT NULL,
+      company_name VARCHAR(100) NOT NULL,
+      admin_email VARCHAR(100) NOT NULL,
+      subject VARCHAR(255) NOT NULL,
+      message ${textType} NOT NULL,
+      status VARCHAR(20) DEFAULT 'open',
+      created_at ${timestampType},
+      resolved_at ${timestampType}
     )`
   ];
 
@@ -505,10 +518,18 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
         await client.query(sql);
       }
 
-      await client.query(
+      console.log(`[Database] Inserting admin user into schema "${schemaName}":`, {
+        name: companyName + ' Admin',
+        email: adminEmail,
+        plainPassword: adminPlainPassword
+      });
+
+      const insertRes = await client.query(
         'INSERT INTO users (name, email, password_hash, plain_password, role) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (email) DO NOTHING',
         [companyName + ' Admin', adminEmail, adminPasswordHash, adminPlainPassword, 'admin']
       );
+
+      console.log(`[Database] Insert result: rowCount = ${insertRes.rowCount}`);
 
       console.log(`[Database] Company PostgreSQL schema "${schemaName}" initialized successfully.`);
     } finally {
@@ -678,4 +699,5 @@ module.exports = {
   getDatabasesDir,
   dbStorage,
   dbType,
+  pgPool,
 };

@@ -135,6 +135,8 @@ button, input, select {
   align-items: center;
   justify-content: space-between;
   height: 80px;
+  max-width: 100%;
+  padding: 0 40px;
 }
 
 .logo-wrapper {
@@ -1018,6 +1020,10 @@ body.light-theme .theme-toggle-btn .moon { display: none; }
 }
 
 @media (max-width: 768px) {
+  .nav-container {
+    padding: 0 20px;
+  }
+
   .nav-menu {
     display: none;
   }

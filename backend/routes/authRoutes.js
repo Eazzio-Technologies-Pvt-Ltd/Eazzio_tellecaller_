@@ -14,6 +14,7 @@ router.delete('/:id', authMiddleware('admin'), authController.deleteUser);
 
 // Tenant/Company Management Routes
 router.post('/register-company', authController.registerCompany);
+router.post('/register-demo-company', authController.registerDemoCompany);
 router.post('/razorpay-order', authController.createRazorpayOrder);
 router.post('/razorpay-edit-order', authMiddleware('admin'), authController.createRazorpayEditOrder);
 router.post('/register-company-with-payment', authController.registerCompanyWithPayment);

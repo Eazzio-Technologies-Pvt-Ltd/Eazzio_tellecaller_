@@ -80,7 +80,11 @@ exports.login = async (req, res) => {
       const company = compCheck.rows[0];
       if (company.subscription_end) {
         const now = new Date();
-        const expiry = new Date(company.subscription_end);
+        let expiryStr = company.subscription_end.toString();
+        if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+          expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+        }
+        const expiry = new Date(expiryStr);
         if (expiry < now) {
           return res.status(403).json({ 
             error: 'Your company\'s Eazzio subscription has expired. Please contact your company administrator to renew the plan.' 
@@ -284,6 +288,184 @@ exports.registerCompany = async (req, res) => {
   } catch (error) {
     console.error('Register company error:', error);
     res.status(500).json({ error: 'Server error during company registration.' });
+  }
+};
+
+// Register a new demo company (5 minutes temporary read-only)
+exports.registerDemoCompany = async (req, res) => {
+  const { name, email } = req.body;
+
+  if (!name || !email) {
+    return res.status(400).json({ error: 'Please provide both name and email.' });
+  }
+
+  try {
+    // Generate a unique company registration number with EAZ-DEMO- prefix
+    let isUnique = false;
+    let regNum = '';
+    while (!isUnique) {
+      const rand = Math.floor(100000 + Math.random() * 900000);
+      regNum = `EAZ-DEMO-${rand}`;
+      const check = await db.queryMain('SELECT * FROM companies WHERE reg_num = $1', [regNum]);
+      if (check.rows.length === 0) {
+        isUnique = true;
+      }
+    }
+
+    const companyName = `${name}'s Demo Company`;
+    const defaultPassword = 'demopassword123';
+    const salt = await bcrypt.genSalt(10);
+    const adminPasswordHash = await bcrypt.hash(defaultPassword, salt);
+
+    // Set subscription_end to 5 minutes from now
+    const now = new Date();
+    const expiry = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
+    
+    // SQLite/Postgres format (YYYY-MM-DD HH:MM:SS)
+    const formattedExpiry = expiry.toISOString().replace('T', ' ').substring(0, 19);
+
+    // Insert company into master db
+    await db.queryMain(
+      'INSERT INTO companies (name, nature, no_of_telecallers, reg_num, admin_email, admin_password_hash, admin_plain_password, price_per_telecaller, subscription_start, subscription_end, plan_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, $9, $10)',
+      [companyName, 'Demo Workspace', 10, regNum, email, adminPasswordHash, defaultPassword, 0, formattedExpiry, 'demo']
+    );
+
+    // Provision the isolated database schema
+    await db.initializeCompanySchema(regNum, companyName, email, adminPasswordHash, defaultPassword);
+
+    // Seed sample data into the tenant database
+    await db.dbStorage.run({ companyRegNum: regNum }, async () => {
+      // 1. Get the admin user ID
+      const adminRes = await db.query("SELECT id FROM users WHERE role = 'admin'");
+      const adminId = adminRes.rows[0].id;
+
+      // 2. Insert sample telecallers
+      const aaravHash = await bcrypt.hash('aarav123', 10);
+      const diyaHash = await bcrypt.hash('diya123', 10);
+
+      // Aarav (online)
+      const aaravResult = await db.query(
+        'INSERT INTO users (name, email, password_hash, role, status, plain_password, last_active_at) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP) RETURNING id',
+        ['Aarav Mehta', 'aarav@demomail.com', aaravHash, 'telecaller', 'online', 'aarav123']
+      );
+      const aaravId = aaravResult.rows[0].id;
+
+      // Diya (break)
+      const diyaResult = await db.query(
+        'INSERT INTO users (name, email, password_hash, role, status, plain_password, last_active_at) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP) RETURNING id',
+        ['Diya Sharma', 'diya@demomail.com', diyaHash, 'telecaller', 'break', 'diya123']
+      );
+      const diyaId = diyaResult.rows[0].id;
+
+      // 3. Insert Campaigns
+      const campaign1 = await db.query(
+        'INSERT INTO campaigns (name, description, status, created_by) VALUES ($1, $2, $3, $4) RETURNING id',
+        ['Real Estate Hot Leads', 'Outbound sales campaign targeting Q2 property investors.', 'active', adminId]
+      );
+      const c1Id = campaign1.rows[0].id;
+
+      const campaign2 = await db.query(
+        'INSERT INTO campaigns (name, description, status, created_by) VALUES ($1, $2, $3, $4) RETURNING id',
+        ['Credit Card Renewals', 'Follow-up campaign for expired/renewing cards.', 'active', adminId]
+      );
+      const c2Id = campaign2.rows[0].id;
+
+      // 4. Insert Contacts & Call Logs
+      // Contact 1 (Connected, Rajesh)
+      const contact1 = await db.query(
+        'INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to, last_called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id',
+        [c1Id, 'Rajesh Kumar', '+91 98765 00001', 'connected', aaravId]
+      );
+      await db.query(
+        'INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)',
+        [contact1.rows[0].id, aaravId, 'connected', 124, 'Interested in 2BHK flat. Requested site visit next Sunday.']
+      );
+
+      // Contact 2 (Follow up, Pooja)
+      const contact2 = await db.query(
+        'INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to, last_called_at, follow_up_date) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6) RETURNING id',
+        [c1Id, 'Pooja Patel', '+91 98765 00002', 'follow_up', aaravId, new Date(Date.now() + 24 * 60 * 60 * 1000)]
+      );
+      await db.query(
+        'INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)',
+        [contact2.rows[0].id, aaravId, 'follow_up', 45, 'Busy right now. Asked to call back tomorrow morning at 10 AM.']
+      );
+
+      // Contact 3 (Not answered, Vikram)
+      const contact3 = await db.query(
+        'INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to, last_called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id',
+        [c2Id, 'Vikram Singh', '+91 98765 00003', 'not_answered', diyaId]
+      );
+      await db.query(
+        'INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)',
+        [contact3.rows[0].id, diyaId, 'not_answered', 0, 'Rang twice but no response. Will re-attempt later.']
+      );
+
+      // Contact 4 (Busy, Anjali)
+      const contact4 = await db.query(
+        'INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to, last_called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id',
+        [c2Id, 'Anjali Gupta', '+91 98765 00004', 'busy', diyaId]
+      );
+      await db.query(
+        'INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)',
+        [contact4.rows[0].id, diyaId, 'busy', 0, 'User busy. Line disconnected.']
+      );
+
+      // Add a few pending contacts (unscheduled)
+      const pendingContacts = [
+        ['Amit Sharma', '+91 98765 00005', c1Id, aaravId],
+        ['Neha Deshmukh', '+91 98765 00006', c1Id, aaravId],
+        ['Joy Dsouza', '+91 98765 00007', c1Id, null],
+        ['Sunita Verma', '+91 98765 00008', c2Id, diyaId],
+        ['Rohan Sen', '+91 98765 00009', c2Id, diyaId],
+        ['Kavita Rao', '+91 98765 00010', c2Id, null]
+      ];
+      for (const item of pendingContacts) {
+        await db.query(
+          'INSERT INTO contacts (name, phone_number, campaign_id, assigned_to, status) VALUES ($1, $2, $3, $4, $5)',
+          [item[0], item[1], item[2], item[3], 'pending']
+        );
+      }
+
+      // 5. Seeding telecaller sessions for statistics
+      const todayDate = new Date().toISOString().substring(0, 10);
+      await db.query(
+        'INSERT INTO telecaller_sessions (telecaller_id, date, total_working_time, total_calling_time, total_idle_time, total_break_time, last_updated_at) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)',
+        [aaravId, todayDate, 14400, 7200, 5400, 1800]
+      );
+      await db.query(
+        'INSERT INTO telecaller_sessions (telecaller_id, date, total_working_time, total_calling_time, total_idle_time, total_break_time, last_updated_at) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)',
+        [diyaId, todayDate, 10800, 5400, 3600, 1800]
+      );
+
+      // 6. Seeding Admin Notifications
+      await db.query('INSERT INTO admin_notifications (message) VALUES ($1)', ['Outbound dialer campaign "Real Estate Hot Leads" successfully initialized by system.']);
+      await db.query('INSERT INTO admin_notifications (message) VALUES ($1)', ['Telecaller Aarav Mehta changed status to: online']);
+      await db.query('INSERT INTO admin_notifications (message) VALUES ($1)', ['Telecaller Diya Sharma changed status to: break (Lunch Break)']);
+    });
+
+    // Generate JWT token for auto-login
+    const token = jwt.sign(
+      { id: 1, name: companyName + ' Admin', email: email, role: 'admin', companyRegNum: regNum },
+      JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.status(201).json({
+      success: true,
+      token,
+      user: {
+        id: 1,
+        name: companyName + ' Admin',
+        email: email,
+        role: 'admin',
+        companyRegNum: regNum
+      }
+    });
+
+  } catch (error) {
+    console.error('Register demo company error:', error);
+    res.status(500).json({ error: 'Server error during demo registration: ' + error.message });
   }
 };
 

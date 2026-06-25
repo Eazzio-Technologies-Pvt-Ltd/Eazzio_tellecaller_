@@ -21,6 +21,13 @@ module.exports = (roles = []) => {
       const decoded = jwt.verify(token, JWT_SECRET);
       req.user = decoded;
 
+      // Check if user is in a read-only Demo company and attempting a write action
+      if (req.user && req.user.companyRegNum && req.user.companyRegNum.startsWith('EAZ-DEMO-')) {
+        if (req.method !== 'GET') {
+          return res.status(403).json({ error: 'demo_readonly', message: 'Actions are disabled in read-only demo mode.' });
+        }
+      }
+
       // Single active session check for telecallers
       if (req.user.role === 'telecaller') {
         const userCheck = await db.query('SELECT current_token FROM users WHERE id = $1', [req.user.id]);
@@ -50,7 +57,11 @@ module.exports = (roles = []) => {
             .then(compCheck => {
               if (compCheck.rows.length > 0 && compCheck.rows[0].subscription_end) {
                 const now = new Date();
-                const expiry = new Date(compCheck.rows[0].subscription_end);
+                let expiryStr = compCheck.rows[0].subscription_end.toString();
+                if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+                  expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+                }
+                const expiry = new Date(expiryStr);
                 if (expiry < now) {
                   return res.status(403).json({ 
                     error: 'subscription_expired',
