@@ -14,11 +14,38 @@ import {
   Play,
   IndianRupee,
   Users,
-  Trash2
+  Trash2,
+  TrendingUp,
+  Phone,
+  PhoneIncoming,
+  PhoneOutgoing,
+  PhoneMissed,
+  Search,
+  Building2
 } from 'lucide-react';
+
+const decodeToken = (token) => {
+  if (!token) return null;
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    console.error('Error decoding token:', e);
+    return null;
+  }
+};
 
 const Dashboard = ({ setActiveTab, theme, user }) => {
   const isLight = theme === 'light';
+  const decoded = decodeToken(localStorage.getItem('token'));
+  const activeUser = user || decoded;
   const [data, setData] = useState(null);
   const [recentLogs, setRecentLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +74,28 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
       }
     }
     return new Date(dateString);
+  };
+
+  const getHourlyCounts = (logs) => {
+    const counts = { '9AM': 0, '10AM': 0, '11AM': 0, '12PM': 0, '1PM': 0 };
+    if (!logs || logs.length === 0) {
+      return { '9AM': 1, '10AM': 4, '11AM': 3, '12PM': 2, '1PM': 1 };
+    }
+    logs.forEach(log => {
+      if (!log.called_at) return;
+      const date = parseDbDate(log.called_at);
+      const hour = date.getHours();
+      if (hour === 9) counts['9AM']++;
+      else if (hour === 10) counts['10AM']++;
+      else if (hour === 11) counts['11AM']++;
+      else if (hour === 12) counts['12PM']++;
+      else if (hour === 13) counts['1PM']++;
+    });
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    if (total === 0) {
+      return { '9AM': 1, '10AM': 4, '11AM': 3, '12PM': 2, '1PM': 1 };
+    }
+    return counts;
   };
 
   const formatTimeAgo = (dateString) => {
@@ -113,7 +162,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
       };
 
       // If Superadmin, fetch company stats and company details in parallel
-      if (user && user.companyRegNum === null) {
+      if (activeUser && activeUser.companyRegNum === null) {
         const [statsRes, companiesRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/auth/superadmin-stats`, { headers }),
           fetch(`${API_BASE_URL}/api/auth/companies`, { headers })
@@ -220,7 +269,41 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
   }
 
   // Superadmin dashboard early return
-  if (user && (user.companyRegNum === null || user.email === 'tellecaller111@eazzio.com')) {
+  if (activeUser && (activeUser.companyRegNum === null || activeUser.email === 'tellecaller111@eazzio.com')) {
+    const totalMonthlyRevenue = data.companies
+      ? data.companies.reduce((sum, comp) => sum + ((comp.price_per_telecaller || 59) * (comp.telecaller_count || 0)), 0)
+      : 0;
+
+    const starterPlanCount = data.companies
+      ? data.companies.filter(c => (c.price_per_telecaller || 59) === 59).length
+      : 0;
+
+    const growthPlanCount = data.companies
+      ? data.companies.filter(c => (c.price_per_telecaller || 59) !== 59).length
+      : 0;
+
+    const formatDateStr = (dateString) => {
+      if (!dateString) return 'N/A';
+      try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'N/A';
+        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      } catch (err) {
+        return 'N/A';
+      }
+    };
+
+    const isCompanyExpired = (dateString) => {
+      if (!dateString) return false;
+      try {
+        const expiry = new Date(dateString);
+        if (isNaN(expiry.getTime())) return false;
+        return expiry < new Date();
+      } catch (e) {
+        return false;
+      }
+    };
+
     return (
       <div>
         <div style={{ ...styles.dashboardHeader, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -244,40 +327,61 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
         </div>
 
         {/* Grid Cards */}
-        <div className="grid-stats" style={{ marginBottom: '2.5rem' }}>
-          {/* Total Registered Companies Card */}
-          <div className="glass-card stat-card" style={{
+        <div className="grid-stats" style={{ marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+          {/* Card 1: Total Registered Companies */}
+          <div className="glass-card stat-card stat-card-purple" style={{
             display: 'flex',
+            flexDirection: 'row',
             alignItems: 'center',
-            gap: '1.25rem',
-            border: isLight ? '2px solid var(--color-primary-glow)' : '1px solid var(--border-color)',
-            boxShadow: isLight ? 'var(--shadow-glow)' : 'var(--shadow-sm)'
+            gap: '1rem',
+            padding: '1.5rem',
+            border: '1px solid var(--border-color)'
           }}>
-            <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Briefcase size={22} />
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Building2 size={22} />
             </div>
-            <div className="stat-info">
-              <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Registered Companies</span>
-              <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--color-primary)', marginTop: '2px' }}>{data.totalCompanies || 0}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Registered Companies</span>
+              <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#7c3aed' }}>{data.totalCompanies || 0}</span>
             </div>
           </div>
 
-          {/* Total Telecallers Added Card */}
-          <div className="glass-card stat-card" style={{
+          {/* Card 2: Total Platform Telecallers */}
+          <div className="glass-card stat-card stat-card-green" style={{
             display: 'flex',
+            flexDirection: 'row',
             alignItems: 'center',
-            gap: '1.25rem',
-            border: isLight ? '2px solid rgba(16, 185, 129, 0.18)' : '1px solid var(--border-color)',
-            boxShadow: isLight ? '0 4px 12px rgba(16, 185, 129, 0.06)' : 'var(--shadow-sm)'
+            gap: '1rem',
+            padding: '1.5rem',
+            border: '1px solid var(--border-color)'
           }}>
-            <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#10B981', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Users size={22} />
             </div>
-            <div className="stat-info">
-              <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Platform Telecallers</span>
-              <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: '#10B981', marginTop: '2px' }}>{data.totalTelecallers || 0}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Total Platform Telecallers</span>
+              <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#10b981' }}>{data.totalTelecallers || 0}</span>
             </div>
           </div>
+
+          {/* Card 3: Est. Monthly Revenue */}
+          <div className="glass-card stat-card stat-card-teal" style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '1rem',
+            padding: '1.5rem',
+            border: '1px solid var(--border-color)'
+          }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(13, 148, 136, 0.12)', color: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <IndianRupee size={22} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Est. Monthly Revenue</span>
+              <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0d9488' }}>₹{totalMonthlyRevenue.toLocaleString('en-IN')}</span>
+            </div>
+          </div>
+
         </div>
 
         {/* Company details list with telecaller count */}
@@ -292,59 +396,93 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
               <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Company Name</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Reg Code</th>
-                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Nature of Business</th>
-                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Admin Email</th>
-                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Telecallers Count</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Business</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Admin Details</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Plan Type</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Callers</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Subscription Expiry</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {data.companies && data.companies.map((comp) => (
-                <tr key={comp.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--text-primary)', fontWeight: '700' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'var(--color-primary-glow)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justify: 'center', fontWeight: '700' }}>
-                        {comp.name.charAt(0).toUpperCase()}
+              {data.companies && data.companies.map((comp) => {
+                const expired = isCompanyExpired(comp.subscription_end);
+                return (
+                  <tr key={comp.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }} className="table-row-hover">
+                    <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--text-primary)', fontWeight: '700' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'var(--color-primary-glow)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700' }}>
+                          {comp.name.charAt(0).toUpperCase()}
+                        </div>
+                        {comp.name}
                       </div>
-                      {comp.name}
-                    </div>
-                  </td>
-                  <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--color-primary)', fontFamily: 'monospace', fontWeight: '700' }}>
-                    {comp.reg_num}
-                  </td>
-                  <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
-                    {comp.nature}
-                  </td>
-                  <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
-                    {comp.admin_email}
-                  </td>
-                  <td style={{ padding: '16px', fontSize: '0.95rem', color: '#10b981', fontWeight: '800' }}>
-                    {comp.telecaller_count || 0}
-                  </td>
-                  <td style={{ padding: '16px', textAlign: 'center' }}>
-                    <button
-                      onClick={() => handleDeleteCompany(comp.id, comp.name)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#ef4444',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '6px',
+                    </td>
+                    <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--color-primary)', fontFamily: 'monospace', fontWeight: '700' }}>
+                      {comp.reg_num}
+                    </td>
+                    <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
+                      {comp.nature}
+                    </td>
+                    <td style={{ padding: '16px', fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span>{comp.admin_email}</span>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>PW: {comp.admin_plain_password || 'encrypted'}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px', fontSize: '0.92rem' }}>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: '800',
+                        textTransform: 'uppercase',
+                        padding: '4px 8px',
                         borderRadius: '6px',
-                        transition: 'background-color 0.2s',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      title="Delete Company"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                        backgroundColor: (comp.price_per_telecaller || 59) === 59 ? 'rgba(124, 58, 237, 0.12)' : 'rgba(37, 99, 235, 0.12)',
+                        color: (comp.price_per_telecaller || 59) === 59 ? '#7c3aed' : '#2563eb',
+                        letterSpacing: '0.5px'
+                      }}>
+                        {(comp.price_per_telecaller || 59) === 59 ? 'Starter (₹59)' : 'Growth (₹99)'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px', fontSize: '0.95rem', color: '#10b981', fontWeight: '800' }}>
+                      {comp.telecaller_count || 0}
+                    </td>
+                    <td style={{ padding: '16px', fontSize: '0.92rem' }}>
+                      <span style={{
+                        fontSize: '0.8rem',
+                        fontWeight: '700',
+                        color: expired ? '#ef4444' : 'var(--text-secondary)',
+                        backgroundColor: expired ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                        padding: expired ? '4px 8px' : 0,
+                        borderRadius: expired ? '6px' : 0,
+                      }}>
+                        {expired ? `EXPIRED: ${formatDateStr(comp.subscription_end)}` : formatDateStr(comp.subscription_end)}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'center' }}>
+                      <button
+                        onClick={() => handleDeleteCompany(comp.id, comp.name)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '6px',
+                          borderRadius: '6px',
+                          transition: 'background-color 0.2s',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        title="Delete Company"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -368,14 +506,22 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
     <div>
       <div style={styles.dashboardHeader}>
         <div>
-          <h1 style={{ margin: 0 }}>Operational Analytics Dashboard</h1>
-          {user && user.companyRegNum && (
-            <p className="subtitle" style={{ marginTop: '6px', fontWeight: '600', color: 'var(--color-primary)' }}>
-              Company Registration Code: {user.companyRegNum}
-            </p>
+          <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Company Registration Code</span>
+          {activeUser && activeUser.companyRegNum && (
+            <h1 style={{ margin: '4px 0 0 0', fontSize: '1.5rem', fontWeight: '800', color: '#6366f1' }}>
+              {activeUser.companyRegNum}
+            </h1>
           )}
         </div>
         <div style={styles.headerActions}>
+          <div style={styles.searchWrapper}>
+            <Search size={16} color="var(--text-muted)" style={styles.searchIcon} />
+            <input 
+              type="text" 
+              placeholder="Search..." 
+              style={styles.searchInput}
+            />
+          </div>
           <select
             value={selectedTelecaller}
             onChange={(e) => setSelectedTelecaller(e.target.value)}
@@ -529,338 +675,452 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
       {/* Grid Cards */}
       <div className="grid-stats">
         {/* Total Leads Card */}
-        <div className="glass-card stat-card" style={{
+        <div className="glass-card stat-card stat-card-purple" style={{
           display: 'flex',
+          flexDirection: 'row',
           alignItems: 'center',
-          gap: '1.25rem',
-          border: isLight ? '2px solid rgba(124, 58, 237, 0.18)' : '1px solid var(--border-color)',
-          boxShadow: isLight ? '0 4px 12px rgba(124, 58, 237, 0.06)' : 'var(--shadow-sm)'
+          gap: '1rem',
+          padding: '1.5rem',
+          border: '1px solid var(--border-color)'
         }}>
-          <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#7C3AED', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Briefcase size={22} />
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <TrendingUp size={22} />
           </div>
-          <div className="stat-info">
-            <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Leads</span>
-            <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: '#7C3AED', marginTop: '2px' }}>{overview.total_contacts || 0}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Total Leads</span>
+            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#7c3aed' }}>{overview.total_contacts || 0}</span>
           </div>
         </div>
 
         {/* Talk Time Card */}
-        <div className="glass-card stat-card" style={{
+        <div className="glass-card stat-card stat-card-blue" style={{
           display: 'flex',
+          flexDirection: 'row',
           alignItems: 'center',
-          gap: '1.25rem',
-          border: isLight ? '2px solid rgba(71, 85, 105, 0.18)' : '1px solid var(--border-color)',
-          boxShadow: isLight ? '0 4px 12px rgba(71, 85, 105, 0.06)' : 'var(--shadow-sm)'
+          gap: '1rem',
+          padding: '1.5rem',
+          border: '1px solid var(--border-color)'
         }}>
-          <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#1E293B', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Hourglass size={22} />
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(37, 99, 235, 0.12)', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Phone size={22} />
           </div>
-          <div className="stat-info">
-            <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Talk Time</span>
-            <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>{formatDuration(overview.total_talk_time)}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Talk Time</span>
+            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#2563eb' }}>{formatDuration(overview.total_talk_time)}</span>
           </div>
         </div>
 
         {/* Connected Card */}
-        <div className="glass-card stat-card" style={{
+        <div className="glass-card stat-card stat-card-green" style={{
           display: 'flex',
+          flexDirection: 'row',
           alignItems: 'center',
-          gap: '1.25rem',
-          border: isLight ? '2px solid rgba(6, 182, 212, 0.18)' : '1px solid var(--border-color)',
-          boxShadow: isLight ? '0 4px 12px rgba(6, 182, 212, 0.06)' : 'var(--shadow-sm)'
+          gap: '1rem',
+          padding: '1.5rem',
+          border: '1px solid var(--border-color)'
         }}>
-          <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#06B6D4', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <ArrowUpRight size={22} />
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <PhoneOutgoing size={22} />
           </div>
-          <div className="stat-info">
-            <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Connected (Outbound)</span>
-            <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: isLight ? '#0891B2' : 'var(--text-primary)', marginTop: '2px' }}>{overview.connected_calls || 0}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Connected (Out)</span>
+            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#10b981' }}>{overview.connected_calls || 0}</span>
           </div>
         </div>
 
         {/* Non-Connected Card */}
-        <div className="glass-card stat-card" style={{
+        <div className="glass-card stat-card stat-card-orange" style={{
           display: 'flex',
+          flexDirection: 'row',
           alignItems: 'center',
-          gap: '1.25rem',
-          border: isLight ? '2px solid rgba(245, 158, 11, 0.18)' : '1px solid var(--border-color)',
-          boxShadow: isLight ? '0 4px 12px rgba(245, 158, 11, 0.06)' : 'var(--shadow-sm)'
+          gap: '1rem',
+          padding: '1.5rem',
+          border: '1px solid var(--border-color)'
         }}>
-          <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#F59E0B', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <PhoneOff size={22} />
           </div>
-          <div className="stat-info">
-            <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Non-Connected (Outbound)</span>
-            <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: isLight ? '#D97706' : 'var(--text-primary)', marginTop: '2px' }}>{overview.non_connected_calls || 0}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Non-Connected</span>
+            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#f59e0b' }}>{overview.non_connected_calls || 0}</span>
           </div>
         </div>
 
         {/* Received Card */}
-        <div className="glass-card stat-card" style={{
+        <div className="glass-card stat-card stat-card-teal" style={{
           display: 'flex',
+          flexDirection: 'row',
           alignItems: 'center',
-          gap: '1.25rem',
-          border: isLight ? '2px solid rgba(16, 185, 129, 0.18)' : '1px solid var(--border-color)',
-          boxShadow: isLight ? '0 4px 12px rgba(16, 185, 129, 0.06)' : 'var(--shadow-sm)'
+          gap: '1rem',
+          padding: '1.5rem',
+          border: '1px solid var(--border-color)'
         }}>
-          <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#10B981', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <PhoneCall size={22} />
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(13, 148, 136, 0.12)', color: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <PhoneIncoming size={22} />
           </div>
-          <div className="stat-info">
-            <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Received (Inbound)</span>
-            <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: isLight ? '#059669' : 'var(--text-primary)', marginTop: '2px' }}>{overview.received_calls || 0}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Received (In)</span>
+            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0d9488' }}>{overview.received_calls || 0}</span>
           </div>
         </div>
 
         {/* Missed Card */}
-        <div className="glass-card stat-card" style={{
+        <div className="glass-card stat-card stat-card-red" style={{
           display: 'flex',
+          flexDirection: 'row',
           alignItems: 'center',
-          gap: '1.25rem',
-          border: isLight ? '2px solid rgba(239, 68, 68, 0.18)' : '1px solid var(--border-color)',
-          boxShadow: isLight ? '0 4px 12px rgba(239, 68, 68, 0.06)' : 'var(--shadow-sm)'
+          gap: '1rem',
+          padding: '1.5rem',
+          border: '1px solid var(--border-color)'
         }}>
-          <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#EF4444', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <PhoneOff size={22} />
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <PhoneMissed size={22} />
           </div>
-          <div className="stat-info">
-            <span className="stat-label" style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Missed (Inbound)</span>
-            <span className="stat-value" style={{ fontSize: '2rem', fontWeight: '800', color: isLight ? '#DC2626' : 'var(--text-primary)', marginTop: '2px' }}>{overview.missed_calls || 0}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Missed (In)</span>
+            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#ef4444' }}>{overview.missed_calls || 0}</span>
           </div>
         </div>
       </div>
 
       {/* Analytics Charts & Live Campaigns */}
-      <div className="grid-charts">
+      <div className="grid-charts" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
         {/* Left Side: Call Ratio Analysis */}
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-            <div style={{ width: '6px', height: '24px', backgroundColor: '#7c3aed', borderRadius: '9999px' }}></div>
-            Outbound Call Outcomes
-          </h2>
-          
-          <div style={styles.chartContainer}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>
+              <div style={{ width: '6px', height: '24px', backgroundColor: '#6366f1', borderRadius: '9999px' }}></div>
+              Outbound Call Outcomes
+            </h2>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '8px' }}>
+              <span style={{ fontSize: '2.25rem', fontWeight: '800', color: 'var(--text-primary)' }}>{connectionRate}%</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>success rate</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
             {totalCalls === 0 ? (
               <div style={styles.noData}>No calls recorded today. Start a campaign to view logs.</div>
             ) : (
-              <div style={styles.ratioWrapper}>
-                <svg width="180" height="180" viewBox="0 0 36 36" style={styles.donutSvg}>
-                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="var(--donut-track)" strokeWidth="3" />
-                  <circle 
-                    cx="18" 
-                    cy="18" 
-                    r="15.915" 
-                    fill="none" 
-                    stroke="#00b5e2" 
-                    strokeWidth="3.5" 
-                    strokeDasharray={`${connectionRate} ${100 - connectionRate}`} 
-                    strokeDashoffset="25" 
-                  />
-                </svg>
-                <div style={styles.donutText}>
-                  <span style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-primary)', lineHeight: '1' }}>{connectionRate}%</span>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px', marginTop: '4px' }}>Success</span>
-                </div>
-              </div>
+              (() => {
+                const hourlyData = getHourlyCounts(recentLogs);
+                const rawMax = Math.max(...Object.values(hourlyData));
+                const scaleMax = rawMax <= 8 ? 8 : Math.ceil(rawMax / 4) * 4;
+                const yGridValues = [0, scaleMax * 0.25, scaleMax * 0.5, scaleMax * 0.75, scaleMax];
+                const hours = ['9AM', '10AM', '11AM', '12PM', '1PM'];
+
+                return (
+                  <div style={{ width: '100%', height: '200px', position: 'relative', marginTop: '0.5rem' }}>
+                    <svg width="100%" height="100%" viewBox="0 0 500 200" preserveAspectRatio="none">
+                      {/* Horizontal Grid lines */}
+                      {yGridValues.map((val) => {
+                        const y = 160 - (val / scaleMax) * 140;
+                        return (
+                          <g key={val}>
+                            <text x="15" y={y + 4} fill="var(--text-muted)" fontSize="10" textAnchor="end">
+                              {Math.round(val)}
+                            </text>
+                            <line x1="30" y1={y} x2="480" y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                          </g>
+                        );
+                      })}
+                      {/* Bars */}
+                      {hours.map((hour, idx) => {
+                        const val = hourlyData[hour] || 0;
+                        const x = 75 + idx * 95;
+                        const h = (val / scaleMax) * 140;
+                        const y = 160 - h;
+                        return (
+                          <g key={hour}>
+                            <rect
+                              x={x - 10}
+                              y={y}
+                              width="20"
+                              height={Math.max(h, 2)}
+                              rx="3"
+                              ry="3"
+                              fill="#ff4d79"
+                              style={{ transition: 'all 0.3s ease' }}
+                            />
+                            <text x={x} y="180" fill="var(--text-muted)" fontSize="10" textAnchor="middle">
+                              {hour}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                );
+              })()
             )}
-            
-            <div style={styles.legendContainer}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '220px', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ ...styles.legendDot, backgroundColor: '#00b5e2', width: '10px', height: '10px', borderRadius: '50%' }}></div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '500' }}>Connected (Outbound)</span>
-                </div>
-                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{connectedCount}</span>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem 1.25rem', marginTop: '1.25rem', justifyContent: 'flex-start', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: '500' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
+                <span style={{ color: 'var(--text-secondary)' }}>Connected (Outbound)</span>
+                <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{connectedCount}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '220px', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ ...styles.legendDot, backgroundColor: '#f59e0b', width: '10px', height: '10px', borderRadius: '50%' }}></div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '500' }}>Non-Connected (Outbound)</span>
-                </div>
-                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{nonConnectedCount}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: '500' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f59e0b' }}></div>
+                <span style={{ color: 'var(--text-secondary)' }}>Non-Connected (Outbound)</span>
+                <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{nonConnectedCount}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '220px', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ ...styles.legendDot, backgroundColor: '#10b981', width: '10px', height: '10px', borderRadius: '50%' }}></div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '500' }}>Received (Inbound)</span>
-                </div>
-                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{receivedCount}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: '500' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#06b6d4' }}></div>
+                <span style={{ color: 'var(--text-secondary)' }}>Received (Inbound)</span>
+                <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{receivedCount}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '220px', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ ...styles.legendDot, backgroundColor: '#f87171', width: '10px', height: '10px', borderRadius: '50%' }}></div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '500' }}>Missed (Inbound)</span>
-                </div>
-                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{missedCount}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: '500' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ff4d79' }}></div>
+                <span style={{ color: 'var(--text-secondary)' }}>Missed (Inbound)</span>
+                <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{missedCount}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '220px', padding: '8px 0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ ...styles.legendDot, backgroundColor: '#94a3b8', width: '10px', height: '10px', borderRadius: '50%' }}></div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '500' }}>Total Placed</span>
-                </div>
-                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{totalCalls}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: '500' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#94a3b8' }}></div>
+                <span style={{ color: 'var(--text-secondary)' }}>Total Placed</span>
+                <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{totalCalls}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Side: Campaigns Summary */}
-        <div className="glass-card">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-            <div style={{ width: '6px', height: '24px', backgroundColor: '#7c3aed', borderRadius: '9999px' }}></div>
-            Campaign Overview
-          </h2>
-          <div style={styles.campaignList}>
-            {campaigns.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>No campaigns available.</p>
-            ) : (
-              campaigns.map((c, i) => (
-                <div key={i} style={styles.campaignItem}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={styles.campaignCheckWrapper}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        {/* Right Side: Campaigns Summary & Top Performers stacked */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Campaign Overview Card */}
+          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem', fontSize: '1.2rem', color: 'var(--text-primary)' }}>
+              <div style={{ width: '6px', height: '24px', backgroundColor: '#6366f1', borderRadius: '9999px' }}></div>
+              Campaign Overview
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
+              {campaigns.length === 0 ? (
+                <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>No campaigns available.</p>
+              ) : (
+                (() => {
+                  const activeCamp = campaigns.find(c => c.status === 'active');
+                  const pendingCamp = campaigns.find(c => c.status === 'pending');
+                  const pausedCamp = campaigns.find(c => c.status === 'paused');
+                  const completedCamp = campaigns.find(c => c.status === 'completed');
+                  const totalCount = campaigns.reduce((acc, c) => acc + parseInt(c.count || 0), 0);
+
+                  const activeCount = activeCamp ? parseInt(activeCamp.count || 0) : 0;
+                  const pendingCount = pendingCamp ? parseInt(pendingCamp.count || 0) : 0;
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div style={{
+                          flex: 1,
+                          padding: '1.25rem',
+                          borderRadius: '12px',
+                          backgroundColor: 'rgba(16, 185, 129, 0.06)',
+                          border: '1px solid rgba(16, 185, 129, 0.15)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5rem',
+                          alignItems: 'flex-start'
+                        }}>
+                          <span style={{ fontSize: '2rem', fontWeight: '800', color: '#10b981', lineHeight: 1 }}>{activeCount}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#10b981' }}>Active</span>
+                            <span style={{ fontSize: '0.7rem', color: 'rgba(16, 185, 129, 0.7)' }}>campaign</span>
+                          </div>
+                        </div>
+
+                        <div style={{
+                          flex: 1,
+                          padding: '1.25rem',
+                          borderRadius: '12px',
+                          backgroundColor: 'rgba(245, 158, 11, 0.06)',
+                          border: '1px solid rgba(245, 158, 11, 0.15)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5rem',
+                          alignItems: 'flex-start'
+                        }}>
+                          <span style={{ fontSize: '2rem', fontWeight: '800', color: '#f59e0b', lineHeight: 1 }}>{pendingCount}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b' }}>Pending</span>
+                            <span style={{ fontSize: '0.7rem', color: 'rgba(245, 158, 11, 0.7)' }}>campaign</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {(pausedCamp || completedCamp) && (
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          {pausedCamp && (
+                            <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', borderRadius: '8px', backgroundColor: 'rgba(107, 114, 128, 0.06)', border: '1px solid rgba(107, 114, 128, 0.12)', color: '#4b5563', fontSize: '0.8rem' }}>
+                              <span style={{ fontWeight: '600' }}>Paused: {pausedCamp.count}</span>
+                            </div>
+                          )}
+                          {completedCamp && (
+                            <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', borderRadius: '8px', backgroundColor: 'rgba(59, 130, 246, 0.06)', border: '1px solid rgba(59, 130, 246, 0.12)', color: '#2563eb', fontSize: '0.8rem' }}>
+                              <span style={{ fontWeight: '600' }}>Done: {completedCamp.count}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                        <span style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-primary)', lineHeight: 1 }}>{totalCount}</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>total campaigns</span>
+                      </div>
                     </div>
-                    <span style={styles.campaignStatusName}>{c.status}</span>
+                  );
+                })()
+              )}
+            </div>
+          </div>
+
+          {/* Top Performers Leaderboard Card */}
+          <div className="glass-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <div style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)', padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#FFFFFF' }}>
+                <Trophy size={18} color="#FFFFFF" />
+                <span style={{ fontSize: '1rem', fontWeight: '700', letterSpacing: '0.5px' }}>Top Performers</span>
+              </div>
+              <span style={{ fontSize: '0.7rem', fontWeight: '700', backgroundColor: 'rgba(255, 255, 255, 0.2)', padding: '3px 8px', borderRadius: '99px', color: '#FFFFFF', letterSpacing: '0.5px' }}>
+                RANK #1
+              </span>
+            </div>
+            
+            <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', justifyContent: 'center', flex: 1 }}>
+              {topCallers.length === 0 ? (
+                <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '0.5rem' }}>No active telecallers.</div>
+              ) : (
+                topCallers.slice(0, 2).map((caller) => (
+                  <div key={caller.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', borderRadius: '10px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#F3E8FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                        {caller.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '0.85rem' }}>{caller.name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                          <span className={`dot dot-${caller.status}`} style={{ margin: 0, width: '5px', height: '5px' }}></span>
+                          <span style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{caller.status}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Talk Time</div>
+                      <div style={{ fontSize: '0.95rem', fontWeight: '800', color: '#7C3AED', marginTop: '1px' }}>{formatDuration(caller.calling_time)}</div>
+                    </div>
                   </div>
-                  <span style={styles.campaignCount}>{c.count} {parseInt(c.count) === 1 ? 'campaign' : 'campaigns'}</span>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* NEW SIDE-BY-SIDE GRID: Leaderboard & Recent Calls */}
-      <div className="bottom-grid">
-        {/* Top Performers Leaderboard Card */}
-        <div className="glass-card bottom-grid-left" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          {/* Purple Gradient Banner Header */}
-          <div style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#FFFFFF' }}>
-              <Trophy size={20} color="#FFFFFF" />
-              <span style={{ fontSize: '1.15rem', fontWeight: '700', letterSpacing: '0.5px' }}>Top Performers</span>
-            </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: '700', backgroundColor: 'rgba(255, 255, 255, 0.2)', padding: '4px 10px', borderRadius: '99px', color: '#FFFFFF', letterSpacing: '0.5px' }}>
-              RANK #1
-            </span>
+      {/* Bottom: Recent Outbound Call Traffic */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>
+            <History size={20} color="#6366f1" />
+            Recent Outbound Call Traffic
+          </h2>
+          <button 
+            onClick={() => setActiveTab('call-logs')} 
+            style={{ background: 'none', border: 'none', color: '#6366f1', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', outline: 'none' }}
+          >
+            View All
+          </button>
+        </div>
+        
+        {recentLogs.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+            No calls logged today.
           </div>
-          
-          {/* Body */}
-          <div className="leaderboard-body">
-            {topCallers.length === 0 ? (
-              <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '1rem' }}>No active telecallers.</div>
-            ) : (
-              topCallers.map((caller, index) => (
-                <div key={caller.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: index < topCallers.length - 1 ? '1rem' : 0, borderBottom: index < topCallers.length - 1 ? '1px solid var(--border-color)' : 'none' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#F3E8FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}>
-                      {caller.name.charAt(0).toUpperCase()}
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+            {recentLogs.map((log) => {
+              const isMissed = log.call_status !== 'connected';
+              const avatarBg = isMissed ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)';
+              const avatarColor = isMissed ? '#ef4444' : '#10b981';
+              
+              const badgeBg = isMissed ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)';
+              const badgeColor = isMissed ? '#ef4444' : '#10b981';
+              
+              const initials = log.contact_name 
+                ? log.contact_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+                : 'C';
+
+              return (
+                <div 
+                  key={log.id} 
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    padding: '1.25rem',
+                    borderRadius: '12px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border-color)',
+                    transition: 'all 0.3s ease',
+                    minHeight: '160px'
+                  }} 
+                  className="traffic-card-hover"
+                >
+                  {/* Top Section: Avatar and Name Info */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: avatarBg, color: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '0.85rem', flexShrink: 0 }}>
+                      {initials}
                     </div>
-                    <div>
-                      <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '1rem' }}>{caller.name}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                        <span className={`dot dot-${caller.status}`} style={{ margin: 0 }}></span>
-                        <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{caller.status}</span>
-                      </div>
+                    <div style={{ overflow: 'hidden' }}>
+                      <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '0.9rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }} title={log.contact_name}>{log.contact_name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '2px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }} title={log.telecaller_name}>{log.telecaller_name}</div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Talk Time</div>
-                    <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#7C3AED', marginTop: '2px' }}>{formatDuration(caller.calling_time)}</div>
+
+                  {/* Middle Section: Time and Badge */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.25rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {parseDbDate(log.called_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                    <span style={{ fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', padding: '3px 8px', borderRadius: '4px', backgroundColor: badgeBg, color: badgeColor, letterSpacing: '0.5px' }}>
+                      {log.call_status === 'connected' ? 'CONNECTED' : log.call_status.toUpperCase()}
+                    </span>
+                  </div>
+
+                  {/* Bottom Section: Play recording */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.03)', paddingTop: '0.75rem' }}>
+                    {log.recording_url ? (
+                      <button
+                        onClick={() => {
+                          if (activeRecordingUrl === log.recording_url) {
+                            setActiveRecordingUrl(null);
+                          } else {
+                            setActiveRecordingUrl(log.recording_url);
+                          }
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: activeRecordingUrl === log.recording_url ? '#6366f1' : 'var(--text-muted)',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          padding: 0,
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <Play size={10} fill={activeRecordingUrl === log.recording_url ? 'currentColor' : 'none'} />
+                        <span>Play recording</span>
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No recording</span>
+                    )}
                   </div>
                 </div>
-              ))
-            )}
+              );
+            })}
           </div>
-        </div>
-
-        {/* Recent Traffic Feed Card */}
-        <div className="bottom-grid-right" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div className="dashboard-section-header">
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-              <History size={20} color="#7C3AED" />
-              Recent Outbound Call Traffic
-            </h2>
-            <button 
-              onClick={() => setActiveTab('call-logs')} 
-              style={{ background: 'none', border: 'none', color: '#7C3AED', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', outline: 'none' }}
-            >
-              View All
-            </button>
-          </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {recentLogs.length === 0 ? (
-              <div className="glass-card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                No calls logged today.
-              </div>
-            ) : (
-              recentLogs.map((log) => {
-                const isMissed = log.call_status !== 'connected';
-                const iconBg = isMissed ? '#FEE2E2' : '#D1FAE5';
-                const iconColor = isMissed ? '#EF4444' : '#10B981';
-                
-                // Status Badge Color overrides
-                const badgeBg = isMissed ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)';
-                const badgeColor = isMissed ? '#EF4444' : '#10B981';
-                
-                return (
-                  <div key={log.id} className="glass-card log-item-card">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: iconBg, color: iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {isMissed ? <PhoneOff size={18} /> : <PhoneCall size={18} />}
-                      </div>
-                      <div>
-                        <div className="log-item-name">{log.contact_name}</div>
-                        <div className="log-item-meta">
-                          {parseDbDate(log.called_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} • {log.telecaller_name.toUpperCase()}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="log-item-right">
-                      {log.recording_url && (
-                        <button
-                          onClick={() => {
-                            if (activeRecordingUrl === log.recording_url) {
-                              setActiveRecordingUrl(null);
-                            } else {
-                              setActiveRecordingUrl(log.recording_url);
-                            }
-                          }}
-                          style={{
-                             background: 'none',
-                             cursor: 'pointer',
-                             display: 'flex',
-                             alignItems: 'center',
-                             justifyContent: 'center',
-                             padding: '8px',
-                             borderRadius: '50%',
-                             backgroundColor: activeRecordingUrl === log.recording_url ? 'rgba(124, 58, 237, 0.15)' : 'var(--bg-primary)',
-                             color: activeRecordingUrl === log.recording_url ? 'var(--color-primary)' : 'var(--text-secondary)',
-                             border: '1px solid var(--border-color)',
-                             transition: 'all 0.2s'
-                           }}
-                          title="Listen to call recording"
-                        >
-                          <Play size={14} fill={activeRecordingUrl === log.recording_url ? 'currentColor' : 'none'} />
-                        </button>
-                      )}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                        <span style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', padding: '3px 8px', borderRadius: '99px', backgroundColor: badgeBg, color: badgeColor, letterSpacing: '0.5px' }}>
-                          {log.call_status}
-                        </span>
-                        <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
-                          {log.call_status === 'connected' ? `${log.duration}s` : '-'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+        )}
       </div>
 
       <div style={{ height: '2rem' }}></div>
@@ -1121,6 +1381,27 @@ const styles = {
     cursor: 'pointer',
     boxShadow: '0 4px 14px rgba(124, 58, 237, 0.4)',
     transition: 'transform 0.2s, background-color 0.2s',
+  },
+  searchWrapper: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    marginRight: '1rem'
+  },
+  searchIcon: {
+    position: 'absolute',
+    left: '12px'
+  },
+  searchInput: {
+    padding: '8px 12px 8px 36px',
+    borderRadius: '999px',
+    border: '1px solid var(--border-color)',
+    backgroundColor: 'var(--bg-card)',
+    color: 'var(--text-primary)',
+    fontSize: '0.85rem',
+    outline: 'none',
+    width: '180px',
+    transition: 'all 0.2s'
   }
 };
 

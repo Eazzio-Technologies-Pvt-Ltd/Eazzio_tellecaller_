@@ -161,24 +161,14 @@ const CallLogs = ({ user }) => {
                       </td>
                       <td>
                         {log.recording_url ? (
-                          user && user.planType === 'monthly' ? (
-                            <button
-                              className="btn btn-secondary"
-                              style={{ padding: '6px 12px', fontSize: '0.82rem', color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                              onClick={() => alert('Call recording playback is a Growth Plan feature. Please upgrade your plan in the Billing page to listen to recordings.')}
-                            >
-                              <span>🔒 Upgrade to Listen</span>
-                            </button>
-                          ) : (
-                            <button 
-                              className={`btn ${activeRecordingUrl === log.recording_url ? 'btn-primary' : 'btn-secondary'}`}
-                              style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                              onClick={() => handlePlayRecording(log.recording_url)}
-                            >
-                              <Play size={14} />
-                              {activeRecordingUrl === log.recording_url ? 'Playing' : 'Listen'}
-                            </button>
-                          )
+                          <button 
+                            className={`btn ${activeRecordingUrl === log.recording_url ? 'btn-primary' : 'btn-secondary'}`}
+                            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                            onClick={() => handlePlayRecording(log.recording_url)}
+                          >
+                            <Play size={14} />
+                            {activeRecordingUrl === log.recording_url ? 'Playing' : 'Listen'}
+                          </button>
                         ) : (
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>No recording</span>
                         )}

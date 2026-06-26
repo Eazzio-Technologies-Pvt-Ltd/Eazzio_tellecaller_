@@ -125,13 +125,13 @@
 }
 
 [data-theme="light"] .glass-card {
-  border: 2px solid rgba(124, 58, 237, 0.15);
-  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.06);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
 }
 
 [data-theme="light"] .glass-card:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 6px 24px rgba(124, 58, 237, 0.18);
+  border-color: rgba(124, 58, 237, 0.35);
+  box-shadow: 0 6px 24px rgba(124, 58, 237, 0.08);
 }
 
 * {
@@ -213,11 +213,11 @@ body {
   border-radius: var(--card-radius);
   padding: 1.5rem;
   box-shadow: var(--shadow-sm);
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
 }
 
 .glass-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-5px);
   border-color: rgba(124, 58, 237, 0.2);
   background: var(--bg-card-hover);
   box-shadow: var(--shadow-md);
@@ -267,15 +267,6 @@ h1 {
   font-weight: 700;
   margin-bottom: 0.5rem;
   color: var(--text-primary);
-}
-
-@supports (background-clip: text) or (-webkit-background-clip: text) {
-  h1 {
-    background: var(--header-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
 }
 
 p.subtitle {
@@ -852,8 +843,8 @@ tr:hover td {
   }
 }
 
-/* Media query specifically targeting screen width range 380px - 420px for mobile interfaces */
-@media screen and (min-width: 380px) and (max-width: 420px) {
+/* Media query specifically targeting screen width range 320px - 420px for mobile interfaces */
+@media screen and (min-width: 320px) and (max-width: 420px) {
   .main-content {
     padding: 0.5rem !important;
   }
@@ -916,6 +907,55 @@ tr:hover td {
     width: 100% !important;
     overflow-x: auto !important;
     white-space: nowrap !important;
+  }
+
+  /* Sidebar collapses off-screen and slides in */
+  aside {
+    width: 240px !important;
+  }
+
+  /* Audio player on call logs page */
+  audio {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Leaderboard/bottom grid */
+  .bottom-grid {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+
+  .bottom-grid-left,
+  .bottom-grid-right {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Dashboard section title rows */
+  .dashboard-section-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+  }
+
+  /* Login glass card for 320px */
+  .login-glass-card-premium {
+    padding: 1.5rem 1rem !important;
+    max-width: 100% !important;
+    border-radius: 16px !important;
+  }
+
+  .auth-header-title {
+    font-size: 1.45rem !important;
+  }
+
+  /* Modal */
+  .modal-content {
+    padding: 1rem !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+    max-width: 310px !important;
   }
 }
 
@@ -1714,6 +1754,90 @@ tr:hover td {
 
 [data-theme="light"] .auth-card-footer-text {
   color: #94a3b8;
+}
+
+/* Color-coded Metrics Card Borders & Shadow Glows (2px width, 50% opacity, hover effects) */
+.stat-card {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s ease !important;
+}
+
+.stat-card:hover {
+  transform: translateY(-6px) scale(1.02) !important;
+}
+
+.stat-card-purple {
+  border-color: rgba(124, 58, 237, 0.3) !important;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.5) !important;
+}
+.stat-card-purple:hover {
+  border-color: rgba(124, 58, 237, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.5), 0 8px 24px rgba(124, 58, 237, 0.35) !important;
+}
+
+.stat-card-blue {
+  border-color: rgba(37, 99, 235, 0.3) !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.5) !important;
+}
+.stat-card-blue:hover {
+  border-color: rgba(37, 99, 235, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.5), 0 8px 24px rgba(37, 99, 235, 0.35) !important;
+}
+
+.stat-card-green {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.5) !important;
+}
+.stat-card-green:hover {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.5), 0 8px 24px rgba(16, 185, 129, 0.35) !important;
+}
+
+.stat-card-orange {
+  border-color: rgba(245, 158, 11, 0.3) !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.5) !important;
+}
+.stat-card-orange:hover {
+  border-color: rgba(245, 158, 11, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.5), 0 8px 24px rgba(245, 158, 11, 0.35) !important;
+}
+
+.stat-card-teal {
+  border-color: rgba(13, 148, 136, 0.3) !important;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.5) !important;
+}
+.stat-card-teal:hover {
+  border-color: rgba(13, 148, 136, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.5), 0 8px 24px rgba(13, 148, 136, 0.35) !important;
+}
+
+.stat-card-red {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5) !important;
+}
+.stat-card-red:hover {
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5), 0 8px 24px rgba(239, 68, 68, 0.35) !important;
+}
+
+/* Premium Row Hover Highlight for Superadmin Table */
+.table-row-hover:hover {
+  background-color: var(--bg-card-hover) !important;
+}
+
+/* Premium Recent Calls Card Hover and Animation */
+.traffic-card-hover {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+.traffic-card-hover:hover {
+  transform: translateY(-5px) scale(1.02) !important;
+  border-color: rgba(99, 102, 241, 0.3) !important;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15) !important;
+  background-color: var(--bg-card-hover) !important;
 }
 
 

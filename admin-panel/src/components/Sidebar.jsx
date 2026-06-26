@@ -51,7 +51,7 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
     }} className={isOpen ? 'open' : ''}>
       {/* Brand Header */}
       <div style={styles.brand}>
-        <Logo theme={theme} mode="sidebar" />
+        <Logo theme="dark" mode="sidebar" />
       </div>
 
       {/* Navigation Menu */}
@@ -70,9 +70,30 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
                 ...styles.navItem,
                 ...(isActive ? styles.navItemActive : {}),
               }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.color = '#ffffff';
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.color = '#94a3b8';
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
             >
-              <Icon size={20} color={isActive ? '#ffffff' : 'var(--text-secondary)'} />
-              <span style={{ marginLeft: '12px' }}>{item.label}</span>
+              <Icon size={20} color={isActive ? '#ffffff' : '#94a3b8'} />
+              <span style={{ marginLeft: '12px', flex: 1 }}>{item.label}</span>
+              {isActive && (
+                <div style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: '#ffffff',
+                  marginLeft: 'auto'
+                }}></div>
+              )}
             </button>
           );
         })}
@@ -107,8 +128,14 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
               {isSuperadmin ? 'Super Admin' : `Code: ${user.companyRegNum}`}
             </div>
           </div>
-          <button onClick={onLogout} style={styles.logoutBtn} title="Logout">
-            <LogOut size={18} color="var(--text-secondary)" />
+          <button 
+            onClick={onLogout} 
+            style={styles.logoutBtn} 
+            title="Logout"
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <LogOut size={18} color="#94a3b8" />
           </button>
         </div>
       )}
@@ -123,8 +150,8 @@ const styles = {
     position: 'fixed',
     top: 0,
     left: 0,
-    backgroundColor: 'var(--bg-secondary)',
-    borderRight: '1px solid var(--border-color)',
+    backgroundColor: '#15132c',
+    borderRight: '1px solid #232244',
     display: 'flex',
     flexDirection: 'column',
     padding: '1.5rem',
@@ -148,11 +175,11 @@ const styles = {
     fontSize: '1.2rem',
     fontWeight: '800',
     letterSpacing: '1px',
-    color: 'var(--text-primary)',
+    color: '#ffffff',
   },
   brandSubtitle: {
     fontSize: '0.75rem',
-    color: 'var(--text-muted)',
+    color: '#a78bfa',
     fontWeight: '500',
   },
   nav: {
@@ -168,7 +195,7 @@ const styles = {
     borderRadius: '12px',
     background: 'transparent',
     border: 'none',
-    color: 'var(--text-secondary)',
+    color: '#94a3b8',
     fontSize: '0.95rem',
     fontWeight: '500',
     cursor: 'pointer',
@@ -177,13 +204,13 @@ const styles = {
     width: '100%',
   },
   navItemActive: {
-    background: 'var(--color-primary)',
+    background: '#7c3aed',
     color: '#ffffff',
-    boxShadow: '0 4px 12px var(--color-primary-glow)',
+    boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)',
   },
   themeToggleContainer: {
     paddingTop: '1rem',
-    borderTop: '1px solid var(--border-color)',
+    borderTop: '1px solid #232244',
     marginBottom: '1rem',
   },
   themeToggleBtn: {
@@ -192,16 +219,16 @@ const styles = {
     width: '100%',
     padding: '0.75rem 1rem',
     borderRadius: '12px',
-    background: 'var(--bg-primary)',
-    border: '1px solid var(--border-color)',
-    color: 'var(--text-primary)',
+    background: '#1d1b3e',
+    border: '1px solid #232244',
+    color: '#ffffff',
     fontSize: '0.9rem',
     fontWeight: '500',
     cursor: 'pointer',
     transition: 'all 0.2s',
   },
   profileFooter: {
-    borderTop: '1px solid var(--border-color)',
+    borderTop: '1px solid #232244',
     paddingTop: '1rem',
     marginTop: 'auto',
     display: 'flex',
@@ -212,7 +239,7 @@ const styles = {
     width: '40px',
     height: '40px',
     borderRadius: '50%',
-    backgroundColor: 'var(--color-primary)',
+    backgroundColor: '#7c3aed',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -229,14 +256,14 @@ const styles = {
   profileName: {
     fontSize: '0.9rem',
     fontWeight: '600',
-    color: 'var(--text-primary)',
+    color: '#ffffff',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
   profileRole: {
     fontSize: '0.75rem',
-    color: 'var(--text-muted)',
+    color: '#94a3b8',
   },
   logoutBtn: {
     background: 'transparent',

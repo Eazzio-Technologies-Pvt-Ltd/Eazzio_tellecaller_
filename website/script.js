@@ -9,23 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 2. Dark/Light Theme Switcher
-  const themeToggleBtn = document.querySelector('.theme-toggle-btn');
-  const currentTheme = localStorage.getItem('theme') || 'dark';
-
-  if (currentTheme === 'light') {
-    document.body.classList.add('light-theme');
-  }
-
-  themeToggleBtn.addEventListener('click', () => {
-    document.body.classList.toggle('light-theme');
-    let theme = 'dark';
-    if (document.body.classList.contains('light-theme')) {
-      theme = 'light';
-    }
-    localStorage.setItem('theme', theme);
-  });
-
   // 3. FAQ Accordion
   const faqQuestions = document.querySelectorAll('.faq-question');
   
