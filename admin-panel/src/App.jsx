@@ -261,6 +261,102 @@ const AuthLayoutWrapper = ({ children, theme, toggleTheme, liveCalls, agentsOnli
 };
 
 
+const getDemoDeviceId = () => {
+  let devId = localStorage.getItem('eazzio_demo_device_id');
+  if (!devId) {
+    const match = document.cookie.match(/(?:^|; )eazzio_demo_device_id=([^;]*)/);
+    devId = match ? decodeURIComponent(match[1]) : null;
+  }
+  if (!devId) {
+    devId = 'mac-' + Math.floor(100000 + Math.random() * 900000) + '-' + Date.now().toString(36);
+  }
+  localStorage.setItem('eazzio_demo_device_id', devId);
+  const expiry = new Date();
+  expiry.setFullYear(expiry.getFullYear() + 10);
+  document.cookie = `eazzio_demo_device_id=${devId}; expires=${expiry.toUTCString()}; path=/`;
+  return devId;
+};
+
+const DemoValidityBanner = ({ subscriptionEnd }) => {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    if (!subscriptionEnd) {
+      setTimeLeft('Calculating...');
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = new Date();
+      let expiryStr = subscriptionEnd;
+      if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+        expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+      }
+      const expiry = new Date(expiryStr);
+      const diffMs = expiry - now;
+
+      if (diffMs <= 0) {
+        setTimeLeft('Expired');
+        return;
+      }
+
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+      const parts = [];
+      if (days > 0) parts.push(`${days}d`);
+      if (hours > 0 || days > 0) parts.push(`${hours}h`);
+      if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}m`);
+      parts.push(`${seconds}s`);
+
+      setTimeLeft(parts.join(' '));
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [subscriptionEnd]);
+
+  return (
+    <div style={{
+      background: 'linear-gradient(90deg, #f59e0b 0%, #ef4444 50%, #ec4899 100%)',
+      color: '#ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '0.88rem',
+      fontWeight: '700',
+      padding: '10px',
+      textAlign: 'center',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      gap: '8px',
+      width: '100%',
+      boxSizing: 'border-box'
+    }}>
+      <span>⚠️</span>
+      <span>
+        Interactive Demo Workspace: Working mode active. Demo expires in{' '}
+        <span style={{
+          fontFamily: 'monospace',
+          fontSize: '0.95rem',
+          backgroundColor: 'rgba(0,0,0,0.2)',
+          padding: '2px 8px',
+          borderRadius: '4px',
+          marginLeft: '4px',
+          display: 'inline-block',
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)'
+        }}>
+          {timeLeft}
+        </span>
+      </span>
+    </div>
+  );
+};
+
+
 const App = () => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
@@ -453,7 +549,11 @@ const App = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: demoName, email: demoEmail })
+        body: JSON.stringify({ 
+          name: demoName, 
+          email: demoEmail,
+          macAddress: getDemoDeviceId()
+        })
       });
 
       const data = await response.json();
@@ -562,9 +662,9 @@ const App = () => {
 
             <div style={{ textAlign: 'center', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
               <Logo theme={theme} mode="login" />
-              <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginTop: '10px', fontWeight: '600' }}>Request 5-Minute Interactive Demo</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginTop: '10px', fontWeight: '600' }}>Request 1-Week Trial Demo</p>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: '6px', lineHeight: '1.4' }}>
-                Type your details below to get instant admin access to a fully seeded, read-only demo workspace.
+                Type your details below to get instant admin access to a fully seeded, working demo workspace.
               </p>
             </div>
 
@@ -621,7 +721,7 @@ const App = () => {
                 ) : (
                   <>
                     <LogIn size={20} />
-                    Start 5-Minute Demo
+                    Start 1-Week Trial
                   </>
                 )}
               </button>
@@ -804,6 +904,7 @@ const App = () => {
   }
 
   if (subscriptionExpired && user && user.companyRegNum) {
+    const isDemo = user.companyRegNum.startsWith('EAZ-DEMO-');
     return (
       <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme} liveCalls={liveCalls} agentsOnline={agentsOnline} dialSuccess={dialSuccess}>
         <div className="login-glass-card-premium" style={{ padding: '2rem 2.25rem', maxWidth: '620px' }}>
@@ -811,9 +912,13 @@ const App = () => {
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.12)', border: '2px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
               <AlertCircle size={30} color="#ef4444" />
             </div>
-            <h2 className="auth-header-title" style={{ fontSize: '1.6rem', textAlign: 'center' }}>Subscription Expired</h2>
+            <h2 className="auth-header-title" style={{ fontSize: '1.6rem', textAlign: 'center' }}>
+              {isDemo ? 'please take subscription' : 'Subscription Expired'}
+            </h2>
             <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '0.95rem', textAlign: 'center' }}>
-              Your Eazzio subscription has expired. Please renew to continue using the platform.
+              {isDemo 
+                ? 'Your 1-week free trial has expired. To continue using Eazzio and access your campaigns, please purchase a subscription.'
+                : 'Your Eazzio subscription has expired. Please renew to continue using the platform.'}
             </p>
           </div>
           <RegisterCompany
@@ -847,24 +952,7 @@ const App = () => {
   return (
     <div className="app-container" style={isDemoUser ? { display: 'block' } : {}}>
       {isDemoUser && (
-        <div style={{
-          backgroundColor: '#ef4444',
-          color: '#ffffff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '0.88rem',
-          fontWeight: '700',
-          padding: '10px',
-          textAlign: 'center',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          gap: '8px',
-          width: '100%',
-          boxSizing: 'border-box'
-        }}>
-          <span>⚠️</span>
-          <span>Interactive Demo Workspace: Read-only mode active. This workspace will be deleted in 5 minutes.</span>
-        </div>
+        <DemoValidityBanner subscriptionEnd={user?.subscriptionEnd} />
       )}
       <div style={{ display: 'flex', width: '100%', minHeight: isDemoUser ? 'calc(100vh - 38px)' : '100vh' }}>
         <div className="mobile-header">

@@ -23,21 +23,30 @@ exports.register = async (req, res) => {
 
     // Enforce telecaller cap for company admins adding telecallers
     if (userRole === 'telecaller' && req.user && req.user.companyRegNum) {
-      const compData = await db.queryMain('SELECT no_of_telecallers, price_per_telecaller, plan_type FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
-      if (compData.rows.length > 0) {
-        const allowedLimit = compData.rows[0].no_of_telecallers || 0;
+      if (req.user.companyRegNum.startsWith('EAZ-DEMO-')) {
         const currentCount = await db.getCompanyTelecallerCount(req.user.companyRegNum);
-        if (allowedLimit > 0 && currentCount >= allowedLimit) {
-          const planType = compData.rows[0].plan_type || 'monthly';
-          const rate = planType === 'annual' ? 49 * 12 : 59;
+        if (currentCount >= 3) {
           return res.status(403).json({
-            error: 'limit_exceeded',
-            allowedLimit,
-            currentCount,
-            planType,
-            rate,
-            message: `Telecaller limit of ${allowedLimit} reached. Adding this telecaller requires a payment of ₹${rate} for an extra seat.`
+            error: 'Please purchase any subscription'
           });
+        }
+      } else {
+        const compData = await db.queryMain('SELECT no_of_telecallers, price_per_telecaller, plan_type FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
+        if (compData.rows.length > 0) {
+          const allowedLimit = compData.rows[0].no_of_telecallers || 0;
+          const currentCount = await db.getCompanyTelecallerCount(req.user.companyRegNum);
+          if (allowedLimit > 0 && currentCount >= allowedLimit) {
+            const planType = compData.rows[0].plan_type || 'monthly';
+            const rate = planType === 'annual' ? 49 * 12 : 59;
+            return res.status(403).json({
+              error: 'limit_exceeded',
+              allowedLimit,
+              currentCount,
+              planType,
+              rate,
+              message: `Telecaller limit of ${allowedLimit} reached. Adding this telecaller requires a payment of ₹${rate} for an extra seat.`
+            });
+          }
         }
       }
     }
@@ -291,15 +300,23 @@ exports.registerCompany = async (req, res) => {
   }
 };
 
-// Register a new demo company (5 minutes temporary read-only)
+// Register a new demo company (1 week trial working mode)
 exports.registerDemoCompany = async (req, res) => {
-  const { name, email } = req.body;
+  const { name, email, macAddress } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Please provide both name and email.' });
   }
 
   try {
+    // Check MAC Address/Device lock for demo accounts
+    if (macAddress) {
+      const checkMac = await db.queryMain("SELECT * FROM companies WHERE mac_address = $1 AND reg_num LIKE 'EAZ-DEMO-%'", [macAddress]);
+      if (checkMac.rows.length > 0) {
+        return res.status(400).json({ error: 'please take subscription' });
+      }
+    }
+
     // Generate a unique company registration number with EAZ-DEMO- prefix
     let isUnique = false;
     let regNum = '';
@@ -317,17 +334,17 @@ exports.registerDemoCompany = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const adminPasswordHash = await bcrypt.hash(defaultPassword, salt);
 
-    // Set subscription_end to 5 minutes from now
+    // Set subscription_end to 7 days from now (1 week)
     const now = new Date();
-    const expiry = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
+    const expiry = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
     
     // SQLite/Postgres format (YYYY-MM-DD HH:MM:SS)
     const formattedExpiry = expiry.toISOString().replace('T', ' ').substring(0, 19);
 
     // Insert company into master db
     await db.queryMain(
-      'INSERT INTO companies (name, nature, no_of_telecallers, reg_num, admin_email, admin_password_hash, admin_plain_password, price_per_telecaller, subscription_start, subscription_end, plan_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, $9, $10)',
-      [companyName, 'Demo Workspace', 10, regNum, email, adminPasswordHash, defaultPassword, 0, formattedExpiry, 'demo']
+      'INSERT INTO companies (name, nature, no_of_telecallers, reg_num, admin_email, admin_password_hash, admin_plain_password, price_per_telecaller, subscription_start, subscription_end, plan_type, mac_address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, $9, $10, $11)',
+      [companyName, 'Demo Workspace', 10, regNum, email, adminPasswordHash, defaultPassword, 0, formattedExpiry, 'demo', macAddress || null]
     );
 
     // Provision the isolated database schema
@@ -782,6 +799,14 @@ exports.registerBulk = async (req, res) => {
   const bcrypt = require('bcryptjs');
 
   try {
+    const currentCount = await db.getCompanyTelecallerCount(req.user.companyRegNum);
+
+    if (req.user.companyRegNum && req.user.companyRegNum.startsWith('EAZ-DEMO-')) {
+      if (currentCount + telecallers.length > 3) {
+        return res.status(403).json({ error: 'Please purchase any subscription' });
+      }
+    }
+
     // Fetch allowed telecaller limit and current count for this company
     let allowedLimit = null;
     let pricePerCaller = 49;
@@ -792,8 +817,6 @@ exports.registerBulk = async (req, res) => {
         pricePerCaller = compData.rows[0].price_per_telecaller || 49;
       }
     }
-
-    const currentCount = await db.getCompanyTelecallerCount(req.user.companyRegNum);
 
     let addedCount = 0;
     for (const caller of telecallers) {

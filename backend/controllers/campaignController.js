@@ -56,17 +56,7 @@ exports.updateCampaignStatus = async (req, res) => {
   }
 
   try {
-    if (status === 'active' && req.user.companyRegNum) {
-      const compCheck = await db.queryMain('SELECT plan_type FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
-      const planType = (compCheck.rows.length > 0 ? compCheck.rows[0].plan_type : 'monthly') || 'monthly';
-      if (planType === 'monthly') {
-        const activeRes = await db.query("SELECT COUNT(*) as count FROM campaigns WHERE status = 'active' AND id != $1", [campaignId]);
-        const activeCount = parseInt(activeRes.rows[0].count) || 0;
-        if (activeCount >= 5) {
-          return res.status(400).json({ error: 'Starter Plan Limit Reached: You can only have up to 5 active campaigns simultaneously. Please pause another campaign first, or upgrade to the Growth plan.' });
-        }
-      }
-    }
+
 
     const result = await db.query(
       'UPDATE campaigns SET status = $1 WHERE id = $2 RETURNING *',

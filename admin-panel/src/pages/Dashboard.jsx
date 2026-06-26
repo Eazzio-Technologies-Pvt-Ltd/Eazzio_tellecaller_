@@ -42,6 +42,70 @@ const decodeToken = (token) => {
   }
 };
 
+const DemoValidityBadge = ({ subscriptionEnd }) => {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    if (!subscriptionEnd) {
+      setTimeLeft('Calculating...');
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = new Date();
+      let expiryStr = subscriptionEnd;
+      if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+        expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+      }
+      const expiry = new Date(expiryStr);
+      const diffMs = expiry - now;
+
+      if (diffMs <= 0) {
+        setTimeLeft('Expired');
+        return;
+      }
+
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+      const parts = [];
+      if (days > 0) parts.push(`${days}d`);
+      if (hours > 0 || days > 0) parts.push(`${hours}h`);
+      if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}m`);
+      parts.push(`${seconds}s`);
+
+      setTimeLeft(parts.join(' '));
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [subscriptionEnd]);
+
+  if (!timeLeft) return null;
+
+  return (
+    <div style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
+      padding: '6px 12px',
+      borderRadius: '8px',
+      backgroundColor: 'rgba(245, 158, 11, 0.1)',
+      border: '1px solid rgba(245, 158, 11, 0.35)',
+      color: '#f59e0b',
+      fontSize: '0.82rem',
+      fontWeight: '700',
+    }}>
+      <span style={{ fontSize: '1rem', display: 'flex', alignItems: 'center' }}>⏳</span>
+      <span>Demo Workspace Validity: <span style={{ fontFamily: 'monospace', fontWeight: '800' }}>{timeLeft}</span></span>
+    </div>
+  );
+};
+
 const Dashboard = ({ setActiveTab, theme, user }) => {
   const isLight = theme === 'light';
   const decoded = decodeToken(localStorage.getItem('token'));
@@ -505,12 +569,19 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
   return (
     <div>
       <div style={styles.dashboardHeader}>
-        <div>
-          <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Company Registration Code</span>
-          {activeUser && activeUser.companyRegNum && (
-            <h1 style={{ margin: '4px 0 0 0', fontSize: '1.5rem', fontWeight: '800', color: '#6366f1' }}>
-              {activeUser.companyRegNum}
-            </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+          <div>
+            <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Company Registration Code</span>
+            {activeUser && activeUser.companyRegNum && (
+              <h1 style={{ margin: '4px 0 0 0', fontSize: '1.5rem', fontWeight: '800', color: '#6366f1' }}>
+                {activeUser.companyRegNum}
+              </h1>
+            )}
+          </div>
+          {activeUser && activeUser.companyRegNum && activeUser.companyRegNum.startsWith('EAZ-DEMO-') && (
+            <div style={{ marginTop: '12px' }}>
+              <DemoValidityBadge subscriptionEnd={activeUser.subscriptionEnd} />
+            </div>
           )}
         </div>
         <div style={styles.headerActions}>

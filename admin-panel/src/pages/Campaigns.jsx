@@ -185,14 +185,7 @@ const Campaigns = ({ user }) => {
     else if (currentStatus === 'paused') nextStatus = 'active';
     else if (currentStatus === 'pending') nextStatus = 'active';
 
-    const planType = (user && user.planType) || 'monthly';
-    if (nextStatus === 'active' && planType === 'monthly') {
-      const activeCount = campaigns.filter(c => c.status === 'active' && c.id !== campaignId).length;
-      if (activeCount >= 5) {
-        alert('Starter Plan Limit Reached: You can have at most 5 active campaigns at the same time. Please pause one of your active campaigns or upgrade your plan in the Billing page to activate more.');
-        return;
-      }
-    }
+
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/campaigns/${campaignId}/status`, {

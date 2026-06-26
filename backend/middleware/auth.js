@@ -22,11 +22,14 @@ module.exports = (roles = []) => {
       req.user = decoded;
 
       // Check if user is in a read-only Demo company and attempting a write action
+      // (Converted to working mode, so checks are commented out below)
+      /*
       if (req.user && req.user.companyRegNum && req.user.companyRegNum.startsWith('EAZ-DEMO-')) {
         if (req.method !== 'GET') {
           return res.status(403).json({ error: 'demo_readonly', message: 'Actions are disabled in read-only demo mode.' });
         }
       }
+      */
 
       // Single active session check for telecallers
       if (req.user.role === 'telecaller') {

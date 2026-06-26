@@ -126,6 +126,8 @@ button, input, select {
   align-items: center;
   justify-content: space-between;
   height: 76px;
+  max-width: 100% !important;
+  padding: 0 48px !important;
 }
 
 .logo-wrapper {
@@ -1064,15 +1066,13 @@ button, input, select {
   height: 32px;
   width: auto;
   align-self: flex-start;
-  filter: brightness(0) invert(1);
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 /* Footer always shows light logo (white on dark background) */
 .footer .logo-for-dark-mode {
   display: block !important;
-  filter: brightness(0) invert(1);
-  opacity: 0.85;
+  opacity: 0.95;
 }
 .footer .logo-for-light-mode {
   display: none !important;
@@ -1127,7 +1127,7 @@ button, input, select {
     padding: 0 32px;
   }
   .nav-container {
-    padding: 0 32px;
+    padding: 0 32px !important;
   }
   .footer-grid {
     padding: 0 32px;
@@ -1167,7 +1167,7 @@ button, input, select {
     padding: 0 20px;
   }
   .nav-container {
-    padding: 0 20px;
+    padding: 0 20px !important;
   }
   .footer-grid {
     padding: 0 20px;

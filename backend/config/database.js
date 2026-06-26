@@ -185,6 +185,7 @@ async function initializeSchema() {
       subscription_start ${timestampType},
       subscription_end ${timestampType},
       edit_count INTEGER DEFAULT 0,
+      mac_address VARCHAR(255),
       created_at ${timestampType}
     )`,
 
@@ -337,6 +338,10 @@ async function initializeSchema() {
   try {
     await queryMain('ALTER TABLE companies ADD COLUMN subscription_end DATETIME');
     console.log('Added subscription_end column to companies table.');
+  } catch (err) { /* already exists */ }
+  try {
+    await queryMain('ALTER TABLE companies ADD COLUMN mac_address VARCHAR(255)');
+    console.log('Added mac_address column to companies table.');
   } catch (err) { /* already exists */ }
 
   // Create default admin user if none exists
