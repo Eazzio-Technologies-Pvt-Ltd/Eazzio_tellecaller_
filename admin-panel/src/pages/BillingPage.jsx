@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import API_BASE_URL from '../config/api';
-import { IndianRupee, RefreshCw, Building, Users, Calendar, ArrowUpRight, ShieldAlert, FileText, Printer } from 'lucide-react';
+import { IndianRupee, RefreshCw, Building, Users, Calendar, ArrowUpRight, ShieldAlert, FileText, Printer, Mic } from 'lucide-react';
 
 const BillingPage = ({ theme, user }) => {
   const isLight = theme === 'light';
@@ -19,6 +19,10 @@ const BillingPage = ({ theme, user }) => {
   const [subscriptionStart, setSubscriptionStart] = useState(null);
   const [subscriptionEnd, setSubscriptionEnd] = useState(null);
   const [pricePerTelecaller, setPricePerTelecaller] = useState(59);
+  const [callRecordingEnabled, setCallRecordingEnabled] = useState(false);
+  const [callRecordingEndDate, setCallRecordingEndDate] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
 
   // Common States
   const [loading, setLoading] = useState(true);
@@ -52,10 +56,30 @@ const BillingPage = ({ theme, user }) => {
         setSubscriptionStart(data.subscriptionStart || null);
         setSubscriptionEnd(data.subscriptionEnd || null);
         setPricePerTelecaller(rate);
+
+        const recEnabled = data.callRecordingEnabled || false;
+        const recEndDate = data.callRecordingEndDate || null;
+        setCallRecordingEnabled(recEnabled);
+        setCallRecordingEndDate(recEndDate);
+
+        // Check if recording is active (non-expired)
+        let recActive = false;
+        if (recEnabled && recEndDate) {
+          const now = new Date();
+          let expiryStr = recEndDate.toString();
+          if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+            expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+          }
+          const expiry = new Date(expiryStr);
+          if (expiry >= now) {
+            recActive = true;
+          }
+        }
         
         const seatsBill = plan === 'annual' ? seats * rate * 12 : seats * rate;
         const editSurcharge = Math.max(0, edits - 3) * 20;
-        setCompanyBill(seatsBill + editSurcharge);
+        const recordingBill = recActive ? (plan === 'annual' ? 999 : 99) : 0;
+        setCompanyBill(seatsBill + editSurcharge + recordingBill);
       } else {
         // Superadmin: Fetch global metrics and all registered companies
         const [statsRes, companiesRes] = await Promise.all([
@@ -103,6 +127,98 @@ const BillingPage = ({ theme, user }) => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleActivateCallRecording = async () => {
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        throw new Error('Failed to load Razorpay SDK. Please check your internet connection.');
+      }
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      };
+
+      const orderRes = await fetch(`${API_BASE_URL}/api/auth/razorpay-call-recording-order`, {
+        method: 'POST',
+        headers
+      });
+
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) {
+        throw new Error(orderData.error || 'Failed to create payment order.');
+      }
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: 'INR',
+        name: 'Eazzio Auto Dialer',
+        description: `Call Recording Add-on (${planType === 'annual' ? 'Annual' : 'Monthly'})`,
+        order_id: orderData.orderId,
+        handler: async function (response) {
+          setPaymentLoading(true);
+          try {
+            const verifyRes = await fetch(`${API_BASE_URL}/api/auth/enable-call-recording-with-payment`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) {
+              throw new Error(verifyData.error || 'Failed to verify payment and activate recording.');
+            }
+
+            fetchBillingData();
+          } catch (err) {
+            setPaymentError(err.message);
+          } finally {
+            setPaymentLoading(false);
+          }
+        },
+        prefill: {
+          email: user?.email || ''
+        },
+        theme: {
+          color: '#a855f7'
+        },
+        modal: {
+          ondismiss: function () {
+            setPaymentLoading(false);
+            setPaymentError('Payment was cancelled.');
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      setPaymentError(err.message);
+      setPaymentLoading(false);
+    }
   };
 
   return (
@@ -187,6 +303,80 @@ const BillingPage = ({ theme, user }) => {
                 </span>
               </div>
             </div>
+
+            <div className="glass-card stat-card" style={{ ...styles.statCard, borderLeft: '4px solid #a855f7' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#a855f7', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Mic size={22} />
+              </div>
+              <div className="stat-info" style={{ width: '100%' }}>
+                <span className="stat-label" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase' }}>Call Recording Add-on</span>
+                
+                {(() => {
+                  let recActive = false;
+                  if (callRecordingEnabled && callRecordingEndDate) {
+                    const now = new Date();
+                    let expiryStr = callRecordingEndDate.toString();
+                    if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+                      expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+                    }
+                    const expiry = new Date(expiryStr);
+                    if (expiry >= now) {
+                      recActive = true;
+                    }
+                  }
+
+                  if (recActive) {
+                    return (
+                      <>
+                        <span className="stat-value" style={{ fontSize: '1.6rem', fontWeight: '900', color: '#a855f7', marginTop: '2px', display: 'block' }}>
+                          Active
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginTop: '2px' }}>
+                          Expires: {formatDate(callRecordingEndDate)}
+                        </span>
+                      </>
+                    );
+                  } else {
+                    return (
+                      <>
+                        <span className="stat-value" style={{ fontSize: '1.6rem', fontWeight: '900', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                          Inactive
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginTop: '2px' }}>
+                          ₹{planType === 'annual' ? '999/year' : '99/month'}
+                        </span>
+                        {paymentError && (
+                          <span style={{ fontSize: '0.7rem', color: '#ef4444', display: 'block', marginTop: '4px' }}>
+                            {paymentError}
+                          </span>
+                        )}
+                        <button
+                          onClick={handleActivateCallRecording}
+                          disabled={paymentLoading}
+                          style={{
+                            marginTop: '8px',
+                            padding: '6px 12px',
+                            backgroundColor: '#a855f7',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'background-color 0.2s'
+                          }}
+                        >
+                          {paymentLoading ? 'Processing...' : 'Subscribe'}
+                        </button>
+                      </>
+                    );
+                  }
+                })()}
+              </div>
+            </div>
           </div>
 
           {/* Premium Invoice Statement */}
@@ -259,6 +449,35 @@ const BillingPage = ({ theme, user }) => {
                       ₹{Math.max(0, editCount - 3) * 20}
                     </td>
                   </tr>
+                  {(() => {
+                    let recActive = false;
+                    if (callRecordingEnabled && callRecordingEndDate) {
+                      const now = new Date();
+                      let expiryStr = callRecordingEndDate.toString();
+                      if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+                        expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+                      }
+                      const expiry = new Date(expiryStr);
+                      if (expiry >= now) {
+                        recActive = true;
+                      }
+                    }
+                    if (recActive) {
+                      return (
+                        <tr style={styles.tr}>
+                          <td style={{ ...styles.td, fontWeight: '700', color: 'var(--text-primary)' }}>
+                            Call Recording Add-on ({planType === 'annual' ? 'Growth Plan — 1 Year' : 'Starter Plan — 1 Month'})
+                          </td>
+                          <td style={styles.td}>₹{planType === 'annual' ? '999' : '99'} / {planType === 'annual' ? 'year' : 'month'}</td>
+                          <td style={styles.td}>Active (Expires: {formatDate(callRecordingEndDate)})</td>
+                          <td style={{ ...styles.td, textAlign: 'right', fontWeight: '800', color: '#10b981' }}>
+                            ₹{planType === 'annual' ? '999' : '99'}
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return null;
+                  })()}
                   <tr style={{ border: 'none' }}>
                     <td colSpan="3" style={{ ...styles.td, textAlign: 'right', fontWeight: '700', color: 'var(--text-secondary)', border: 'none', paddingTop: '1.5rem' }}>
                       Total Subscription Cost (including surcharges):

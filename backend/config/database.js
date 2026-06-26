@@ -186,6 +186,8 @@ async function initializeSchema() {
       subscription_end ${timestampType},
       edit_count INTEGER DEFAULT 0,
       mac_address VARCHAR(255),
+      call_recording_enabled INTEGER DEFAULT 0,
+      call_recording_end_date ${timestampType},
       created_at ${timestampType}
     )`,
 
@@ -342,6 +344,15 @@ async function initializeSchema() {
   try {
     await queryMain('ALTER TABLE companies ADD COLUMN mac_address VARCHAR(255)');
     console.log('Added mac_address column to companies table.');
+  } catch (err) { /* already exists */ }
+  try {
+    await queryMain('ALTER TABLE companies ADD COLUMN call_recording_enabled INTEGER DEFAULT 0');
+    console.log('Added call_recording_enabled column to companies table.');
+  } catch (err) { /* already exists */ }
+  try {
+    const tsType = dbType === 'postgres' ? 'TIMESTAMP' : 'DATETIME';
+    await queryMain(`ALTER TABLE companies ADD COLUMN call_recording_end_date ${tsType}`);
+    console.log('Added call_recording_end_date column to companies table.');
   } catch (err) { /* already exists */ }
 
   // Create default admin user if none exists

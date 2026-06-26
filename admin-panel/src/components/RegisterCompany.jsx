@@ -12,6 +12,7 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
   const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState('');
   const [planType, setPlanType] = useState('monthly'); // 'monthly' or 'annual'
+  const [includeCallRecording, setIncludeCallRecording] = useState(false);
 
   // Status States
   const [loading, setLoading] = useState(false);
@@ -81,7 +82,8 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
         },
         body: JSON.stringify({ 
           noOfTelecallers: telecallersCount,
-          planType: planType
+          planType: planType,
+          includeCallRecording: includeCallRecording
         }),
       });
 
@@ -97,8 +99,8 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
         currency: 'INR',
         name: 'Eazzio Auto Dialer',
         description: renewalMode 
-          ? `Subscription Renewal for ${telecallersCount} seats (${planType === 'annual' ? 'Annual' : 'Monthly'})`
-          : `Setup Fee for ${telecallersCount} Telecallers`,
+          ? `Subscription Renewal for ${telecallersCount} seats (${planType === 'annual' ? 'Annual' : 'Monthly'})${includeCallRecording ? ' + Call Rec' : ''}`
+          : `Setup Fee for ${telecallersCount} Telecallers${includeCallRecording ? ' + Call Rec' : ''}`,
         order_id: orderData.orderId,
         handler: async function (response) {
           setLoading(true);
@@ -119,6 +121,7 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
                 noOfTelecallers: telecallersCount,
                 email,
                 planType,
+                includeCallRecording: includeCallRecording,
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature
@@ -377,6 +380,37 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
               <span style={{ fontSize: '1.25rem', fontWeight: '900', color: planType === 'annual' ? '#10b981' : 'var(--text-primary)' }}>₹49</span>
               <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', marginTop: '2px' }}>/ telecaller / month</span>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>billed annually</span>
+            </div>
+          </div>
+        </div>
+        {/* Call Recording Add-on selection */}
+        <div style={{
+          marginTop: '12px',
+          marginBottom: '12px',
+          padding: '12px',
+          borderRadius: '8px',
+          border: '1px dashed var(--border-color)',
+          backgroundColor: 'rgba(255,255,255,0.02)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '10px',
+          cursor: 'pointer'
+        }} onClick={() => setIncludeCallRecording(!includeCallRecording)}>
+          <input 
+            type="checkbox" 
+            checked={includeCallRecording}
+            onChange={(e) => {
+              e.stopPropagation();
+              setIncludeCallRecording(e.target.checked);
+            }}
+            style={{ marginTop: '3px', cursor: 'pointer' }}
+          />
+          <div>
+            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+              Include Call Recording Add-on
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              Record all telecaller calls automatically. Only {planType === 'annual' ? '₹999 / year' : '₹99 / month'}.
             </div>
           </div>
         </div>

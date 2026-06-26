@@ -504,7 +504,7 @@ exports.getSuperadminStats = async (req, res) => {
   }
 
   try {
-    const companiesResult = await db.queryMain('SELECT reg_num, edit_count, plan_type, no_of_telecallers FROM companies');
+    const companiesResult = await db.queryMain('SELECT reg_num, edit_count, plan_type, no_of_telecallers, call_recording_enabled, call_recording_end_date FROM companies');
     const companies = companiesResult.rows;
 
     const totalCompanies = companies.length;
@@ -529,6 +529,19 @@ exports.getSuperadminStats = async (req, res) => {
       const edits = comp.edit_count || 0;
       const editCharge = Math.max(0, edits - 3) * 20;
       totalCharge += editCharge;
+
+      // Add call recording add-on charge if active
+      if (comp.call_recording_enabled === 1 && comp.call_recording_end_date) {
+        const now = new Date();
+        let expiryStr = comp.call_recording_end_date.toString();
+        if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+          expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+        }
+        const expiry = new Date(expiryStr);
+        if (expiry >= now) {
+          totalCharge += plan === 'annual' ? 999 : 99;
+        }
+      }
     }
 
     res.json({
@@ -611,18 +624,34 @@ exports.getMe = async (req, res) => {
     const user = result.rows[0];
     user.companyRegNum = req.user.companyRegNum !== undefined ? req.user.companyRegNum : null;
 
-    if (user.role === 'admin' && req.user.companyRegNum) {
-      const compRes = await db.queryMain('SELECT edit_count, subscription_end, plan_type, no_of_telecallers FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
+    if (req.user.companyRegNum) {
+      const compRes = await db.queryMain('SELECT edit_count, subscription_end, plan_type, no_of_telecallers, call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
       if (compRes.rows.length > 0) {
         user.editCount = compRes.rows[0].edit_count || 0;
         user.subscriptionEnd = compRes.rows[0].subscription_end || null;
         user.planType = compRes.rows[0].plan_type || 'monthly';
         user.noOfTelecallers = compRes.rows[0].no_of_telecallers || 0;
+        user.callRecordingEndDate = compRes.rows[0].call_recording_end_date || null;
+        
+        user.callRecordingEnabled = false;
+        if (compRes.rows[0].call_recording_enabled === 1 && user.callRecordingEndDate) {
+          const now = new Date();
+          let expiryStr = user.callRecordingEndDate.toString();
+          if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+            expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+          }
+          const expiry = new Date(expiryStr);
+          if (expiry >= now) {
+            user.callRecordingEnabled = true;
+          }
+        }
       } else {
         user.editCount = 0;
         user.subscriptionEnd = null;
         user.planType = 'monthly';
         user.noOfTelecallers = 0;
+        user.callRecordingEnabled = false;
+        user.callRecordingEndDate = null;
       }
     }
 
@@ -904,7 +933,7 @@ exports.getCompanyBillingDetails = async (req, res) => {
   }
 
   try {
-    const compCheck = await db.queryMain('SELECT name, reg_num, edit_count, no_of_telecallers, plan_type, subscription_start, subscription_end, price_per_telecaller FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
+    const compCheck = await db.queryMain('SELECT name, reg_num, edit_count, no_of_telecallers, plan_type, subscription_start, subscription_end, price_per_telecaller, call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
     if (compCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Company not found.' });
     }
@@ -923,6 +952,8 @@ exports.getCompanyBillingDetails = async (req, res) => {
       subscriptionStart: company.subscription_start || null,
       subscriptionEnd: company.subscription_end || null,
       pricePerTelecaller: company.price_per_telecaller || 59,
+      callRecordingEnabled: company.call_recording_enabled === 1,
+      callRecordingEndDate: company.call_recording_end_date || null,
       telecallers: telecallersResult.rows
     });
   } catch (error) {
@@ -933,7 +964,7 @@ exports.getCompanyBillingDetails = async (req, res) => {
 
 // Create Razorpay Order (Public) — supports monthly (₹59) and annual (₹49×12) plans
 exports.createRazorpayOrder = async (req, res) => {
-  const { noOfTelecallers, planType } = req.body;
+  const { noOfTelecallers, planType, includeCallRecording } = req.body;
   if (!noOfTelecallers || isNaN(noOfTelecallers) || parseInt(noOfTelecallers) <= 0) {
     return res.status(400).json({ error: 'Please provide a valid number of telecallers.' });
   }
@@ -944,9 +975,15 @@ exports.createRazorpayOrder = async (req, res) => {
   const ANNUAL_RATE = 49;
 
   // Monthly: ₹59 × callers, Annual: ₹49 × callers × 12
-  const totalAmount = plan === 'annual'
+  let totalAmount = plan === 'annual'
     ? numCallers * ANNUAL_RATE * 12
     : numCallers * MONTHLY_RATE;
+
+  let recordingCharge = 0;
+  if (includeCallRecording) {
+    recordingCharge = plan === 'annual' ? 999 : 99;
+    totalAmount += recordingCharge;
+  }
 
   const pricePerCaller = plan === 'annual' ? ANNUAL_RATE : MONTHLY_RATE;
   const amountInPaise = totalAmount * 100; // Razorpay expects amount in paise
@@ -961,7 +998,7 @@ exports.createRazorpayOrder = async (req, res) => {
 
     const authHeader = 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
     
-    console.log(`[Razorpay] Creating ${plan} order for ${numCallers} callers: INR ${totalAmount} (${amountInPaise} paise)`);
+    console.log(`[Razorpay] Creating ${plan} order for ${numCallers} callers (Call Recording: ${includeCallRecording ? 'Yes' : 'No'}): INR ${totalAmount} (${amountInPaise} paise)`);
     
     const response = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
@@ -1057,7 +1094,7 @@ exports.createRazorpayEditOrder = async (req, res) => {
 // Verify Payment and Register Company (Public)
 exports.registerCompanyWithPayment = async (req, res) => {
   const { 
-    name, nature, noOfTelecallers, email, password, planType,
+    name, nature, noOfTelecallers, email, password, planType, includeCallRecording,
     razorpay_order_id, razorpay_payment_id, razorpay_signature 
   } = req.body;
 
@@ -1141,8 +1178,8 @@ exports.registerCompanyWithPayment = async (req, res) => {
 
     // Insert company into master db companies table
     await db.queryMain(
-      'INSERT INTO companies (name, nature, no_of_telecallers, reg_num, admin_email, admin_password_hash, admin_plain_password, price_per_telecaller, plan_type, subscription_start, subscription_end, edit_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
-      [name, nature, numCallers, regNum, email, adminPasswordHash, password, pricePerCaller, plan, subscriptionStart, subscriptionEnd, 0]
+      'INSERT INTO companies (name, nature, no_of_telecallers, reg_num, admin_email, admin_password_hash, admin_plain_password, price_per_telecaller, plan_type, subscription_start, subscription_end, edit_count, call_recording_enabled, call_recording_end_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
+      [name, nature, numCallers, regNum, email, adminPasswordHash, password, pricePerCaller, plan, subscriptionStart, subscriptionEnd, 0, includeCallRecording ? 1 : 0, includeCallRecording ? subscriptionEnd : null]
     );
 
     // Provision the isolated database schema for the company
@@ -1169,7 +1206,7 @@ exports.renewSubscriptionWithPayment = async (req, res) => {
   }
 
   const { 
-    noOfTelecallers, planType,
+    noOfTelecallers, planType, includeCallRecording,
     razorpay_order_id, razorpay_payment_id, razorpay_signature 
   } = req.body;
 
@@ -1223,8 +1260,16 @@ exports.renewSubscriptionWithPayment = async (req, res) => {
 
     // Update company details in master db companies table
     await db.queryMain(
-      'UPDATE companies SET no_of_telecallers = $1, plan_type = $2, price_per_telecaller = $3, subscription_start = $4, subscription_end = $5 WHERE reg_num = $6',
-      [numCallers, plan, pricePerCaller, subscriptionStart, subscriptionEnd, req.user.companyRegNum]
+      `UPDATE companies 
+       SET no_of_telecallers = $1, 
+           plan_type = $2, 
+           price_per_telecaller = $3, 
+           subscription_start = $4, 
+           subscription_end = $5,
+           call_recording_enabled = CASE WHEN $6 = 1 THEN 1 ELSE call_recording_enabled END,
+           call_recording_end_date = CASE WHEN $6 = 1 THEN $5 ELSE call_recording_end_date END
+       WHERE reg_num = $7`,
+      [numCallers, plan, pricePerCaller, subscriptionStart, subscriptionEnd, includeCallRecording ? 1 : 0, req.user.companyRegNum]
     );
 
     res.json({
@@ -1373,3 +1418,202 @@ exports.addExtraTelecallerWithPayment = async (req, res) => {
     res.status(500).json({ error: 'Server error during extra telecaller registration: ' + error.message });
   }
 };
+
+// Toggle Call Recording for a company (superadmin can toggle any company, company admin toggles own company)
+exports.toggleCallRecording = async (req, res) => {
+  try {
+    const { regNum, enabled } = req.body;
+
+    // Company admin can only toggle their own company
+    let targetRegNum = req.user.companyRegNum || regNum;
+
+    if (!targetRegNum) {
+      return res.status(400).json({ error: 'Company registration number is required.' });
+    }
+
+    // Verify company exists
+    const compCheck = await db.queryMain('SELECT reg_num, call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1', [targetRegNum]);
+    if (compCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Company not found.' });
+    }
+
+    // If company admin is trying to toggle ON, verify their subscription is active
+    if (req.user.companyRegNum && enabled) {
+      const company = compCheck.rows[0];
+      const endDate = company.call_recording_end_date;
+      if (!endDate) {
+        return res.status(403).json({ error: 'You must pay to activate the Call Recording subscription.' });
+      }
+      
+      const now = new Date();
+      let expiryStr = endDate.toString();
+      if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+        expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+      }
+      const expiry = new Date(expiryStr);
+      if (expiry < now) {
+        return res.status(403).json({ error: 'Your Call Recording subscription has expired. Please visit the Billing page to renew.' });
+      }
+    }
+
+    const newValue = enabled ? 1 : 0;
+    await db.queryMain(
+      'UPDATE companies SET call_recording_enabled = $1 WHERE reg_num = $2',
+      [newValue, targetRegNum]
+    );
+
+    res.json({
+      success: true,
+      callRecordingEnabled: enabled,
+      message: enabled
+        ? 'Call recording has been enabled for this company.'
+        : 'Call recording has been disabled for this company.'
+    });
+  } catch (error) {
+    console.error('Toggle call recording error:', error);
+    res.status(500).json({ error: 'Server error toggling call recording.' });
+  }
+};
+
+// Create Razorpay Order specifically for Call Recording Add-on (Admin only)
+exports.createCallRecordingOrder = async (req, res) => {
+  if (!req.user || !req.user.companyRegNum) {
+    return res.status(403).json({ error: 'Only authenticated company administrators can purchase call recording.' });
+  }
+
+  try {
+    // Check current plan type of company
+    const compCheck = await db.queryMain('SELECT plan_type FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
+    if (compCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Company not found.' });
+    }
+    const company = compCheck.rows[0];
+    const plan = company.plan_type || 'monthly';
+
+    // Charge: Monthly is ₹99. Annual is ₹999
+    const totalAmount = plan === 'annual' ? 999 : 99;
+    const amountInPaise = totalAmount * 100;
+
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      return res.status(500).json({ error: 'Razorpay API credentials are not configured.' });
+    }
+
+    const authHeader = 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+    
+    console.log(`[Razorpay] Creating call recording add-on order for ${req.user.companyRegNum}: INR ${totalAmount} (${amountInPaise} paise)`);
+    
+    const response = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader
+      },
+      body: JSON.stringify({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt: `rec_rec_${Date.now()}`
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Razorpay responded with status ${response.status}: ${errorText}`);
+    }
+
+    const orderData = await response.json();
+    res.json({
+      orderId: orderData.id,
+      amount: orderData.amount,
+      keyId: keyId,
+      plan,
+      totalAmount
+    });
+  } catch (error) {
+    console.error('Create call recording order error:', error);
+    res.status(500).json({ error: 'Server error creating payment order: ' + error.message });
+  }
+};
+
+// Verify payment and enable call recording (Admin only)
+exports.enableCallRecordingWithPayment = async (req, res) => {
+  if (!req.user || !req.user.companyRegNum) {
+    return res.status(403).json({ error: 'Only authenticated company administrators can verify call recording payments.' });
+  }
+
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    return res.status(400).json({ error: 'Payment verification details are missing.' });
+  }
+
+  try {
+    // 1. Verify Signature
+    const crypto = require('crypto');
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    
+    if (!keySecret) {
+      return res.status(500).json({ error: 'Razorpay credentials not configured.' });
+    }
+
+    const signatureText = razorpay_order_id + '|' + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac('sha256', keySecret)
+      .update(signatureText)
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      console.warn('[Razorpay] Signature mismatch for call recording payment!');
+      return res.status(400).json({ error: 'Payment verification signature mismatch.' });
+    }
+
+    // 2. Fetch company plan type to calculate expiry date
+    const compCheck = await db.queryMain('SELECT plan_type, call_recording_end_date FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
+    if (compCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Company not found.' });
+    }
+    const company = compCheck.rows[0];
+    const plan = company.plan_type || 'monthly';
+
+    // Extend recording date starting from now or from the previous end date if still active
+    const now = new Date();
+    let startDate = now;
+    if (company.call_recording_end_date) {
+      let currentExpiryStr = company.call_recording_end_date.toString();
+      if (!currentExpiryStr.includes('Z') && !currentExpiryStr.includes('T')) {
+        currentExpiryStr = currentExpiryStr.replace(' ', 'T') + 'Z';
+      }
+      const currentExpiry = new Date(currentExpiryStr);
+      if (currentExpiry > now) {
+        startDate = currentExpiry;
+      }
+    }
+
+    let endDate = new Date(startDate);
+    if (plan === 'annual') {
+      endDate.setFullYear(endDate.getFullYear() + 1);
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
+    const callRecordingEndDate = endDate.toISOString();
+
+    // 3. Update DB
+    await db.queryMain(
+      'UPDATE companies SET call_recording_enabled = 1, call_recording_end_date = $1 WHERE reg_num = $2',
+      [callRecordingEndDate, req.user.companyRegNum]
+    );
+
+    res.json({
+      success: true,
+      callRecordingEnabled: true,
+      callRecordingEndDate,
+      message: 'Call recording payment verified and activated successfully!'
+    });
+  } catch (error) {
+    console.error('Verify call recording payment error:', error);
+    res.status(500).json({ error: 'Server error during call recording activation: ' + error.message });
+  }
+};
+

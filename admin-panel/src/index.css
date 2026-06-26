@@ -742,7 +742,10 @@ tr:hover td {
 
   /* Form control scale down */
   input, select, textarea {
-    padding: 0.6rem 0.8rem !important;
+    padding-top: 0.6rem !important;
+    padding-bottom: 0.6rem !important;
+    padding-left: 0.8rem;
+    padding-right: 0.8rem;
     font-size: 0.85rem !important;
     border-radius: 8px !important;
   }
@@ -1374,11 +1377,13 @@ tr:hover td {
   background: rgba(11, 17, 32, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  padding: 0 1.25rem 0 2.75rem;
+  padding: 0 2.75rem 0 2.75rem;
   font-size: 0.95rem;
   color: #ffffff;
   outline: none;
   transition: all 0.25s ease;
+  /* Suppress native browser password-reveal button */
+  -webkit-appearance: none;
 }
 
 .auth-input-field::placeholder {
@@ -1408,13 +1413,30 @@ tr:hover td {
   color: #a78bfa;
 }
 
+/* Hide native browser password reveal eye icon — use custom toggle only */
+.auth-input-field::-ms-reveal,
+.auth-input-field::-ms-clear {
+  display: none;
+}
+.auth-input-field::-webkit-textfield-decoration-container {
+  display: none;
+}
+.auth-input-field::-webkit-contacts-auto-fill-button,
+.auth-input-field::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
+
 .btn-gradient-auth {
   width: 100%;
   height: 52px;
-  background: linear-gradient(90deg, #7c3aed 0%, #06b6d4 100%);
-  border: none;
+  background: transparent;
+  border: 2px solid #38bdf8;
   border-radius: 9999px;
-  color: #ffffff;
+  color: #38bdf8;
   font-size: 1rem;
   font-weight: 700;
   display: flex;
@@ -1423,8 +1445,7 @@ tr:hover td {
   gap: 10px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.3), 
-              0 0 0 1px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
   position: relative;
   overflow: hidden;
 }
@@ -1436,7 +1457,7 @@ tr:hover td {
   left: -50%;
   width: 200%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.12), transparent);
   transform: skewX(-15deg);
   transition: 0.75s;
   pointer-events: none;
@@ -1448,22 +1469,25 @@ tr:hover td {
 
 .btn-gradient-auth:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(124, 58, 237, 0.4), 
-              0 0 20px rgba(6, 182, 212, 0.3);
-  filter: brightness(1.05);
+  background: rgba(56, 189, 248, 0.1);
+  border-color: #7dd3fc;
+  color: #7dd3fc;
+  box-shadow: 0 8px 20px rgba(56, 189, 248, 0.25),
+              0 0 15px rgba(56, 189, 248, 0.15);
 }
 
 .btn-gradient-auth:active {
   transform: translateY(0);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.2);
 }
 
 .btn-gradient-auth:disabled {
-  background: linear-gradient(90deg, #312e81 0%, #164e63 100%);
-  color: #94a3b8;
+  border-color: #334155;
+  color: #64748b;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  background: transparent;
 }
 
 .auth-divider {
@@ -1666,13 +1690,17 @@ tr:hover td {
 }
 
 [data-theme="light"] .btn-gradient-auth {
-  background: #2563eb;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+  background: transparent;
+  border-color: #2563eb;
+  color: #2563eb;
+  box-shadow: none;
 }
 
 [data-theme="light"] .btn-gradient-auth:hover {
-  background: #1d4ed8;
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+  background: rgba(37, 99, 235, 0.08);
+  border-color: #1d4ed8;
+  color: #1d4ed8;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.2);
   filter: none;
 }
 

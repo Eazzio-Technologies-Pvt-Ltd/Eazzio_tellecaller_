@@ -32,9 +32,40 @@ exports.createCallLog = async (req, res) => {
       }
     }
 
+    // Check if call recording is enabled for company and subscription is active
+    let hasRecording = false;
+    if (req.user && req.user.companyRegNum) {
+      const compCheck = await db.queryMain(
+        'SELECT call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1',
+        [req.user.companyRegNum]
+      );
+      if (compCheck.rows.length > 0 && compCheck.rows[0].call_recording_enabled === 1) {
+        const endDate = compCheck.rows[0].call_recording_end_date;
+        if (endDate) {
+          const now = new Date();
+          let expiryStr = endDate.toString();
+          if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+            expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+          }
+          const expiry = new Date(expiryStr);
+          if (expiry >= now) {
+            hasRecording = true;
+          }
+        }
+      }
+    }
+
     let recordingUrl = null;
     if (req.file) {
-      recordingUrl = `/uploads/recordings/${req.file.filename}`;
+      if (hasRecording) {
+        recordingUrl = `/uploads/recordings/${req.file.filename}`;
+      } else {
+        // Delete the file since it's not paid for
+        const fs = require('fs');
+        fs.unlink(req.file.path, (err) => {
+          if (err) console.error('Error deleting unauthorized recording file:', err.message);
+        });
+      }
     }
 
     const insertTime = calledAt ? new Date(calledAt) : new Date();

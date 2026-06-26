@@ -361,7 +361,7 @@ const App = () => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
+  const [theme, setTheme] = useState('light');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [subscriptionExpired, setSubscriptionExpired] = useState(false);
@@ -638,7 +638,7 @@ const App = () => {
             padding: 0,
             overflow: 'hidden'
           }}
-          title="Eazzio FAST Telecaller & CRM"
+          title="eazzio-telecaller SIM Auto Dialer & CRM"
         />
       );
     }

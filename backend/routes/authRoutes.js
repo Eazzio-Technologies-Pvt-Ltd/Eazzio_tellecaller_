@@ -26,5 +26,10 @@ router.get('/superadmin-stats', authMiddleware('admin'), authController.getSuper
 router.delete('/companies/:id', authMiddleware('admin'), authController.deleteCompany);
 router.get('/companies/:regNum/telecallers', authMiddleware('admin'), authController.getCompanyTelecallers);
 router.get('/company-billing', authMiddleware('admin'), authController.getCompanyBillingDetails);
+router.post('/toggle-call-recording', authMiddleware('admin'), authController.toggleCallRecording);
+router.post('/razorpay-call-recording-order', authMiddleware('admin'), authController.createCallRecordingOrder);
+router.post('/enable-call-recording-with-payment', authMiddleware('admin'), authController.enableCallRecordingWithPayment);
+
+
 
 module.exports = router;
