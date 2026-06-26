@@ -25,9 +25,9 @@ exports.register = async (req, res) => {
     if (userRole === 'telecaller' && req.user && req.user.companyRegNum) {
       if (req.user.companyRegNum.startsWith('EAZ-DEMO-')) {
         const currentCount = await db.getCompanyTelecallerCount(req.user.companyRegNum);
-        if (currentCount >= 3) {
+        if (currentCount >= 1) {
           return res.status(403).json({
-            error: 'Please purchase any subscription'
+            error: 'please take subscription'
           });
         }
       } else {
@@ -358,7 +358,6 @@ exports.registerDemoCompany = async (req, res) => {
 
       // 2. Insert sample telecallers
       const aaravHash = await bcrypt.hash('aarav123', 10);
-      const diyaHash = await bcrypt.hash('diya123', 10);
 
       // Aarav (online)
       const aaravResult = await db.query(
@@ -366,13 +365,6 @@ exports.registerDemoCompany = async (req, res) => {
         ['Aarav Mehta', 'aarav@demomail.com', aaravHash, 'telecaller', 'online', 'aarav123']
       );
       const aaravId = aaravResult.rows[0].id;
-
-      // Diya (break)
-      const diyaResult = await db.query(
-        'INSERT INTO users (name, email, password_hash, role, status, plain_password, last_active_at) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP) RETURNING id',
-        ['Diya Sharma', 'diya@demomail.com', diyaHash, 'telecaller', 'break', 'diya123']
-      );
-      const diyaId = diyaResult.rows[0].id;
 
       // 3. Insert Campaigns
       const campaign1 = await db.query(
@@ -411,21 +403,21 @@ exports.registerDemoCompany = async (req, res) => {
       // Contact 3 (Not answered, Vikram)
       const contact3 = await db.query(
         'INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to, last_called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id',
-        [c2Id, 'Vikram Singh', '+91 98765 00003', 'not_answered', diyaId]
+        [c2Id, 'Vikram Singh', '+91 98765 00003', 'not_answered', aaravId]
       );
       await db.query(
         'INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)',
-        [contact3.rows[0].id, diyaId, 'not_answered', 0, 'Rang twice but no response. Will re-attempt later.']
+        [contact3.rows[0].id, aaravId, 'not_answered', 0, 'Rang twice but no response. Will re-attempt later.']
       );
 
       // Contact 4 (Busy, Anjali)
       const contact4 = await db.query(
         'INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to, last_called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id',
-        [c2Id, 'Anjali Gupta', '+91 98765 00004', 'busy', diyaId]
+        [c2Id, 'Anjali Gupta', '+91 98765 00004', 'busy', aaravId]
       );
       await db.query(
         'INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)',
-        [contact4.rows[0].id, diyaId, 'busy', 0, 'User busy. Line disconnected.']
+        [contact4.rows[0].id, aaravId, 'busy', 0, 'User busy. Line disconnected.']
       );
 
       // Add a few pending contacts (unscheduled)
@@ -433,8 +425,8 @@ exports.registerDemoCompany = async (req, res) => {
         ['Amit Sharma', '+91 98765 00005', c1Id, aaravId],
         ['Neha Deshmukh', '+91 98765 00006', c1Id, aaravId],
         ['Joy Dsouza', '+91 98765 00007', c1Id, null],
-        ['Sunita Verma', '+91 98765 00008', c2Id, diyaId],
-        ['Rohan Sen', '+91 98765 00009', c2Id, diyaId],
+        ['Sunita Verma', '+91 98765 00008', c2Id, aaravId],
+        ['Rohan Sen', '+91 98765 00009', c2Id, aaravId],
         ['Kavita Rao', '+91 98765 00010', c2Id, null]
       ];
       for (const item of pendingContacts) {
@@ -450,15 +442,10 @@ exports.registerDemoCompany = async (req, res) => {
         'INSERT INTO telecaller_sessions (telecaller_id, date, total_working_time, total_calling_time, total_idle_time, total_break_time, last_updated_at) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)',
         [aaravId, todayDate, 14400, 7200, 5400, 1800]
       );
-      await db.query(
-        'INSERT INTO telecaller_sessions (telecaller_id, date, total_working_time, total_calling_time, total_idle_time, total_break_time, last_updated_at) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)',
-        [diyaId, todayDate, 10800, 5400, 3600, 1800]
-      );
 
       // 6. Seeding Admin Notifications
       await db.query('INSERT INTO admin_notifications (message) VALUES ($1)', ['Outbound dialer campaign "Real Estate Hot Leads" successfully initialized by system.']);
       await db.query('INSERT INTO admin_notifications (message) VALUES ($1)', ['Telecaller Aarav Mehta changed status to: online']);
-      await db.query('INSERT INTO admin_notifications (message) VALUES ($1)', ['Telecaller Diya Sharma changed status to: break (Lunch Break)']);
     });
 
     // Generate JWT token for auto-login
@@ -802,8 +789,8 @@ exports.registerBulk = async (req, res) => {
     const currentCount = await db.getCompanyTelecallerCount(req.user.companyRegNum);
 
     if (req.user.companyRegNum && req.user.companyRegNum.startsWith('EAZ-DEMO-')) {
-      if (currentCount + telecallers.length > 3) {
-        return res.status(403).json({ error: 'Please purchase any subscription' });
+      if (currentCount + telecallers.length > 1) {
+        return res.status(403).json({ error: 'please take subscription' });
       }
     }
 
