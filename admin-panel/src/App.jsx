@@ -439,6 +439,17 @@ const App = () => {
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
 
+  // Forgot Password States
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState(1); // 1: send OTP, 2: verify & reset
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState('');
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
@@ -529,6 +540,96 @@ const App = () => {
       setLoginError(err.message);
     } finally {
       setLoggingIn(false);
+    }
+  };
+
+  const handleForgotPasswordRequest = async (e) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotSuccess('');
+
+    if (!forgotEmail) {
+      setForgotError('Please enter your email address.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: forgotEmail })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send OTP.');
+      }
+
+      setForgotSuccess(data.message || 'OTP verification code has been sent to your email.');
+      setForgotStep(2);
+    } catch (err) {
+      setForgotError(err.message);
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotSuccess('');
+
+    if (!forgotEmail || !resetOtp || !newPassword || !confirmPassword) {
+      setForgotError('Please fill in all fields.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setForgotError('New passwords do not match.');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setForgotError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: forgotEmail, otp: resetOtp, newPassword })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reset password.');
+      }
+
+      setForgotSuccess(data.message || 'Password reset successfully.');
+      // Return to login form
+      setTimeout(() => {
+        setShowForgotPassword(false);
+        setForgotEmail('');
+        setResetOtp('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setForgotStep(1);
+        setForgotSuccess('');
+        setForgotError('');
+      }, 3000);
+    } catch (err) {
+      setForgotError(err.message);
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -739,6 +840,176 @@ const App = () => {
         }}>
           {isRegistering ? (
             <RegisterCompany onBack={() => setIsRegistering(false)} theme={theme} />
+          ) : showForgotPassword ? (
+            <>
+              {/* Back to Login Button */}
+              <div style={{ alignSelf: 'flex-start', marginBottom: '1.5rem', display: 'flex', width: '100%' }}>
+                <button
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setForgotError('');
+                    setForgotSuccess('');
+                    setForgotStep(1);
+                  }}
+                  className="auth-footer-link-secondary"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-secondary, #475569)',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    padding: 0
+                  }}
+                >
+                  <ArrowLeft size={16} style={{ marginRight: '6px' }} />
+                  Back to Login
+                </button>
+              </div>
+
+              <div style={{ textAlign: 'center', marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <h2 className="auth-header-title">Reset password</h2>
+                <p className="auth-header-desc">
+                  {forgotStep === 1 
+                    ? 'Enter your email address to receive a password reset code.' 
+                    : 'Enter the verification OTP and your new password below.'}
+                </p>
+              </div>
+
+              {forgotStep === 1 ? (
+                <form onSubmit={handleForgotPasswordRequest} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {forgotError && (
+                    <div style={styles.errorAlert}>
+                      <AlertCircle size={18} style={{ flexShrink: 0 }} />
+                      <span>{forgotError}</span>
+                    </div>
+                  )}
+                  {forgotSuccess && (
+                    <div style={{
+                      backgroundColor: 'rgba(16,185,129,0.1)',
+                      border: '1px solid rgba(16,185,129,0.2)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      color: '#10b981',
+                      fontSize: '0.88rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <ShieldCheck size={18} style={{ flexShrink: 0 }} />
+                      <span>{forgotSuccess}</span>
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label className="auth-input-label">Email Address</label>
+                    <div className="auth-input-container">
+                      <Mail size={18} className="auth-input-icon" />
+                      <input 
+                        type="email" 
+                        placeholder="Enter registered email address" 
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        className="auth-input-field"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    className="btn-gradient-auth" 
+                    style={{ marginTop: '0.75rem' }}
+                    disabled={forgotLoading}
+                  >
+                    {forgotLoading ? 'Sending Reset Code...' : 'Send Reset Code'}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleResetPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {forgotError && (
+                    <div style={styles.errorAlert}>
+                      <AlertCircle size={18} style={{ flexShrink: 0 }} />
+                      <span>{forgotError}</span>
+                    </div>
+                  )}
+                  {forgotSuccess && (
+                    <div style={{
+                      backgroundColor: 'rgba(16,185,129,0.1)',
+                      border: '1px solid rgba(16,185,129,0.2)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      color: '#10b981',
+                      fontSize: '0.88rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <ShieldCheck size={18} style={{ flexShrink: 0 }} />
+                      <span>{forgotSuccess}</span>
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label className="auth-input-label">Verification OTP Code</label>
+                    <div className="auth-input-container">
+                      <Lock size={18} className="auth-input-icon" />
+                      <input 
+                        type="text" 
+                        placeholder="Enter 6-digit OTP code" 
+                        value={resetOtp}
+                        onChange={(e) => setResetOtp(e.target.value)}
+                        className="auth-input-field"
+                        maxLength={6}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="auth-input-label">New Password</label>
+                    <div className="auth-input-container">
+                      <Lock size={18} className="auth-input-icon" />
+                      <input 
+                        type="password" 
+                        placeholder="Enter new password (min 6 chars)" 
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="auth-input-field"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="auth-input-label">Confirm New Password</label>
+                    <div className="auth-input-container">
+                      <Lock size={18} className="auth-input-icon" />
+                      <input 
+                        type="password" 
+                        placeholder="Confirm new password" 
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="auth-input-field"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    className="btn-gradient-auth" 
+                    style={{ marginTop: '0.75rem' }}
+                    disabled={forgotLoading}
+                  >
+                    {forgotLoading ? 'Resetting Password...' : 'Reset Password'}
+                  </button>
+                </form>
+              )}
+            </>
           ) : (
             <>
               {/* Back to Website button */}
@@ -788,8 +1059,34 @@ const App = () => {
                 </div>
 
                 <div className="form-group">
-                  <div className="auth-input-label-row">
+                  <div className="auth-input-label-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <label className="auth-input-label">Password</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgotPassword(true);
+                        setForgotStep(1);
+                        setForgotEmail('');
+                        setResetOtp('');
+                        setNewPassword('');
+                        setConfirmPassword('');
+                        setForgotError('');
+                        setForgotSuccess('');
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#6366f1',
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        padding: 0,
+                        textDecoration: 'none'
+                      }}
+                      className="auth-forgot-password-link"
+                    >
+                      Forgot password?
+                    </button>
                   </div>
                   <div className="auth-input-container">
                     <Lock size={18} className="auth-input-icon" />
@@ -954,7 +1251,7 @@ const App = () => {
       {isDemoUser && (
         <DemoValidityBanner subscriptionEnd={user?.subscriptionEnd} />
       )}
-      <div style={{ display: 'flex', width: '100%', minHeight: isDemoUser ? 'calc(100vh - 38px)' : '100vh' }}>
+      <div className="app-layout-wrapper" style={{ display: 'flex', width: '100%', minHeight: isDemoUser ? 'calc(100vh - 38px)' : '100vh' }}>
         <div className="mobile-header">
           <Logo theme={theme} mode="sidebar" />
           <button 

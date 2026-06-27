@@ -269,6 +269,15 @@ async function initializeSchema() {
       status VARCHAR(20) DEFAULT 'open',
       created_at ${timestampType},
       resolved_at ${timestampType}
+    )`,
+
+    // Password resets table (main database)
+    `CREATE TABLE IF NOT EXISTS password_resets (
+      id ${serialType},
+      email VARCHAR(100) NOT NULL,
+      otp VARCHAR(6) NOT NULL,
+      expires_at ${isPg ? 'TIMESTAMP' : 'DATETIME'} NOT NULL,
+      created_at ${timestampType}
     )`
   ];
 

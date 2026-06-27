@@ -9,6 +9,7 @@ import 'package:eazzio_telecaller/services/call_service.dart';
 import 'package:eazzio_telecaller/screens/calling_screen.dart';
 import 'package:eazzio_telecaller/screens/login_screen.dart';
 import 'package:eazzio_telecaller/main.dart';
+import 'package:eazzio_telecaller/services/layout_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -144,76 +145,142 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSimSelectionCard() {
+    final layout = ResponsiveLayout(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
     final textColor = isDark ? Colors.white : const Color(0xFF111827);
-    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
-    final Color accentColor = const Color(0xFF6366F1);
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    final String label = _callService.selectedSimLabel ?? 'Default Dialer (System Prompts)';
+    Widget simLabelWidget;
+    if (label.contains(' (')) {
+      final parts = label.split(' (');
+      simLabelWidget = RichText(
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: parts[0],
+              style: TextStyle(
+                fontSize: layout.scale(13.0, 15.0),
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            TextSpan(
+              text: ' (${parts[1]}',
+              style: TextStyle(
+                fontSize: layout.scale(11.0, 13.0),
+                fontWeight: FontWeight.normal,
+                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      simLabelWidget = Text(
+        label,
+        style: TextStyle(
+          fontSize: layout.scale(13.0, 15.0),
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
+      );
+    }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      padding: EdgeInsets.all(layout.scale(12.0, 16.0)),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? borderColor : accentColor.withOpacity(0.3), width: isDark ? 1 : 2),
+        borderRadius: BorderRadius.circular(layout.cardRadius),
+        border: Border.all(
+          color: isDark ? const Color(0xFF222435) : const Color(0xFFEEF2FF),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: accentColor.withOpacity(isDark ? 0.03 : 0.05),
-            blurRadius: isDark ? 4 : 6,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         children: [
-          Icon(Icons.sim_card_outlined, color: accentColor, size: 28),
-          const SizedBox(width: 12),
+          // Device/SIM badge
+          Container(
+            width: layout.scale(38.0, 46.0),
+            height: layout.scale(38.0, 46.0),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEEF2FF),
+              borderRadius: BorderRadius.circular(layout.scale(10.0, 12.0)),
+            ),
+            child: Icon(
+              Icons.phone_iphone_rounded,
+              color: const Color(0xFF4F46E5),
+              size: layout.scale(18.0, 22.0),
+            ),
+          ),
+          SizedBox(width: layout.scale(8.0, 12.0)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'Calling SIM Option',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: layout.scale(10.0, 11.0),
                     fontWeight: FontWeight.bold,
                     color: subtextColor,
                     letterSpacing: 0.5,
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  _callService.selectedSimLabel ?? 'Default Dialer (System Prompts)',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
+                simLabelWidget,
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: layout.scale(4.0, 8.0)),
           _loadingSims
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1)),
+              ? SizedBox(
+                  width: layout.scale(16.0, 20.0),
+                  height: layout.scale(16.0, 20.0),
+                  child: const CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1)),
                 )
-              : TextButton(
-                  onPressed: _fetchAndSelectSim,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    backgroundColor: const Color(0x1F6366F1),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: const Text(
-                    'Select SIM',
-                    style: TextStyle(
-                      color: Color(0xFF6366F1),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+              : GestureDetector(
+                  onTap: _fetchAndSelectSim,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: layout.scale(10.0, 12.0),
+                      vertical: layout.scale(6.0, 8.0),
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E1B4B) : const Color(0xFFEEF2FF),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF312E81) : const Color(0xFFC7D2FE),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Select SIM',
+                          style: TextStyle(
+                            color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+                            fontWeight: FontWeight.bold,
+                            fontSize: layout.scale(11.0, 12.0),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+                          size: layout.scale(14.0, 16.0),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -224,6 +291,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _syncCallLogs() async {
     if (_isSyncing || !ApiService.isAuthenticated) return;
+    
+    // Check if the session is active (working time) and not on break
+    if (!_telemetry.isActive || _telemetry.currentState == TelemetryState.onBreak) return;
+
     _isSyncing = true;
     try {
       final contacts = await ApiService.fetchAllottedContacts();
@@ -246,11 +317,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return;
       }
 
-      final List<dynamic>? logs = await channel.invokeMethod('getRecentCallLogs', {'limit': 50});
+      // Fetch a larger limit of recent call logs to cover the day
+      final List<dynamic>? logs = await channel.invokeMethod('getRecentCallLogs', {'limit': 200});
       if (logs == null || logs.isEmpty) {
         _isSyncing = false;
         return;
       }
+
+      final now = DateTime.now();
+      final startOfToday = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+
+      int connected = 0;
+      int nonConnected = 0;
+      int received = 0;
+      int missed = 0;
 
       for (final log in logs) {
         if (log is! Map) continue;
@@ -284,6 +364,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
             continue;
           }
 
+          // Count stats for today matching our allotted contacts
+          if (dateMs >= startOfToday) {
+            if (callStatus == 'connected') {
+              connected++;
+            } else if (callStatus == 'non-connected') {
+              nonConnected++;
+            } else if (callStatus == 'received') {
+              received++;
+            } else if (callStatus == 'missed') {
+              missed++;
+            }
+          }
+
           // Sync to server via submitCallLog API. 
           // The backend will check if it already exists, avoiding duplicates.
           await ApiService.submitCallLog(
@@ -297,6 +390,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
         }
       }
+
+      // Update telemetry counters for today with the real call log data
+      setState(() {
+        _telemetry.connectedCalls = connected;
+        _telemetry.nonConnectedCalls = nonConnected;
+        _telemetry.receivedCalls = received;
+        _telemetry.missedCalls = missed;
+      });
+
     } catch (e) {
       print('[Sync] Error syncing call logs: $e');
     } finally {
@@ -461,61 +563,103 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final layout = ResponsiveLayout(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0A0B10) : Colors.grey[200];
+    final bgColor = isDark ? const Color(0xFF0A0B10) : const Color(0xFFF5F6FC);
     final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
+    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFEEF2FF);
     final textColor = isDark ? Colors.white : const Color(0xFF111827);
-    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
-    final mutedColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
-
-    final statusColor = _telemetry.isActive ? const Color(0xFF10B981) : const Color(0xFF6B7280);
-    final statusText = _telemetry.isActive ? 'ACTIVE SESSION' : 'OFFLINE';
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final mutedColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF94A3B8);
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: cardColor,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'Caller Dashboard',
-          style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: textColor,
+            fontSize: layout.fontSizeTitle,
+          ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              themeNotifier.value == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
-              color: subtextColor,
+          Container(
+            margin: EdgeInsets.only(right: layout.scale(6.0, 8.0)),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isDark ? const Color(0xFF222435) : const Color(0xFFE2E8F0),
+                width: 1.5,
+              ),
+              color: cardColor,
             ),
-            onPressed: () async {
-              final prefs = await SharedPreferences.getInstance();
-              if (themeNotifier.value == ThemeMode.dark) {
-                themeNotifier.value = ThemeMode.light;
-                await prefs.setBool('is_light_theme', true);
-              } else {
-                themeNotifier.value = ThemeMode.dark;
-                await prefs.setBool('is_light_theme', false);
-              }
-              setState(() {});
-            },
-            tooltip: 'Toggle Theme',
+            child: IconButton(
+              icon: Icon(
+                themeNotifier.value == ThemeMode.dark ? Icons.light_mode_rounded : Icons.dark_mode_outlined,
+                color: isDark ? Colors.amber : const Color(0xFF64748B),
+                size: layout.scale(18.0, 20.0),
+              ),
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                if (themeNotifier.value == ThemeMode.dark) {
+                  themeNotifier.value = ThemeMode.light;
+                  await prefs.setBool('is_light_theme', true);
+                } else {
+                  themeNotifier.value = ThemeMode.dark;
+                  await prefs.setBool('is_light_theme', false);
+                }
+                setState(() {});
+              },
+              tooltip: 'Toggle Theme',
+              padding: EdgeInsets.zero,
+              constraints: BoxConstraints(
+                minWidth: layout.scale(36.0, 40.0),
+                minHeight: layout.scale(36.0, 40.0),
+              ),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.power_settings_new, color: Color(0xFFEF4444)),
-            onPressed: _handleLogout,
-            tooltip: 'Logout',
+          Container(
+            margin: EdgeInsets.only(right: layout.scale(12.0, 16.0)),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isDark ? const Color(0xFF881337) : const Color(0xFFFEE2E2),
+                width: 1.5,
+              ),
+              color: isDark ? const Color(0xFF4C0519) : const Color(0xFFFEF2F2),
+            ),
+            child: IconButton(
+              icon: Icon(
+                Icons.power_settings_new_rounded,
+                color: const Color(0xFFEF4444),
+                size: layout.scale(18.0, 20.0),
+              ),
+              onPressed: _handleLogout,
+              tooltip: 'Logout',
+              padding: EdgeInsets.zero,
+              constraints: BoxConstraints(
+                minWidth: layout.scale(36.0, 40.0),
+                minHeight: layout.scale(36.0, 40.0),
+              ),
+            ),
           ),
         ],
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          padding: EdgeInsets.symmetric(
+            horizontal: layout.scale(12.0, 16.0),
+            vertical: layout.scale(8.0, 12.0),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildSimSelectionCard(),
-              const SizedBox(height: 16),
+              SizedBox(height: layout.spacing),
 
               // Timers Row
               Column(
@@ -524,13 +668,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Text(
                     'TELEMETRY METRICS',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: layout.fontSizeCaption,
                       fontWeight: FontWeight.bold,
                       color: mutedColor,
                       letterSpacing: 1.0,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: layout.scale(8.0, 10.0)),
                   Row(
                     children: [
                       Expanded(
@@ -540,11 +684,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           target: '8h',
                           progress: _telemetry.workingTime / 28800,
                           valueColor: const Color(0xFF6366F1),
-                          icon: Icons.timer,
+                          icon: Icons.access_time_rounded,
                           context: context,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: layout.scale(8.0, 12.0)),
                       Expanded(
                         child: _buildTimerCard(
                           title: 'Talk Time',
@@ -552,25 +696,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           target: '4h',
                           progress: _telemetry.talkTime / 14400,
                           valueColor: const Color(0xFF10B981),
-                          icon: Icons.phone_in_talk,
+                          icon: Icons.phone_in_talk_rounded,
                           context: context,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: layout.scale(8.0, 12.0)),
                   _buildTimerCard(
                     title: 'Break Time',
                     value: _formatDuration(_telemetry.breakTime),
                     target: '2h',
                     progress: _telemetry.breakTime / 7200,
                     valueColor: const Color(0xFFA855F7),
-                    icon: Icons.coffee,
+                    icon: Icons.coffee_rounded,
                     context: context,
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: layout.spacing),
 
               // Call Outcomes Card
               Column(
@@ -579,75 +723,97 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Text(
                     'CALL OUTCOMES TODAY',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: layout.fontSizeCaption,
                       fontWeight: FontWeight.bold,
                       color: mutedColor,
                       letterSpacing: 1.0,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: layout.scale(8.0, 10.0)),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
                     decoration: BoxDecoration(
                       color: cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: isDark ? borderColor : const Color(0xFF6366F1).withOpacity(0.3), width: isDark ? 1 : 2),
+                      borderRadius: BorderRadius.circular(layout.cardRadius),
+                      border: Border.all(
+                        color: isDark ? borderColor : const Color(0xFFEEF2FF),
+                        width: 1,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF6366F1).withOpacity(isDark ? 0.03 : 0.05),
-                          blurRadius: isDark ? 4 : 6,
-                          offset: isDark ? const Offset(0, 2) : const Offset(0, 3),
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: Column(
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Expanded(
-                              child: _buildCallCounter(
-                                label: 'Connected',
-                                count: _telemetry.connectedCalls,
-                                color: const Color(0xFF10B981),
-                                context: context,
+                        IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildCallCounter(
+                                  label: 'Connected',
+                                  count: _telemetry.connectedCalls,
+                                  baseColor: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                                  badgeBgColor: isDark ? const Color(0x1A34D399) : const Color(0xFFE6F4EA),
+                                  icon: Icons.phone_callback_rounded,
+                                  context: context,
+                                ),
                               ),
-                            ),
-                            Container(width: 1, height: 40, color: borderColor),
-                            Expanded(
-                              child: _buildCallCounter(
-                                label: 'Non-Connected',
-                                count: _telemetry.nonConnectedCalls,
-                                color: const Color(0xFFF59E0B),
-                                context: context,
+                              VerticalDivider(
+                                color: isDark ? borderColor : const Color(0xFFEEF2FF),
+                                width: 1,
+                                thickness: 1,
                               ),
-                            ),
-                          ],
+                              Expanded(
+                                child: _buildCallCounter(
+                                  label: 'Non-Connected',
+                                  count: _telemetry.nonConnectedCalls,
+                                  baseColor: isDark ? const Color(0xFFFB923C) : const Color(0xFFD97706),
+                                  badgeBgColor: isDark ? const Color(0x1AFB923C) : const Color(0xFFFEF3C7),
+                                  icon: Icons.phone_paused_rounded,
+                                  context: context,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        Divider(color: borderColor, height: 1),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Expanded(
-                              child: _buildCallCounter(
-                                label: 'Received',
-                                count: _telemetry.receivedCalls,
-                                color: const Color(0xFF06B6D4),
-                                context: context,
+                        Divider(
+                          color: isDark ? borderColor : const Color(0xFFEEF2FF),
+                          height: 1,
+                          thickness: 1,
+                        ),
+                        IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildCallCounter(
+                                  label: 'Received',
+                                  count: _telemetry.receivedCalls,
+                                  baseColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                                  badgeBgColor: isDark ? const Color(0x1A38BDF8) : const Color(0xFFE0F2FE),
+                                  icon: Icons.call_received_rounded,
+                                  context: context,
+                                ),
                               ),
-                            ),
-                            Container(width: 1, height: 40, color: borderColor),
-                            Expanded(
-                              child: _buildCallCounter(
-                                label: 'Missed',
-                                count: _telemetry.missedCalls,
-                                color: const Color(0xFFEF4444),
-                                context: context,
+                              VerticalDivider(
+                                color: isDark ? borderColor : const Color(0xFFEEF2FF),
+                                width: 1,
+                                thickness: 1,
                               ),
-                            ),
-                          ],
+                              Expanded(
+                                child: _buildCallCounter(
+                                  label: 'Missed',
+                                  count: _telemetry.missedCalls,
+                                  baseColor: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
+                                  badgeBgColor: isDark ? const Color(0x1AF87171) : const Color(0xFFFEE2E2),
+                                  icon: Icons.call_missed_rounded,
+                                  context: context,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -657,35 +823,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Spacer(),
 
               // Core Action Button
-              ElevatedButton(
-                onPressed: _handleSessionToggle,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  backgroundColor: const Color(0xFF6366F1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6366F1), Color(0xFF7C3AED)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                   ),
-                  elevation: 6,
-                  shadowColor: const Color(0x666366F1),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _telemetry.isActive ? Icons.play_arrow_outlined : Icons.play_circle_filled,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _telemetry.isActive ? 'Open Calling Workspace' : 'Start Calling Session',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                  borderRadius: BorderRadius.circular(layout.cardRadius),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF6366F1).withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
                     ),
                   ],
+                ),
+                child: ElevatedButton(
+                  onPressed: _handleSessionToggle,
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: layout.scale(12.0, 16.0)),
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(layout.cardRadius),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _telemetry.isActive ? Icons.play_arrow_rounded : Icons.play_circle_filled_rounded,
+                        color: Colors.white,
+                        size: layout.scale(20.0, 24.0),
+                      ),
+                      SizedBox(width: layout.scale(6.0, 8.0)),
+                      Text(
+                        _telemetry.isActive ? 'Open Calling Workspace' : 'Start Calling Session',
+                        style: TextStyle(
+                          fontSize: layout.fontSizeHeading,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -695,130 +877,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildBreakTimeCard({
-    required String value,
-    required String target,
-    required double progress,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
-    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
-    final mutedColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
-    const valueColor = Color(0xFFA855F7); // Purple
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? borderColor : valueColor.withOpacity(0.3), width: isDark ? 1 : 2),
-        boxShadow: [
-          BoxShadow(
-            color: valueColor.withOpacity(isDark ? 0.03 : 0.05),
-            blurRadius: isDark ? 4 : 6,
-            offset: isDark ? const Offset(0, 2) : const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -20,
-              bottom: -20,
-              child: Container(
-                width: 110,
-                height: 110,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: valueColor.withOpacity(0.04),
-                    width: 8,
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Break Time',
-                        style: TextStyle(
-                          color: subtextColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: valueColor.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.coffee, color: valueColor, size: 18),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'BREAK DURATION (MAX 2H)',
-                    style: TextStyle(color: mutedColor, fontSize: 10, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: value,
-                          style: TextStyle(
-                            color: valueColor,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        TextSpan(
-                          text: ' / ',
-                          style: TextStyle(
-                            color: mutedColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.normal,
-                          ),
-                        ),
-                        TextSpan(
-                          text: target,
-                          style: TextStyle(
-                            color: mutedColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: LinearProgressIndicator(
-                      value: progress.clamp(0.0, 1.0),
-                      minHeight: 4,
-                      backgroundColor: isDark ? const Color(0xFF1E1F29) : const Color(0xFFE5E7EB),
-                      valueColor: const AlwaysStoppedAnimation<Color>(valueColor),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildTimerCard({
     required String title,
@@ -829,129 +888,95 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required IconData icon,
     required BuildContext context,
   }) {
+    final layout = ResponsiveLayout(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
-    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
-    final mutedColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
+    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFEEF2FF);
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     return Container(
-      height: 120,
+      padding: EdgeInsets.all(layout.scale(12.0, 16.0)),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? borderColor : valueColor.withOpacity(0.3), width: isDark ? 1 : 2),
+        borderRadius: BorderRadius.circular(layout.cardRadius),
+        border: Border.all(
+          color: isDark ? borderColor : valueColor.withOpacity(0.12),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: valueColor.withOpacity(isDark ? 0.03 : 0.05),
-            blurRadius: isDark ? 4 : 6,
-            offset: isDark ? const Offset(0, 2) : const Offset(0, 3),
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -15,
-              bottom: -15,
-              child: Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: valueColor.withOpacity(0.04),
-                    width: 6,
-                  ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  fontSize: layout.fontSizeHeading - 2,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            title,
-                            style: TextStyle(
-                              color: subtextColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 2),
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: valueColor.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(icon, color: valueColor, size: 14),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: value,
-                            style: TextStyle(
-                              color: valueColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          TextSpan(
-                            text: ' / ',
-                            style: TextStyle(
-                              color: mutedColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.normal,
-                            ),
-                          ),
-                          TextSpan(
-                            text: target,
-                            style: TextStyle(
-                              color: mutedColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.normal,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: LinearProgressIndicator(
-                      value: progress.clamp(0.0, 1.0),
-                      minHeight: 3,
-                      backgroundColor: isDark ? const Color(0xFF1E1F29) : const Color(0xFFE5E7EB),
-                      valueColor: AlwaysStoppedAnimation<Color>(valueColor),
-                    ),
-                  ),
-                ],
+              Container(
+                padding: EdgeInsets.all(layout.scale(4.0, 6.0)),
+                decoration: BoxDecoration(
+                  color: valueColor.withOpacity(0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: valueColor, size: layout.scale(14.0, 16.0)),
               ),
+            ],
+          ),
+          SizedBox(height: layout.scale(8.0, 12.0)),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: value,
+                  style: TextStyle(
+                    color: valueColor,
+                    fontSize: layout.scale(20.0, 24.0),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                TextSpan(
+                  text: ' / ',
+                  style: TextStyle(
+                    color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                    fontSize: layout.scale(12.0, 14.0),
+                    fontWeight: FontWeight.normal,
+                  ),
+                ),
+                TextSpan(
+                  text: target,
+                  style: TextStyle(
+                    color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                    fontSize: layout.scale(12.0, 14.0),
+                    fontWeight: FontWeight.normal,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          SizedBox(height: layout.scale(8.0, 12.0)),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              minHeight: 2,
+              backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFEEF2FF),
+              valueColor: AlwaysStoppedAnimation<Color>(valueColor),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -959,24 +984,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildCallCounter({
     required String label,
     required int count,
-    required Color color,
+    required Color baseColor,
+    required Color badgeBgColor,
+    required IconData icon,
     required BuildContext context,
   }) {
+    final layout = ResponsiveLayout(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
 
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(color: subtextColor, fontSize: 12, fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          count.toString(),
-          style: TextStyle(color: color, fontSize: 26, fontWeight: FontWeight.bold),
-        ),
-      ],
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        vertical: layout.scale(14.0, 20.0),
+        horizontal: layout.scale(4.0, 8.0),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: layout.scale(8.0, 10.0),
+              vertical: layout.scale(4.0, 5.0),
+            ),
+            decoration: BoxDecoration(
+              color: badgeBgColor,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: baseColor,
+                  size: layout.scale(11.0, 14.0),
+                ),
+                SizedBox(width: layout.scale(4.0, 6.0)),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: baseColor,
+                    fontSize: layout.scale(9.0, 11.0),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: layout.scale(8.0, 12.0)),
+          Text(
+            count.toString(),
+            style: TextStyle(
+              color: baseColor,
+              fontSize: layout.fontSizeLargeCount,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

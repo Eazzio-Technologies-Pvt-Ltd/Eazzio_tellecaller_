@@ -8,6 +8,7 @@ import 'package:eazzio_telecaller/services/call_service.dart';
 import 'package:eazzio_telecaller/services/recording_service.dart';
 import 'package:eazzio_telecaller/services/telemetry_service.dart';
 import 'package:eazzio_telecaller/screens/login_screen.dart';
+import 'package:eazzio_telecaller/services/layout_service.dart';
 
 class CallingScreen extends StatefulWidget {
   const CallingScreen({super.key});
@@ -341,15 +342,24 @@ class _CallingScreenState extends State<CallingScreen> {
     // Auto-detect call outcome from call logs
     await _detectCallOutcome();
 
-    setState(() {
-      _isCallActive = false;
-      _isDialing = false;
-      _showPostCallScreen = true;
-      _countdownSeconds = 30;
-    });
+    if (_detectedCallStatus == 'connected' || _detectedCallStatus == 'missed') {
+      setState(() {
+        _isCallActive = false;
+        _isDialing = false;
+        _showPostCallScreen = false;
+      });
+      await _submitAndGoToNext(recPath);
+    } else {
+      setState(() {
+        _isCallActive = false;
+        _isDialing = false;
+        _showPostCallScreen = true;
+        _countdownSeconds = 30;
+      });
 
-    // Start the 30 second auto dial countdown
-    _startCountdown(recPath);
+      // Start the 30 second auto dial countdown
+      _startCountdown(recPath);
+    }
   }
 
   void _startCountdown(String? recordingPath) {
@@ -573,6 +583,7 @@ class _CallingScreenState extends State<CallingScreen> {
     final totalLeads = _contacts.length;
     final progress = (_currentIndex + 1) / totalLeads;
 
+    final layout = ResponsiveLayout(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF0A0B10) : Colors.grey[200];
     final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
@@ -584,12 +595,12 @@ class _CallingScreenState extends State<CallingScreen> {
         backgroundColor: cardColor,
         title: Text(
           'Lead ${_currentIndex + 1} of $totalLeads',
-          style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(color: textColor, fontSize: layout.fontSizeHeading, fontWeight: FontWeight.bold),
         ),
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: EdgeInsets.all(layout.scale(14.0, 20.0)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -598,12 +609,12 @@ class _CallingScreenState extends State<CallingScreen> {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress,
-                  minHeight: 6,
+                  minHeight: layout.scale(4.0, 6.0),
                   backgroundColor: isDark ? const Color(0xFF1E1F29) : const Color(0xFFE5E7EB),
                   valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: layout.spacing),
 
               if (!_showPostCallScreen) ...[
                 // Main Contact Call Panel
@@ -621,6 +632,7 @@ class _CallingScreenState extends State<CallingScreen> {
   }
 
   Widget _buildContactPanel(dynamic contact) {
+    final layout = ResponsiveLayout(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
     final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
@@ -631,10 +643,10 @@ class _CallingScreenState extends State<CallingScreen> {
     final accentColor = const Color(0xFF6366F1); // Indigo
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(layout.scale(16.0, 24.0)),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(layout.cardRadius),
         border: Border.all(color: isDark ? borderColor : accentColor.withOpacity(0.3), width: isDark ? 1 : 2),
         boxShadow: [
           BoxShadow(
@@ -647,33 +659,40 @@ class _CallingScreenState extends State<CallingScreen> {
       child: Column(
         children: [
           CircleAvatar(
-            radius: 36,
+            radius: layout.scale(30.0, 36.0),
             backgroundColor: circleBg,
-            child: Icon(Icons.person, size: 36, color: subtextColor),
+            child: Icon(Icons.person, size: layout.scale(30.0, 36.0), color: subtextColor),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: layout.scale(12.0, 16.0)),
           Text(
             contact['name'],
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
+            style: TextStyle(fontSize: layout.fontSizeTitle, fontWeight: FontWeight.bold, color: textColor),
           ),
           const SizedBox(height: 8),
           Text(
             contact['phone_number'],
-            style: TextStyle(fontSize: 16, letterSpacing: 0.5, color: subtextColor),
+            style: TextStyle(fontSize: layout.fontSizeHeading, letterSpacing: 0.5, color: subtextColor),
           ),
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: EdgeInsets.symmetric(
+              horizontal: layout.scale(10.0, 12.0),
+              vertical: layout.scale(4.0, 6.0),
+            ),
             decoration: BoxDecoration(
               color: const Color(0x1F6366F1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               'Campaign: ${contact['campaign_name']}',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF818CF8), fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: layout.fontSizeCaption,
+                color: const Color(0xFF818CF8),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          const SizedBox(height: 40),
+          SizedBox(height: layout.scale(24.0, 40.0)),
 
           // Calling controls
           if (_isDialing) ...[
@@ -684,17 +703,17 @@ class _CallingScreenState extends State<CallingScreen> {
             Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(layout.scale(8.0, 12.0)),
                   decoration: const BoxDecoration(
                     color: Color(0x1F10B981),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.call_made, color: Color(0xFF10B981), size: 28),
+                  child: Icon(Icons.call_made, color: const Color(0xFF10B981), size: layout.scale(22.0, 28.0)),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   _formatCallDuration(_callDurationSeconds),
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: textColor),
+                  style: TextStyle(fontSize: layout.fontSizeLargeCount, fontWeight: FontWeight.bold, color: textColor),
                 ),
                 const SizedBox(height: 8),
                 const Text('Active Call Recording...', style: TextStyle(color: Color(0xFF10B981))),
@@ -704,16 +723,26 @@ class _CallingScreenState extends State<CallingScreen> {
             ElevatedButton(
               onPressed: _dialCurrentContact,
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding: EdgeInsets.symmetric(
+                  horizontal: layout.scale(20.0, 32.0),
+                  vertical: layout.scale(12.0, 16.0),
+                ),
                 backgroundColor: const Color(0xFF10B981),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(layout.cardRadius)),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.phone, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text('Dial SIM Number', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const Icon(Icons.phone, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Dial SIM Number',
+                    style: TextStyle(
+                      fontSize: layout.scale(14.0, 16.0),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -721,12 +750,12 @@ class _CallingScreenState extends State<CallingScreen> {
             TextButton.icon(
               onPressed: _toggleBreakState,
               icon: const Icon(Icons.coffee, color: Color(0xFFA855F7)),
-              label: const Text(
+              label: Text(
                 'Take a Break',
                 style: TextStyle(
-                  color: Color(0xFFA855F7),
+                  color: const Color(0xFFA855F7),
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontSize: layout.scale(13.0, 14.0),
                 ),
               ),
             ),
@@ -737,6 +766,7 @@ class _CallingScreenState extends State<CallingScreen> {
   }
 
   Widget _buildPostCallPanel() {
+    final layout = ResponsiveLayout(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
     final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
@@ -748,10 +778,10 @@ class _CallingScreenState extends State<CallingScreen> {
     final accentColor = const Color(0xFF10B981); // Green
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(layout.scale(16.0, 24.0)),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(layout.cardRadius),
         border: Border.all(color: isDark ? borderColor : accentColor.withOpacity(0.3), width: isDark ? 1 : 2),
         boxShadow: [
           BoxShadow(
@@ -767,18 +797,21 @@ class _CallingScreenState extends State<CallingScreen> {
           Text(
             'CALL DISCONNECTED',
             textAlign: TextAlign.center,
-            style: TextStyle(color: mutedColor, fontWeight: FontWeight.bold, fontSize: 12),
+            style: TextStyle(color: mutedColor, fontWeight: FontWeight.bold, fontSize: layout.fontSizeCaption),
           ),
           const SizedBox(height: 6),
           Text(
             'Duration: ${_formatCallDuration(_callDurationSeconds)}',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
+            style: TextStyle(fontSize: layout.scale(18.0, 22.0), fontWeight: FontWeight.bold, color: textColor),
           ),
           
-          const SizedBox(height: 12),
+          SizedBox(height: layout.scale(8.0, 12.0)),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: EdgeInsets.symmetric(
+              horizontal: layout.scale(12.0, 16.0),
+              vertical: layout.scale(8.0, 10.0),
+            ),
             decoration: BoxDecoration(
               color: _detectedCallStatus == 'connected' || _detectedCallStatus == 'received'
                   ? const Color(0x1F10B981)
@@ -795,7 +828,7 @@ class _CallingScreenState extends State<CallingScreen> {
                   color: _detectedCallStatus == 'connected' || _detectedCallStatus == 'received'
                       ? const Color(0xFF10B981)
                       : const Color(0xFFEF4444),
-                  size: 18,
+                  size: layout.scale(15.0, 18.0),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -808,7 +841,7 @@ class _CallingScreenState extends State<CallingScreen> {
                               : 'Detected Incoming: Missed',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    fontSize: layout.scale(11.0, 13.0),
                     color: _detectedCallStatus == 'connected' || _detectedCallStatus == 'received'
                         ? const Color(0xFF10B981)
                         : const Color(0xFFEF4444),
@@ -817,17 +850,17 @@ class _CallingScreenState extends State<CallingScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: layout.scale(8.0, 12.0)),
 
           // Follow-up Picker
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text('Schedule Follow-Up?', style: TextStyle(color: textColor, fontSize: 14)),
+            title: Text('Schedule Follow-Up?', style: TextStyle(color: textColor, fontSize: layout.scale(13.0, 14.0))),
             subtitle: Text(
               _followUpDate != null 
                   ? 'Selected: ${_followUpDate!.toLocal().toString().split(' ')[0]}' 
                   : 'Add lead to follow-up lists',
-              style: TextStyle(color: subtextColor, fontSize: 12),
+              style: TextStyle(color: subtextColor, fontSize: layout.scale(11.0, 12.0)),
             ),
             trailing: TextButton(
               onPressed: _selectFollowUpDate,
@@ -837,10 +870,10 @@ class _CallingScreenState extends State<CallingScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: layout.scale(8.0, 12.0)),
 
           // Feedback notes
-          Text('CALL NOTES / COMMENTS', style: TextStyle(color: subtextColor, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text('CALL NOTES / COMMENTS', style: TextStyle(color: subtextColor, fontSize: layout.fontSizeCaption, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           TextField(
             controller: _feedbackController,
@@ -848,20 +881,20 @@ class _CallingScreenState extends State<CallingScreen> {
             maxLines: 2,
             decoration: InputDecoration(
               hintText: 'Enter feedback or details about the call outcome...',
-              hintStyle: TextStyle(color: mutedColor, fontSize: 13),
+              hintStyle: TextStyle(color: mutedColor, fontSize: layout.fontSizeBody - 1),
               filled: true,
               fillColor: fieldFillColor,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: layout.spacing),
 
           // Countdown Timer Section
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(layout.scale(12.0, 16.0)),
             decoration: BoxDecoration(
               color: fieldFillColor,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(layout.scale(10.0, 12.0)),
             ),
             child: Column(
               children: [
@@ -869,7 +902,7 @@ class _CallingScreenState extends State<CallingScreen> {
                   _isOnBreak 
                       ? 'Auto-Dialing Paused (On Break)' 
                       : 'Next auto-dialing initiates in $_countdownSeconds seconds...',
-                  style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w500),
+                  style: TextStyle(color: textColor, fontSize: layout.fontSizeBody - 1, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -879,7 +912,7 @@ class _CallingScreenState extends State<CallingScreen> {
                         onPressed: _toggleBreakState,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _isOnBreak ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: EdgeInsets.symmetric(vertical: layout.scale(8.0, 10.0)),
                         ),
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
@@ -890,13 +923,13 @@ class _CallingScreenState extends State<CallingScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: layout.scale(8.0, 12.0)),
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () => _submitAndGoToNext(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6366F1),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: EdgeInsets.symmetric(vertical: layout.scale(8.0, 10.0)),
                         ),
                         child: const FittedBox(
                           fit: BoxFit.scaleDown,

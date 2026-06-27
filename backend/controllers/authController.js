@@ -1,8 +1,19 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
+const nodemailer = require('nodemailer');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_eazzio_telecaller_system_2026';
+
+const mailTransporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '587', 10),
+  secure: false, // false for 587
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
 // Register User — enforces telecaller cap for company admins
 exports.register = async (req, res) => {
@@ -1614,6 +1625,112 @@ exports.enableCallRecordingWithPayment = async (req, res) => {
   } catch (error) {
     console.error('Verify call recording payment error:', error);
     res.status(500).json({ error: 'Server error during call recording activation: ' + error.message });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Please provide email address.' });
+  }
+
+  try {
+    // 1. Check if email is superadmin or company admin
+    const superadminCheck = await db.queryMain('SELECT * FROM users WHERE email = $1', [email]);
+    const companyCheck = await db.queryMain('SELECT * FROM companies WHERE admin_email = $1', [email]);
+
+    if (superadminCheck.rows.length === 0 && companyCheck.rows.length === 0) {
+      return res.status(400).json({ error: 'No admin or partner account found with this email address.' });
+    }
+
+    // 2. Generate 6-digit verification code
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+    // 3. Clear existing requests and save
+    await db.queryMain('DELETE FROM password_resets WHERE email = $1', [email]);
+    await db.queryMain(
+      'INSERT INTO password_resets (email, otp, expires_at, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)',
+      [email, otp, expiresAt.toISOString()]
+    );
+
+    // 4. Send email
+    const fromEmail = process.env.FROM_EMAIL || 'eazziogroup@gmail.com';
+    const mailOptions = {
+      from: `"Eazzio Support" <${fromEmail}>`,
+      to: email,
+      subject: 'Eazzio Password Reset Code',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 500px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <h2 style="color: #6366F1; text-align: center;">Eazzio Password Reset</h2>
+          <p>You requested to reset your password. Use the following verification code to complete the request:</p>
+          <div style="font-size: 24px; font-weight: bold; background-color: #F3F4F6; padding: 15px; margin: 20px 0; text-align: center; border-radius: 8px; letter-spacing: 6px; color: #4F46E5;">
+            ${otp}
+          </div>
+          <p>This verification code is valid for 15 minutes. If you did not make this request, please ignore this email.</p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #64748b; text-align: center;">Regards,<br/>Team Eazzio Technologies Pvt Ltd</p>
+        </div>
+      `
+    };
+
+    await mailTransporter.sendMail(mailOptions);
+    res.json({ success: true, message: 'Verification OTP sent to your registered email.' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Server error while sending reset OTP: ' + error.message });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ error: 'Please provide email, verification code, and new password.' });
+  }
+
+  try {
+    // 1. Verify OTP
+    const resetRes = await db.queryMain('SELECT * FROM password_resets WHERE email = $1 AND otp = $2 ORDER BY id DESC LIMIT 1', [email, otp]);
+    if (resetRes.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid or incorrect verification code.' });
+    }
+
+    const resetRecord = resetRes.rows[0];
+    const expiresAt = new Date(resetRecord.expires_at);
+    if (expiresAt < new Date()) {
+      return res.status(400).json({ error: 'The verification code has expired. Please request a new one.' });
+    }
+
+    // 2. Hash and update password
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    if (email === 'tellecaller111@eazzio.com') {
+      await db.queryMain('UPDATE users SET password_hash = $1, plain_password = $2 WHERE email = $3', [passwordHash, newPassword, email]);
+    } else {
+      // Company Admin
+      // Update master database companies table
+      await db.queryMain('UPDATE companies SET admin_password_hash = $1, admin_plain_password = $2 WHERE admin_email = $3', [passwordHash, newPassword, email]);
+      
+      // Update tenant database users table (where role = admin)
+      const compCheck = await db.queryMain('SELECT reg_num FROM companies WHERE admin_email = $1', [email]);
+      if (compCheck.rows.length > 0) {
+        const regNum = compCheck.rows[0].reg_num;
+        await db.dbStorage.run({ companyRegNum: regNum }, async () => {
+          await db.query("UPDATE users SET password_hash = $1, plain_password = $2 WHERE role = 'admin'", [passwordHash, newPassword]);
+        });
+      }
+    }
+
+    // 3. Clear reset token
+    await db.queryMain('DELETE FROM password_resets WHERE email = $1', [email]);
+
+    res.json({ success: true, message: 'Password reset successfully. You can now login with your new password.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Server error while resetting password: ' + error.message });
   }
 };
 

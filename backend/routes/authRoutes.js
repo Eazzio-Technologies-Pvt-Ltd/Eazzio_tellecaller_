@@ -6,6 +6,8 @@ const authMiddleware = require('../middleware/auth');
 router.post('/register', authMiddleware('admin'), authController.register);
 router.post('/register-bulk', authMiddleware('admin'), authController.registerBulk);
 router.post('/login', authController.login);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
 router.post('/status', authMiddleware(), authController.updateStatus);
 router.get('/me', authMiddleware(), authController.getMe);
 router.get('/telecallers', authMiddleware('admin'), authController.getTelecallers);
