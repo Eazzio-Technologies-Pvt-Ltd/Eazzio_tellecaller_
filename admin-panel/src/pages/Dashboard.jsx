@@ -568,7 +568,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
 
   return (
     <div>
-      <div style={styles.dashboardHeader}>
+    <div style={styles.dashboardHeader} className="dashboard-header-row">
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
           <div>
             <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Company Registration Code</span>
@@ -584,19 +584,21 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             </div>
           )}
         </div>
-        <div style={styles.headerActions}>
+        <div style={styles.headerActions} className="dashboard-header-actions">
           <div style={styles.searchWrapper}>
             <Search size={16} color="var(--text-muted)" style={styles.searchIcon} />
             <input 
               type="text" 
               placeholder="Search..." 
               style={styles.searchInput}
+              className="dashboard-search-input"
             />
           </div>
           <select
             value={selectedTelecaller}
             onChange={(e) => setSelectedTelecaller(e.target.value)}
             style={styles.telecallerSelect}
+            className="dashboard-telecaller-select"
             title="Filter by Telecaller"
           >
             <option value="">All Telecallers</option>
@@ -1367,12 +1369,15 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: '1rem',
+    flexWrap: 'wrap',
+    rowGap: '10px',
   },
   headerActions: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
+    gap: '8px',
     position: 'relative',
+    flexWrap: 'wrap',
   },
   notificationsPopover: {
     position: 'absolute',
@@ -1402,8 +1407,8 @@ const styles = {
     textAlign: 'left',
   },
   telecallerSelect: {
-    padding: '0 1rem',
-    height: '42px',
+    padding: '0 0.75rem',
+    height: '38px',
     borderRadius: '10px',
     border: '1px solid var(--border-color)',
     background: 'var(--bg-card)',
@@ -1412,7 +1417,7 @@ const styles = {
     outline: 'none',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-    minWidth: '180px',
+    minWidth: '140px',
   },
   headerActionBtn: {
     width: '42px',

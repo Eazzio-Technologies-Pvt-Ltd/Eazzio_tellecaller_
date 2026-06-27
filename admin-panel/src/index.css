@@ -1868,5 +1868,327 @@ tr:hover td {
   background-color: var(--bg-card-hover) !important;
 }
 
+/* =================================================================
+   350px – 767px: Hamburger Sidebar + Content Arrangement
+   Applies to phones and small tablets in portrait mode
+   ================================================================= */
+@media screen and (min-width: 350px) and (max-width: 767px) {
 
+  /* ── Layout shell ──────────────────────────────────────────── */
+  html, body, #root {
+    overflow-x: hidden !important;
+    width: 100vw !important;
+  }
 
+  .app-container {
+    display: block !important;
+    flex-direction: unset !important;
+  }
+
+  /* ── Sticky top hamburger bar ──────────────────────────────── */
+  .mobile-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0.65rem 1rem !important;
+    position: sticky !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    z-index: 200 !important;
+    background: var(--bg-secondary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18) !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ── Hamburger toggle button ───────────────────────────────── */
+  .mobile-menu-toggle {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 10px !important;
+    background: rgba(124, 58, 237, 0.12) !important;
+    border: 1px solid rgba(124, 58, 237, 0.2) !important;
+    color: var(--text-primary) !important;
+    cursor: pointer !important;
+    transition: background 0.2s, transform 0.15s !important;
+  }
+
+  .mobile-menu-toggle:hover,
+  .mobile-menu-toggle:active {
+    background: rgba(124, 58, 237, 0.22) !important;
+    transform: scale(1.05) !important;
+  }
+
+  /* ── Sidebar: slide in / slide out ────────────────────────── */
+  aside {
+    position: fixed !important;
+    top: 0 !important;
+    left: -280px !important;
+    width: 260px !important;
+    height: 100vh !important;
+    z-index: 300 !important;
+    transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: none !important;
+  }
+
+  aside.open {
+    left: 0 !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.45) !important;
+  }
+
+  /* ── Dark overlay when sidebar is open ────────────────────── */
+  .mobile-sidebar-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.55) !important;
+    backdrop-filter: blur(3px) !important;
+    z-index: 250 !important;
+    animation: fadeIn 0.2s ease-out !important;
+  }
+
+  /* ── Main content: full width, no left margin ──────────────── */
+  .main-content {
+    margin-left: 0 !important;
+    padding: 1rem !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  /* ── Stat cards: single column ────────────────────────────── */
+  .grid-stats {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.85rem !important;
+    margin-bottom: 1.25rem !important;
+  }
+
+  .stat-card {
+    padding: 1rem !important;
+  }
+
+  /* ── Chart grid: stack vertically ─────────────────────────── */
+  .grid-charts {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  /* ── Bottom grid ───────────────────────────────────────────── */
+  .bottom-grid {
+    flex-direction: column !important;
+    gap: 1rem !important;
+    margin-top: 1rem !important;
+  }
+
+  .bottom-grid-left,
+  .bottom-grid-right {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* ── Tables: horizontal scroll ────────────────────────────── */
+  table,
+  .table,
+  .telecallers-table {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    white-space: nowrap !important;
+  }
+
+  /* ── Monitor grid: single column ──────────────────────────── */
+  .monitor-grid-container,
+  .live-monitor-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.85rem !important;
+  }
+
+  /* ── Glass cards ───────────────────────────────────────────── */
+  .glass-card {
+    padding: 1rem !important;
+    border-radius: 12px !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  /* ── Page-level header rows: keep flex but shrink ─────────── */
+  .dashboard-section-header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* ── Leaderboard ────────────────────────────────────────────── */
+  .leaderboard-body {
+    padding: 0.85rem !important;
+    gap: 0.85rem !important;
+  }
+
+  .log-item-card {
+    padding: 0.7rem 0.85rem !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+  }
+
+  .log-item-name {
+    font-size: 0.82rem !important;
+  }
+
+  .log-item-meta {
+    font-size: 0.68rem !important;
+  }
+
+  /* ── Modals ────────────────────────────────────────────────── */
+  .modal-overlay {
+    padding: 12px !important;
+    align-items: center !important;
+  }
+
+  .modal-content {
+    width: 95% !important;
+    max-width: 420px !important;
+    padding: 1.25rem !important;
+    border-radius: 14px !important;
+    box-sizing: border-box !important;
+  }
+
+  .modal-actions {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .modal-actions button {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  /* ── Form inputs ───────────────────────────────────────────── */
+  input, select, textarea {
+    font-size: 0.9rem !important;
+    padding: 0.6rem 0.85rem !important;
+    border-radius: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ── Plan selection grid ───────────────────────────────────── */
+  .plan-selection-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* ── Typography scale ──────────────────────────────────────── */
+  h1 {
+    font-size: 1.35rem !important;
+  }
+
+  h2 {
+    font-size: 1.05rem !important;
+  }
+
+  /* ── Buttons ───────────────────────────────────────────────── */
+  .btn {
+    padding: 0.55rem 0.9rem !important;
+    font-size: 0.83rem !important;
+  }
+
+  /* ── Audio player ──────────────────────────────────────────── */
+  audio {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     Dashboard Header — Stack vertically on mobile
+     (Image 2: Company reg code on top, search+select below)
+  ───────────────────────────────────────────────────────────── */
+
+  /* Outer header row: stack vertically */
+  div[style*="justifyContent: 'space-between'"][style*="alignItems: 'center'"],
+  div[style*="justify-content: space-between"][style*="align-items: center"] {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  /* Dashboard-specific header: force column stack */
+  .dashboard-header-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  /* Header actions (search + select + buttons): wrap and shrink */
+  .dashboard-header-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    align-items: center !important;
+  }
+
+  /* Search input: take available space */
+  .dashboard-search-input {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 !important;
+    font-size: 0.82rem !important;
+    padding: 7px 10px 7px 34px !important;
+    height: 38px !important;
+  }
+
+  /* Telecaller select: full width on mobile */
+  .dashboard-telecaller-select {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 38px !important;
+    font-size: 0.82rem !important;
+    flex: 1 !important;
+  }
+
+  /* ── Stat cards: 2-column grid for 350-767px ───────────────── */
+  .grid-stats {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.75rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  /* Stat card padding & font compression */
+  .glass-card.stat-card {
+    padding: 0.85rem !important;
+    gap: 0.6rem !important;
+  }
+
+  .stat-icon-wrapper {
+    width: 38px !important;
+    height: 38px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .stat-value {
+    font-size: 1.3rem !important;
+  }
+
+  .stat-label {
+    font-size: 0.72rem !important;
+  }
+
+  /* ── Company reg code title shrink ─────────────────────────── */
+  h1[style*="fontSize: '1.5rem'"],
+  h1[style*="font-size: 1.5rem"] {
+    font-size: 1.1rem !important;
+  }
+
+  /* ── Grid charts: single column ─────────────────────────────── */
+  .grid-charts {
+    grid-template-columns: 1fr !important;
+    gap: 0.85rem !important;
+  }
+}

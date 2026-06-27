@@ -251,13 +251,14 @@ button, input, select {
 
 .btn-login {
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1.5px solid var(--border-light);
+  color: #2563eb;
+  border: 1.5px solid rgba(37, 99, 235, 0.45);
 }
 
 .btn-login:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  border-color: #2563eb;
+  color: #1d4ed8;
+  background-color: rgba(37, 99, 235, 0.06);
 }
 
 /* Mobile Nav Toggle */
@@ -1803,5 +1804,234 @@ html, body {
   .footer-store-buttons-custom, .app-banner-store-buttons-custom {
     justify-content: center !important;
     width: 100%;
+  }
+}
+
+/* ============================================================
+   380px – 450px: Small phone nav button layout
+   ============================================================ */
+@media (min-width: 380px) and (max-width: 450px) {
+  .nav-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .btn-login {
+    background-color: transparent !important;
+    color: #2563eb !important;
+    border: 1.5px solid rgba(37, 99, 235, 0.5) !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+  }
+
+  .btn-primary {
+    padding: 5px 10px !important;
+    font-size: 0.7rem !important;
+    white-space: nowrap !important;
+    border-radius: 6px !important;
+  }
+
+  .nav-container {
+    padding: 0 10px !important;
+  }
+}
+
+/* ============================================================
+   350px – 767px: Full Landing Page Mobile Layout
+   ============================================================ */
+@media screen and (min-width: 350px) and (max-width: 767px) {
+
+  /* ── Body & overflow ───────────────────────────────────────── */
+  html, body {
+    overflow-x: hidden !important;
+    width: 100vw !important;
+  }
+
+  /* ── Navbar ────────────────────────────────────────────────── */
+  .header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    z-index: 99999 !important;
+    padding: 0 !important;
+  }
+
+  .nav-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 16px !important;
+    height: 60px !important;
+  }
+
+  /* Hide desktop nav links */
+  .nav-menu {
+    display: none !important;
+  }
+
+  /* Show Login + Get Started compactly */
+  .nav-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .btn-login {
+    background-color: transparent !important;
+    color: #2563eb !important;
+    border: 1.5px solid rgba(37, 99, 235, 0.5) !important;
+    border-radius: 6px !important;
+    padding: 6px 12px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+  }
+
+  .btn-primary {
+    padding: 6px 12px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    border-radius: 6px !important;
+  }
+
+  .mobile-nav-toggle {
+    display: none !important;
+  }
+
+  /* ── Hero Section ──────────────────────────────────────────── */
+  .hero-section {
+    padding-top: 90px !important;
+    padding-bottom: 60px !important;
+  }
+
+  .hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+    text-align: center !important;
+  }
+
+  .hero-content {
+    align-items: center !important;
+  }
+
+  .hero-badge {
+    align-self: center !important;
+  }
+
+  .hero-title {
+    font-size: 1.8rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .hero-subtitle {
+    font-size: 0.95rem !important;
+    max-width: 100% !important;
+  }
+
+  .hero-checkmarks {
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .hero-cta-wrapper {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+
+  /* ── Section generic ───────────────────────────────────────── */
+  .section {
+    padding: 56px 0 !important;
+  }
+
+  .container {
+    padding: 0 16px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ── Section headings ──────────────────────────────────────── */
+  .highlight-title,
+  .features-title,
+  .pricing-title,
+  .faq-title,
+  .cta-title {
+    font-size: 1.6rem !important;
+    line-height: 1.25 !important;
+  }
+
+  /* ── Highlight cards ───────────────────────────────────────── */
+  .highlight-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    max-width: 100% !important;
+    margin: 48px auto 0 !important;
+  }
+
+  /* ── Feature items ─────────────────────────────────────────── */
+  .feature-item {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+    text-align: center !important;
+  }
+
+  .feature-item.reverse {
+    direction: ltr !important;
+  }
+
+  .feature-img-wrapper {
+    max-width: 100% !important;
+  }
+
+  /* ── Pricing grid ──────────────────────────────────────────── */
+  .pricing-grid {
+    grid-template-columns: 1fr !important;
+    max-width: 420px !important;
+    margin: 0 auto !important;
+    gap: 20px !important;
+  }
+
+  /* ── FAQ ───────────────────────────────────────────────────── */
+  .faq-list {
+    max-width: 100% !important;
+  }
+
+  /* ── Footer ────────────────────────────────────────────────── */
+  .footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+    padding: 0 16px !important;
+  }
+
+  .footer-bottom {
+    padding: 20px 16px 0 !important;
+  }
+
+  .footer-copyright {
+    flex-direction: column !important;
+    gap: 6px !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  /* ── CTA section ───────────────────────────────────────────── */
+  .cta-container {
+    padding: 0 16px !important;
+  }
+
+  /* ── Clients logo scroll ───────────────────────────────────── */
+  .clients-logo-track {
+    padding: 0 16px !important;
   }
 }

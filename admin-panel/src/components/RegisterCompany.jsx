@@ -410,7 +410,7 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
               Include Call Recording Add-on
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              Record all telecaller calls automatically. Only {planType === 'annual' ? '₹999 / year' : '₹99 / month'}.
+              Record all telecaller calls automatically. Only {planType === 'annual' ? '₹399 / year' : '₹49 / month'}.
             </div>
           </div>
         </div>

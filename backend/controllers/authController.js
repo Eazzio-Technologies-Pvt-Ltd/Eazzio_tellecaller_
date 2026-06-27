@@ -539,7 +539,7 @@ exports.getSuperadminStats = async (req, res) => {
         }
         const expiry = new Date(expiryStr);
         if (expiry >= now) {
-          totalCharge += plan === 'annual' ? 999 : 99;
+          totalCharge += plan === 'annual' ? 399 : 49;
         }
       }
     }
@@ -981,7 +981,7 @@ exports.createRazorpayOrder = async (req, res) => {
 
   let recordingCharge = 0;
   if (includeCallRecording) {
-    recordingCharge = plan === 'annual' ? 999 : 99;
+    recordingCharge = plan === 'annual' ? 399 : 49;
     totalAmount += recordingCharge;
   }
 
@@ -1490,8 +1490,8 @@ exports.createCallRecordingOrder = async (req, res) => {
     const company = compCheck.rows[0];
     const plan = company.plan_type || 'monthly';
 
-    // Charge: Monthly is ₹99. Annual is ₹999
-    const totalAmount = plan === 'annual' ? 999 : 99;
+    // Charge: Monthly is ₹49. Annual is ₹399
+    const totalAmount = plan === 'annual' ? 399 : 49;
     const amountInPaise = totalAmount * 100;
 
     const keyId = process.env.RAZORPAY_KEY_ID;

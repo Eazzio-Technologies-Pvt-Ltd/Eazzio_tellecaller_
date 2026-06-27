@@ -15,8 +15,8 @@ const CallLogs = ({ user }) => {
   const isCompanyAdmin = user && user.companyRegNum;
   const isDemo = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-');
   const isAnnual = user?.planType === 'annual';
-  // Pricing: ₹99/month extra for monthly plan, ₹999/year for annual plan
-  const recordingPrice = isAnnual ? '₹999/year' : '₹99/month';
+  // Pricing: ₹49/month extra for monthly plan, ₹399/year for annual plan
+  const recordingPrice = isAnnual ? '₹399/year' : '₹49/month';
 
   const parseDbDate = (dateString) => {
     if (!dateString) return new Date();

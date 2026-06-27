@@ -1952,3 +1952,38 @@ body {
     width: 100%;
   }
 }
+
+/* ============================================================
+   380px – 450px: Small phone nav button layout
+   ============================================================ */
+@media (min-width: 380px) and (max-width: 450px) {
+  .nav-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .btn-login {
+    background-color: transparent !important;
+    color: #2563eb !important;
+    border: 2px solid rgba(37, 99, 235, 0.5) !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+  }
+
+  .btn-primary {
+    padding: 5px 10px !important;
+    font-size: 0.7rem !important;
+    white-space: nowrap !important;
+    border-radius: 6px !important;
+  }
+
+  .nav-container {
+    padding: 0 10px !important;
+  }
+}

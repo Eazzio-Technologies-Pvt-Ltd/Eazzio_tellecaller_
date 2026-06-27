@@ -78,7 +78,7 @@ const BillingPage = ({ theme, user }) => {
         
         const seatsBill = plan === 'annual' ? seats * rate * 12 : seats * rate;
         const editSurcharge = Math.max(0, edits - 3) * 20;
-        const recordingBill = recActive ? (plan === 'annual' ? 999 : 99) : 0;
+        const recordingBill = recActive ? (plan === 'annual' ? 399 : 49) : 0;
         setCompanyBill(seatsBill + editSurcharge + recordingBill);
       } else {
         // Superadmin: Fetch global metrics and all registered companies
@@ -343,7 +343,7 @@ const BillingPage = ({ theme, user }) => {
                           Inactive
                         </span>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginTop: '2px' }}>
-                          ₹{planType === 'annual' ? '999/year' : '99/month'}
+                          ₹{planType === 'annual' ? '399/year' : '49/month'}
                         </span>
                         {paymentError && (
                           <span style={{ fontSize: '0.7rem', color: '#ef4444', display: 'block', marginTop: '4px' }}>
@@ -468,10 +468,10 @@ const BillingPage = ({ theme, user }) => {
                           <td style={{ ...styles.td, fontWeight: '700', color: 'var(--text-primary)' }}>
                             Call Recording Add-on ({planType === 'annual' ? 'Growth Plan — 1 Year' : 'Starter Plan — 1 Month'})
                           </td>
-                          <td style={styles.td}>₹{planType === 'annual' ? '999' : '99'} / {planType === 'annual' ? 'year' : 'month'}</td>
+                          <td style={styles.td}>₹{planType === 'annual' ? '399' : '49'} / {planType === 'annual' ? 'year' : 'month'}</td>
                           <td style={styles.td}>Active (Expires: {formatDate(callRecordingEndDate)})</td>
                           <td style={{ ...styles.td, textAlign: 'right', fontWeight: '800', color: '#10b981' }}>
-                            ₹{planType === 'annual' ? '999' : '99'}
+                            ₹{planType === 'annual' ? '399' : '49'}
                           </td>
                         </tr>
                       );
