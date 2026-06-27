@@ -3,17 +3,24 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const nodemailer = require('nodemailer');
 
+require('dotenv').config();
+
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_eazzio_telecaller_system_2026';
 
 const mailTransporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT || '587', 10),
-  secure: false, // false for 587
+  secure: process.env.SMTP_SECURE === 'true' || parseInt(process.env.SMTP_PORT || '587', 10) === 465,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  tls: {
+    // Helpful to circumvent handshake or self-signed cert issues on various servers
+    rejectUnauthorized: false
+  }
 });
+
 
 // Register User — enforces telecaller cap for company admins
 exports.register = async (req, res) => {
