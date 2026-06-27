@@ -320,13 +320,19 @@ exports.registerCompany = async (req, res) => {
 
 // Register a new demo company (1 week trial working mode)
 exports.registerDemoCompany = async (req, res) => {
-  const { name, email, macAddress } = req.body;
+  const { name, email, password, macAddress } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Please provide both name and email.' });
   }
 
   try {
+    // Check if company admin email already exists in master db companies table
+    const companyExists = await db.queryMain('SELECT * FROM companies WHERE admin_email = $1', [email]);
+    if (companyExists.rows.length > 0) {
+      return res.status(400).json({ error: 'A company with this admin email is already registered.' });
+    }
+
     // Check MAC Address/Device lock for demo accounts
     if (macAddress) {
       const checkMac = await db.queryMain("SELECT * FROM companies WHERE mac_address = $1 AND reg_num LIKE 'EAZ-DEMO-%'", [macAddress]);
@@ -348,7 +354,7 @@ exports.registerDemoCompany = async (req, res) => {
     }
 
     const companyName = `${name}'s Demo Company`;
-    const defaultPassword = 'demopassword123';
+    const defaultPassword = password || 'demopassword123';
     const salt = await bcrypt.genSalt(10);
     const adminPasswordHash = await bcrypt.hash(defaultPassword, salt);
 

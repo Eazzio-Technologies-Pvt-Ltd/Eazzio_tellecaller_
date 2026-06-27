@@ -370,6 +370,7 @@ const App = () => {
   const [showDemoPage, setShowDemoPage] = useState(false);
   const [demoName, setDemoName] = useState('');
   const [demoEmail, setDemoEmail] = useState('');
+  const [demoPassword, setDemoPassword] = useState('');
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoError, setDemoError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -638,8 +639,8 @@ const App = () => {
     setDemoError('');
     setDemoLoading(true);
 
-    if (!demoName || !demoEmail) {
-      setDemoError('Please provide both name and email.');
+    if (!demoName || !demoEmail || !demoPassword) {
+      setDemoError('Please provide name, email, and password.');
       setDemoLoading(false);
       return;
     }
@@ -653,6 +654,7 @@ const App = () => {
         body: JSON.stringify({ 
           name: demoName, 
           email: demoEmail,
+          password: demoPassword,
           macAddress: getDemoDeviceId()
         })
       });
@@ -669,6 +671,11 @@ const App = () => {
       setUser(data.user);
       setActiveTab('dashboard');
       setShowDemoPage(false);
+
+      // Reset demo registration states
+      setDemoName('');
+      setDemoEmail('');
+      setDemoPassword('');
     } catch (err) {
       setDemoError(err.message);
     } finally {
@@ -802,6 +809,21 @@ const App = () => {
                     placeholder="Enter your email" 
                     value={demoEmail}
                     onChange={(e) => setDemoEmail(e.target.value)}
+                    required
+                    className="auth-input-field"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="auth-input-label">Choose Password</label>
+                <div className="auth-input-container">
+                  <Lock size={18} className="auth-input-icon" />
+                  <input 
+                    type="password" 
+                    placeholder="Create a password" 
+                    value={demoPassword}
+                    onChange={(e) => setDemoPassword(e.target.value)}
                     required
                     className="auth-input-field"
                   />
