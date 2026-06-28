@@ -200,7 +200,7 @@ async function initializeSchema() {
       admin_email VARCHAR(100) UNIQUE NOT NULL,
       admin_password_hash VARCHAR(255) NOT NULL,
       admin_plain_password VARCHAR(255) NOT NULL,
-      price_per_telecaller INTEGER DEFAULT 49,
+      price_per_telecaller INTEGER DEFAULT 59,
       plan_type VARCHAR(20) DEFAULT 'monthly',
       subscription_start ${timestampType},
       subscription_end ${timestampType},

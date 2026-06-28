@@ -360,11 +360,11 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
       : 0;
 
     const starterPlanCount = data.companies
-      ? data.companies.filter(c => (c.price_per_telecaller || 59) === 59).length
+      ? data.companies.filter(c => (c.plan_type || 'monthly') === 'monthly').length
       : 0;
 
     const growthPlanCount = data.companies
-      ? data.companies.filter(c => (c.price_per_telecaller || 59) !== 59).length
+      ? data.companies.filter(c => c.plan_type === 'annual').length
       : 0;
 
     const formatDateStr = (dateString) => {
@@ -521,11 +521,23 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
                         textTransform: 'uppercase',
                         padding: '4px 8px',
                         borderRadius: '6px',
-                        backgroundColor: (comp.price_per_telecaller || 59) === 59 ? 'rgba(124, 58, 237, 0.12)' : 'rgba(37, 99, 235, 0.12)',
-                        color: (comp.price_per_telecaller || 59) === 59 ? '#7c3aed' : '#2563eb',
+                        backgroundColor: comp.plan_type === 'annual' 
+                          ? 'rgba(37, 99, 235, 0.12)' 
+                          : comp.plan_type === 'demo' 
+                            ? 'rgba(16, 185, 129, 0.12)' 
+                            : 'rgba(124, 58, 237, 0.12)',
+                        color: comp.plan_type === 'annual' 
+                          ? '#2563eb' 
+                          : comp.plan_type === 'demo' 
+                            ? '#10b981' 
+                            : '#7c3aed',
                         letterSpacing: '0.5px'
                       }}>
-                        {(comp.price_per_telecaller || 59) === 59 ? 'Starter (₹59)' : 'Growth (₹99)'}
+                        {comp.plan_type === 'annual' 
+                          ? `Growth (₹${comp.price_per_telecaller || 49})` 
+                          : comp.plan_type === 'demo' 
+                            ? 'Demo (Free)' 
+                            : `Starter (₹${comp.price_per_telecaller || 59})`}
                       </span>
                     </td>
                     <td style={{ padding: '16px', fontSize: '0.95rem', color: '#10b981', fontWeight: '800' }}>

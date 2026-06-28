@@ -301,7 +301,7 @@ exports.registerCompany = async (req, res) => {
     // 4. Insert company into master db companies table
     await db.queryMain(
       'INSERT INTO companies (name, nature, no_of_telecallers, reg_num, admin_email, admin_password_hash, admin_plain_password, price_per_telecaller) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-      [name, nature, numCallers, regNum, email, adminPasswordHash, password, 49]
+      [name, nature, numCallers, regNum, email, adminPasswordHash, password, 59]
     );
 
     // 5. Provision the isolated database schema for the company
