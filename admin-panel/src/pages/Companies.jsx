@@ -285,11 +285,11 @@ const Companies = () => {
         <div className="live-monitor-grid" style={{ ...styles.grid, gridTemplateColumns: colsStyle }}>
           {filteredCompanies.map(c => {
             const addedTelecallers = c.telecaller_count || 0;
-            const pricePerCaller = c.price_per_telecaller || 49;
+            const pricePerCaller = c.plan_type === 'demo' ? 0 : (c.plan_type === 'annual' ? 49 : 59);
             const totalCharge = addedTelecallers * pricePerCaller;
             const isExpired = c.subscription_end ? new Date(c.subscription_end) < new Date() : false;
             const expiryStr = formatDate(c.subscription_end);
-            const planText = c.plan_type ? c.plan_type.charAt(0).toUpperCase() + c.plan_type.slice(1) : 'Monthly';
+            const planText = c.plan_type === 'demo' ? 'Free Plan' : (c.plan_type === 'annual' ? 'Growth' : 'Starter');
 
             return (
               <div 
@@ -436,7 +436,11 @@ const Companies = () => {
                   <div style={styles.infoField}>
                     <span style={styles.infoLabel}>Billing Plan Type</span>
                     <span style={{ ...styles.infoValue, textTransform: 'capitalize' }}>
-                      {selectedCompany.plan_type || 'monthly'}
+                      {selectedCompany.plan_type === 'annual' 
+                        ? 'Growth' 
+                        : selectedCompany.plan_type === 'demo' 
+                          ? 'Free Plan' 
+                          : 'Starter'}
                     </span>
                   </div>
                   <div style={styles.infoField}>
@@ -453,7 +457,7 @@ const Companies = () => {
                   <div style={styles.infoField}>
                     <span style={styles.infoLabel}>Monthly Revenue Generated</span>
                     <span style={{ ...styles.infoValue, color: '#10b981', fontWeight: '800' }}>
-                      ₹{(selectedCompany.telecaller_count || 0) * (selectedCompany.price_per_telecaller || 49)} ({(selectedCompany.telecaller_count || 0)} active telecallers)
+                      ₹{(selectedCompany.telecaller_count || 0) * (selectedCompany.plan_type === 'demo' ? 0 : (selectedCompany.plan_type === 'annual' ? 49 : 59))} ({(selectedCompany.telecaller_count || 0)} active telecallers)
                     </span>
                   </div>
                 </div>

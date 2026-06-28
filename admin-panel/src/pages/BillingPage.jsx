@@ -52,7 +52,7 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
 
         const seats = data.noOfTelecallers || 0;
         const plan = data.planType || 'monthly';
-        const rate = data.pricePerTelecaller || (plan === 'annual' ? 49 : 59);
+        const rate = plan === 'demo' ? 0 : (plan === 'annual' ? 49 : 59);
 
         setPlanType(plan);
         setNoOfTelecallers(seats);
@@ -732,7 +732,7 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
                   const callerCount = comp.telecaller_count || 0;
                   const seats = comp.no_of_telecallers || 0;
                   const plan = comp.plan_type || 'monthly';
-                  const rate = comp.price_per_telecaller || (plan === 'annual' ? 49 : 59);
+                  const rate = plan === 'demo' ? 0 : (plan === 'annual' ? 49 : 59);
                   const subscriptionCharge = plan === 'annual' ? seats * rate * 12 : seats * rate;
 
                   const edits = comp.edit_count || 0;

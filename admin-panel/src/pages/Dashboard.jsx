@@ -356,7 +356,10 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
   // Superadmin dashboard early return
   if (activeUser && (activeUser.companyRegNum === null || activeUser.email === 'tellecaller111@eazzio.com')) {
     const totalMonthlyRevenue = data.companies
-      ? data.companies.reduce((sum, comp) => sum + ((comp.price_per_telecaller || 59) * (comp.telecaller_count || 0)), 0)
+      ? data.companies.reduce((sum, comp) => {
+          const rate = comp.plan_type === 'demo' ? 0 : (comp.plan_type === 'annual' ? 49 : 59);
+          return sum + (rate * (comp.telecaller_count || 0));
+        }, 0)
       : 0;
 
     const starterPlanCount = data.companies
@@ -534,10 +537,10 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
                         letterSpacing: '0.5px'
                       }}>
                         {comp.plan_type === 'annual' 
-                          ? `Growth (₹${comp.price_per_telecaller || 49})` 
+                          ? 'Growth (₹49)' 
                           : comp.plan_type === 'demo' 
-                            ? 'Demo (Free)' 
-                            : `Starter (₹${comp.price_per_telecaller || 59})`}
+                            ? 'Free Plan (₹0)' 
+                            : 'Starter (₹59)'}
                       </span>
                     </td>
                     <td style={{ padding: '16px', fontSize: '0.95rem', color: '#10b981', fontWeight: '800' }}>

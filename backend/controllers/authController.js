@@ -446,7 +446,9 @@ exports.getSuperadminStats = async (req, res) => {
       const plan = comp.plan_type || 'monthly';
       const seats = comp.no_of_telecallers || 0;
       let subscriptionCharge = 0;
-      if (plan === 'annual') {
+      if (plan === 'demo') {
+        subscriptionCharge = 0;
+      } else if (plan === 'annual') {
         subscriptionCharge = seats * 49 * 12;
       } else {
         subscriptionCharge = seats * 59;
@@ -907,7 +909,7 @@ exports.getCompanyBillingDetails = async (req, res) => {
       planType: company.plan_type || 'monthly',
       subscriptionStart: company.subscription_start || null,
       subscriptionEnd: company.subscription_end || null,
-      pricePerTelecaller: company.price_per_telecaller || 59,
+      pricePerTelecaller: company.plan_type === 'demo' ? 0 : (company.plan_type === 'annual' ? 49 : 59),
       callRecordingEnabled: company.call_recording_enabled === 1,
       callRecordingEndDate: company.call_recording_end_date || null,
       telecallers: telecallersResult.rows
