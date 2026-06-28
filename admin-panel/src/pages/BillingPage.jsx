@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import API_BASE_URL from '../config/api';
-import { IndianRupee, RefreshCw, Building, Users, Calendar, ArrowUpRight, ShieldAlert, FileText, Printer, Mic } from 'lucide-react';
+import RegisterCompany from '../components/RegisterCompany';
+import { IndianRupee, RefreshCw, Building, Users, Calendar, ArrowUpRight, ShieldAlert, FileText, Printer, Mic, ArrowRight } from 'lucide-react';
 
-const BillingPage = ({ theme, user }) => {
+const BillingPage = ({ theme, user, setToken, setUser }) => {
   const isLight = theme === 'light';
   const isCompanyAdmin = user && user.companyRegNum !== null;
 
@@ -23,6 +24,8 @@ const BillingPage = ({ theme, user }) => {
   const [callRecordingEndDate, setCallRecordingEndDate] = useState(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState('');
+  const [showUpgradeForm, setShowUpgradeForm] = useState(false);
+  const [upgradeSuccess, setUpgradeSuccess] = useState(false);
 
   // Common States
   const [loading, setLoading] = useState(true);
@@ -76,9 +79,9 @@ const BillingPage = ({ theme, user }) => {
           }
         }
         
-        const seatsBill = plan === 'annual' ? seats * rate * 12 : seats * rate;
-        const editSurcharge = Math.max(0, edits - 3) * 20;
-        const recordingBill = recActive ? (plan === 'annual' ? 399 : 49) : 0;
+        const seatsBill = plan === 'demo' ? 0 : (plan === 'annual' ? seats * rate * 12 : seats * rate);
+        const editSurcharge = plan === 'demo' ? 0 : Math.max(0, edits - 3) * 20;
+        const recordingBill = plan === 'demo' ? 0 : (recActive ? (plan === 'annual' ? 399 : 49) : 0);
         setCompanyBill(seatsBill + editSurcharge + recordingBill);
       } else {
         // Superadmin: Fetch global metrics and all registered companies
@@ -260,8 +263,118 @@ const BillingPage = ({ theme, user }) => {
       ) : isCompanyAdmin ? (
         // ── COMPANY ADMIN BILLING VIEW ──────────────────────────────────────────
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Billing Overview stats */}
-          <div className="grid-stats no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+
+          {/* Demo Upgrade Banner / Form */}
+          {planType === 'demo' && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1))',
+              border: '1px solid rgba(99,102,241,0.3)',
+              borderRadius: '16px',
+              padding: '2rem',
+              textAlign: 'center'
+            }}>
+              {upgradeSuccess ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ fontSize: '2.5rem' }}>🎉</div>
+                  <h3 style={{ margin: 0, color: '#6366f1', fontSize: '1.4rem', fontWeight: '800' }}>Subscription Activated!</h3>
+                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Your account has been upgraded. Please refresh the page to continue with your new registration code.</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    style={{ padding: '10px 24px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem' }}
+                  >
+                    Refresh Now
+                  </button>
+                </div>
+              ) : showUpgradeForm ? (
+                <div style={{ textAlign: 'left' }}>
+                  <button
+                    onClick={() => setShowUpgradeForm(false)}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontWeight: '700', fontSize: '0.85rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    ← Back
+                  </button>
+                  <RegisterCompany
+                    theme={theme === 'light' ? 'light' : 'dark'}
+                    renewalMode={true}
+                    prefillEmail={user.email}
+                    prefillNoOfTelecallers={user.noOfTelecallers || 1}
+                    onBack={() => setShowUpgradeForm(false)}
+                    onRenewalSuccess={(data) => {
+                      setShowUpgradeForm(false);
+                      // Store new token so page refresh works correctly
+                      const activeToken = (data && data.token) ? data.token : localStorage.getItem('token');
+                      if (data && data.token) {
+                        localStorage.setItem('token', data.token);
+                        if (setToken) setToken(data.token);
+                      }
+                      
+                      // Fetch updated profile
+                      fetch(`${API_BASE_URL}/api/auth/me`, {
+                        headers: {
+                          'Authorization': `Bearer ${activeToken}`
+                        }
+                      })
+                      .then(res => res.json())
+                      .then(userData => {
+                        if (setUser) setUser(userData);
+                        setUpgradeSuccess(true);
+                      })
+                      .catch(err => {
+                        console.error('Error fetching updated user:', err);
+                        setUpgradeSuccess(true);
+                      });
+                    }}
+                  />
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🚀</div>
+                  <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '1.3rem', fontWeight: '800' }}>Upgrade from Free Demo</h3>
+                  <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '400px', marginLeft: 'auto', marginRight: 'auto' }}>
+                    Your free 7-day trial workspace is active. Choose a paid subscription plan to keep all your data and get a permanent registration code.
+                  </p>
+                  <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+                    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem 1.5rem', minWidth: '160px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#6366f1' }}>₹59</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600' }}>per seat / month</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Starter Plan</div>
+                    </div>
+                    <div style={{ background: 'var(--bg-card)', border: '2px solid #6366f1', borderRadius: '12px', padding: '1rem 1.5rem', minWidth: '160px', textAlign: 'center', position: 'relative' }}>
+                      <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#6366f1', color: '#fff', fontSize: '0.65rem', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' }}>BEST VALUE</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#6366f1' }}>₹49</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600' }}>per seat / month</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Growth Plan (Annual)</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowUpgradeForm(true)}
+                    style={{
+                      padding: '12px 32px',
+                      background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontWeight: '700',
+                      fontSize: '1rem',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      boxShadow: '0 4px 15px rgba(99,102,241,0.35)'
+                    }}
+                  >
+                    <ArrowRight size={18} />
+                    Subscribe Now
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Only show billing details if not showing the upgrade form */}
+          {!showUpgradeForm && !upgradeSuccess && (
+            <>
+              <div className="grid-stats no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
             <div className="glass-card stat-card" style={{ ...styles.statCard, borderLeft: '4px solid #10b981' }}>
               <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#10b981', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <IndianRupee size={22} />
@@ -296,10 +409,10 @@ const BillingPage = ({ theme, user }) => {
               <div className="stat-info">
                 <span className="stat-label" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600' }}>ACTIVE BILLING PLAN</span>
                 <span className="stat-value" style={{ fontSize: '1.6rem', fontWeight: '900', color: '#f59e0b', marginTop: '2px' }}>
-                  {planType === 'annual' ? 'Growth Plan' : 'Starter Plan'}
+                  {planType === 'demo' ? 'Free Demo' : (planType === 'annual' ? 'Growth Plan' : 'Starter Plan')}
                 </span>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  ₹{pricePerTelecaller} / seat / {planType === 'annual' ? 'year' : 'month'}
+                  {planType === 'demo' ? 'Free subscription' : `₹${pricePerTelecaller} / seat / ${planType === 'annual' ? 'year' : 'month'}`}
                 </span>
               </div>
             </div>
@@ -412,9 +525,27 @@ const BillingPage = ({ theme, user }) => {
               </div>
               <div style={styles.invoiceRow}>
                 <span style={styles.invLabel}>Payment Status:</span>
-                <span style={{ ...styles.invVal, color: '#10b981', fontWeight: '700' }}>Active Subscription</span>
+                <span style={{ ...styles.invVal, color: '#10b981', fontWeight: '700' }}>
+                  {planType === 'demo' ? 'Free Demo Subscription' : 'Active Subscription'}
+                </span>
               </div>
             </div>
+
+            {planType === 'demo' && (
+              <div style={{
+                background: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                color: '#10b981',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
+                fontWeight: '700',
+                margin: '1.25rem 1rem 0 1rem',
+                textAlign: 'center'
+              }}>
+                Free subscription valid for 7 day
+              </div>
+            )}
 
             {/* Itemized Table */}
             <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
@@ -431,12 +562,16 @@ const BillingPage = ({ theme, user }) => {
                 <tbody>
                   <tr style={styles.tr}>
                     <td style={{ ...styles.td, fontWeight: '700', color: 'var(--text-primary)' }}>
-                      {planType === 'annual' ? 'Growth Plan Telecaller Seats (Annual Billing — 1 Year)' : 'Starter Plan Telecaller Seats (Monthly Billing)'}
+                      {planType === 'demo' ? 'Free Trial Demo Workspace (7-Day Duration)' : (planType === 'annual' ? 'Growth Plan Telecaller Seats (Annual Billing — 1 Year)' : 'Starter Plan Telecaller Seats (Monthly Billing)')}
                     </td>
-                    <td style={styles.td}>₹{pricePerTelecaller} / seat / {planType === 'annual' ? 'year' : 'month'}</td>
-                    <td style={styles.td}>{noOfTelecallers} seats purchased</td>
+                    <td style={styles.td}>
+                      {planType === 'demo' ? '₹0 (Free)' : `₹${pricePerTelecaller} / seat / ${planType === 'annual' ? 'year' : 'month'}`}
+                    </td>
+                    <td style={styles.td}>
+                      {planType === 'demo' ? '1 Demo Seat allowed' : `${noOfTelecallers} seats purchased`}
+                    </td>
                     <td style={{ ...styles.td, textAlign: 'right', fontWeight: '800', color: '#10b981' }}>
-                      ₹{planType === 'annual' ? noOfTelecallers * pricePerTelecaller * 12 : noOfTelecallers * pricePerTelecaller}
+                      ₹{planType === 'demo' ? 0 : (planType === 'annual' ? noOfTelecallers * pricePerTelecaller * 12 : noOfTelecallers * pricePerTelecaller)}
                     </td>
                   </tr>
                   <tr style={styles.tr}>
@@ -540,8 +675,9 @@ const BillingPage = ({ theme, user }) => {
               </div>
             </div>
           </div>
-        </div>
-      ) : (
+        </>)}
+      </div>
+    ) : (
         // ── SUPERADMIN BILLING VIEW ──────────────────────────────────────────────
         <>
           {/* Billing Overview stats */}

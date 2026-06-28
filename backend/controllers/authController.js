@@ -320,7 +320,7 @@ exports.registerCompany = async (req, res) => {
 
 // Register a new demo company (1 week trial working mode)
 exports.registerDemoCompany = async (req, res) => {
-  const { name, email, password, macAddress } = req.body;
+  const { name, email, password, macAddress, companyName: inputCompanyName, nature: inputNature } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Please provide both name and email.' });
@@ -353,7 +353,8 @@ exports.registerDemoCompany = async (req, res) => {
       }
     }
 
-    const companyName = `${name}'s Demo Company`;
+    const companyName = inputCompanyName || `${name}'s Demo Company`;
+    const companyNature = inputNature || 'Demo Workspace';
     const defaultPassword = password || 'demopassword123';
     const salt = await bcrypt.genSalt(10);
     const adminPasswordHash = await bcrypt.hash(defaultPassword, salt);
@@ -368,109 +369,11 @@ exports.registerDemoCompany = async (req, res) => {
     // Insert company into master db
     await db.queryMain(
       'INSERT INTO companies (name, nature, no_of_telecallers, reg_num, admin_email, admin_password_hash, admin_plain_password, price_per_telecaller, subscription_start, subscription_end, plan_type, mac_address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, $9, $10, $11)',
-      [companyName, 'Demo Workspace', 10, regNum, email, adminPasswordHash, defaultPassword, 0, formattedExpiry, 'demo', macAddress || null]
+      [companyName, companyNature, 1, regNum, email, adminPasswordHash, defaultPassword, 0, formattedExpiry, 'demo', macAddress || null]
     );
 
     // Provision the isolated database schema
     await db.initializeCompanySchema(regNum, companyName, email, adminPasswordHash, defaultPassword);
-
-    // Seed sample data into the tenant database
-    await db.dbStorage.run({ companyRegNum: regNum }, async () => {
-      // 1. Get the admin user ID
-      const adminRes = await db.query("SELECT id FROM users WHERE role = 'admin'");
-      const adminId = adminRes.rows[0].id;
-
-      // 2. Insert sample telecallers
-      const aaravHash = await bcrypt.hash('aarav123', 10);
-
-      // Aarav (online)
-      const aaravResult = await db.query(
-        'INSERT INTO users (name, email, password_hash, role, status, plain_password, last_active_at) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP) RETURNING id',
-        ['Aarav Mehta', 'aarav@demomail.com', aaravHash, 'telecaller', 'online', 'aarav123']
-      );
-      const aaravId = aaravResult.rows[0].id;
-
-      // 3. Insert Campaigns
-      const campaign1 = await db.query(
-        'INSERT INTO campaigns (name, description, status, created_by) VALUES ($1, $2, $3, $4) RETURNING id',
-        ['Real Estate Hot Leads', 'Outbound sales campaign targeting Q2 property investors.', 'active', adminId]
-      );
-      const c1Id = campaign1.rows[0].id;
-
-      const campaign2 = await db.query(
-        'INSERT INTO campaigns (name, description, status, created_by) VALUES ($1, $2, $3, $4) RETURNING id',
-        ['Credit Card Renewals', 'Follow-up campaign for expired/renewing cards.', 'active', adminId]
-      );
-      const c2Id = campaign2.rows[0].id;
-
-      // 4. Insert Contacts & Call Logs
-      // Contact 1 (Connected, Rajesh)
-      const contact1 = await db.query(
-        'INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to, last_called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id',
-        [c1Id, 'Rajesh Kumar', '+91 98765 00001', 'connected', aaravId]
-      );
-      await db.query(
-        'INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)',
-        [contact1.rows[0].id, aaravId, 'connected', 124, 'Interested in 2BHK flat. Requested site visit next Sunday.']
-      );
-
-      // Contact 2 (Follow up, Pooja)
-      const contact2 = await db.query(
-        'INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to, last_called_at, follow_up_date) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6) RETURNING id',
-        [c1Id, 'Pooja Patel', '+91 98765 00002', 'follow_up', aaravId, new Date(Date.now() + 24 * 60 * 60 * 1000)]
-      );
-      await db.query(
-        'INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)',
-        [contact2.rows[0].id, aaravId, 'follow_up', 45, 'Busy right now. Asked to call back tomorrow morning at 10 AM.']
-      );
-
-      // Contact 3 (Not answered, Vikram)
-      const contact3 = await db.query(
-        'INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to, last_called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id',
-        [c2Id, 'Vikram Singh', '+91 98765 00003', 'not_answered', aaravId]
-      );
-      await db.query(
-        'INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)',
-        [contact3.rows[0].id, aaravId, 'not_answered', 0, 'Rang twice but no response. Will re-attempt later.']
-      );
-
-      // Contact 4 (Busy, Anjali)
-      const contact4 = await db.query(
-        'INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to, last_called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id',
-        [c2Id, 'Anjali Gupta', '+91 98765 00004', 'busy', aaravId]
-      );
-      await db.query(
-        'INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, called_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)',
-        [contact4.rows[0].id, aaravId, 'busy', 0, 'User busy. Line disconnected.']
-      );
-
-      // Add a few pending contacts (unscheduled)
-      const pendingContacts = [
-        ['Amit Sharma', '+91 98765 00005', c1Id, aaravId],
-        ['Neha Deshmukh', '+91 98765 00006', c1Id, aaravId],
-        ['Joy Dsouza', '+91 98765 00007', c1Id, null],
-        ['Sunita Verma', '+91 98765 00008', c2Id, aaravId],
-        ['Rohan Sen', '+91 98765 00009', c2Id, aaravId],
-        ['Kavita Rao', '+91 98765 00010', c2Id, null]
-      ];
-      for (const item of pendingContacts) {
-        await db.query(
-          'INSERT INTO contacts (name, phone_number, campaign_id, assigned_to, status) VALUES ($1, $2, $3, $4, $5)',
-          [item[0], item[1], item[2], item[3], 'pending']
-        );
-      }
-
-      // 5. Seeding telecaller sessions for statistics
-      const todayDate = new Date().toISOString().substring(0, 10);
-      await db.query(
-        'INSERT INTO telecaller_sessions (telecaller_id, date, total_working_time, total_calling_time, total_idle_time, total_break_time, last_updated_at) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)',
-        [aaravId, todayDate, 14400, 7200, 5400, 1800]
-      );
-
-      // 6. Seeding Admin Notifications
-      await db.query('INSERT INTO admin_notifications (message) VALUES ($1)', ['Outbound dialer campaign "Real Estate Hot Leads" successfully initialized by system.']);
-      await db.query('INSERT INTO admin_notifications (message) VALUES ($1)', ['Telecaller Aarav Mehta changed status to: online']);
-    });
 
     // Generate JWT token for auto-login
     const token = jwt.sign(
@@ -641,15 +544,21 @@ exports.updateStatus = async (req, res) => {
 // Get current logged in user details
 exports.getMe = async (req, res) => {
   try {
-    const result = await db.query('SELECT id, name, email, role, status FROM users WHERE id = $1', [req.user.id]);
+    const regNum = req.user.companyRegNum;
+    let result;
+    
+    await db.dbStorage.run({ companyRegNum: regNum }, async () => {
+      result = await db.query('SELECT id, name, email, role, status FROM users WHERE id = $1', [req.user.id]);
+    });
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found.' });
     }
     const user = result.rows[0];
-    user.companyRegNum = req.user.companyRegNum !== undefined ? req.user.companyRegNum : null;
+    user.companyRegNum = regNum !== undefined ? regNum : null;
 
-    if (req.user.companyRegNum) {
-      const compRes = await db.queryMain('SELECT edit_count, subscription_end, plan_type, no_of_telecallers, call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
+    if (regNum) {
+      const compRes = await db.queryMain('SELECT edit_count, subscription_end, plan_type, no_of_telecallers, call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1', [regNum]);
       if (compRes.rows.length > 0) {
         user.editCount = compRes.rows[0].edit_count || 0;
         user.subscriptionEnd = compRes.rows[0].subscription_end || null;
@@ -812,9 +721,32 @@ exports.getCompanyTelecallers = async (req, res) => {
 
   try {
     await db.dbStorage.run({ companyRegNum: regNum }, async () => {
-      const result = await db.query(
-        "SELECT id, name, email, status, created_at FROM users WHERE role = 'telecaller' ORDER BY created_at DESC"
-      );
+      const result = await db.query(`
+        SELECT 
+          u.id, 
+          u.name, 
+          u.email, 
+          u.status, 
+          u.created_at,
+          COALESCE(cl.connected_count, 0) as connected_count,
+          COALESCE(cl.non_connected_count, 0) as non_connected_count,
+          COALESCE(cl.received_count, 0) as received_count,
+          COALESCE(cl.missed_count, 0) as missed_count
+        FROM users u
+        LEFT JOIN (
+          SELECT 
+            telecaller_id,
+            COUNT(CASE WHEN call_status = 'connected' THEN 1 END) as connected_count,
+            COUNT(CASE WHEN call_status = 'non-connected' THEN 1 END) as non_connected_count,
+            COUNT(CASE WHEN call_status = 'received' THEN 1 END) as received_count,
+            COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed_count
+          FROM call_logs
+          WHERE ${db.dbType === 'postgres' ? 'called_at::date = CURRENT_DATE' : "date(called_at) = CURRENT_DATE"}
+          GROUP BY telecaller_id
+        ) cl ON u.id = cl.telecaller_id
+        WHERE u.role = 'telecaller'
+        ORDER BY u.created_at DESC
+      `);
       res.json(result.rows);
     });
   } catch (error) {
@@ -1282,25 +1214,108 @@ exports.renewSubscriptionWithPayment = async (req, res) => {
       subscriptionEnd = end.toISOString();
     }
 
-    // Update company details in master db companies table
-    await db.queryMain(
-      `UPDATE companies 
-       SET no_of_telecallers = $1, 
-           plan_type = $2, 
-           price_per_telecaller = $3, 
-           subscription_start = $4, 
-           subscription_end = $5,
-           call_recording_enabled = CASE WHEN $6 = 1 THEN 1 ELSE call_recording_enabled END,
-           call_recording_end_date = CASE WHEN $6 = 1 THEN $5 ELSE call_recording_end_date END
-       WHERE reg_num = $7`,
-      [numCallers, plan, pricePerCaller, subscriptionStart, subscriptionEnd, includeCallRecording ? 1 : 0, req.user.companyRegNum]
+    const oldRegNum = req.user.companyRegNum;
+    const isDemo = oldRegNum.startsWith('EAZ-DEMO-');
+    let finalRegNum = oldRegNum;
+
+    // 2. If upgrading from demo, generate a new normal registration number and rename the database
+    if (isDemo) {
+      let isUnique = false;
+      while (!isUnique) {
+        const rand = Math.floor(100000 + Math.random() * 900000);
+        finalRegNum = `EAZ-${rand}`;
+        const check = await db.queryMain('SELECT * FROM companies WHERE reg_num = $1', [finalRegNum]);
+        if (check.rows.length === 0) {
+          isUnique = true;
+        }
+      }
+
+      // Rename the SQLite database file (demo → normal)
+      if (db.dbType === 'sqlite') {
+        const pathModule = require('path');
+        const fs = require('fs');
+        const databasesDir = db.getDatabasesDir();
+        const oldFile = pathModule.join(databasesDir, `company_${oldRegNum}.sqlite`);
+        const newFile = pathModule.join(databasesDir, `company_${finalRegNum}.sqlite`);
+        if (fs.existsSync(oldFile)) {
+          db.closeCompanyConnection(oldRegNum);
+          fs.renameSync(oldFile, newFile);
+          console.log(`[Database] Renamed company database from ${oldRegNum} to ${finalRegNum}`);
+        }
+      } else if (db.dbType === 'postgres') {
+        const oldSchema = `company_${oldRegNum}`;
+        const newSchema = `company_${finalRegNum}`;
+        const client = await db.pgPool.connect();
+        try {
+          await client.query(`ALTER SCHEMA "${oldSchema}" RENAME TO "${newSchema}"`);
+          console.log(`[Database] Renamed PostgreSQL schema from ${oldSchema} to ${newSchema}`);
+        } finally {
+          client.release();
+        }
+      }
+
+      // Update company in master DB — change reg_num + plan data in one query
+      await db.queryMain(
+        `UPDATE companies
+         SET reg_num = $1,
+             no_of_telecallers = $2,
+             plan_type = $3,
+             price_per_telecaller = $4,
+             subscription_start = $5,
+             subscription_end = $6,
+             call_recording_enabled = CASE WHEN $7 = 1 THEN 1 ELSE call_recording_enabled END,
+             call_recording_end_date = CASE WHEN $7 = 1 THEN $6 ELSE call_recording_end_date END
+         WHERE reg_num = $8`,
+        [finalRegNum, numCallers, plan, pricePerCaller, subscriptionStart, subscriptionEnd, includeCallRecording ? 1 : 0, oldRegNum]
+      );
+
+      // Update support tickets with the new company registration code
+      try {
+        await db.queryMain(
+          'UPDATE support_tickets SET company_reg_num = $1 WHERE company_reg_num = $2',
+          [finalRegNum, oldRegNum]
+        );
+      } catch (ticketErr) {
+        console.error('Error updating support tickets registration number:', ticketErr);
+      }
+    } else {
+      // Regular renewal — just update plan data
+      await db.queryMain(
+        `UPDATE companies
+         SET no_of_telecallers = $1,
+             plan_type = $2,
+             price_per_telecaller = $3,
+             subscription_start = $4,
+             subscription_end = $5,
+             call_recording_enabled = CASE WHEN $6 = 1 THEN 1 ELSE call_recording_enabled END,
+             call_recording_end_date = CASE WHEN $6 = 1 THEN $5 ELSE call_recording_end_date END
+         WHERE reg_num = $7`,
+        [numCallers, plan, pricePerCaller, subscriptionStart, subscriptionEnd, includeCallRecording ? 1 : 0, oldRegNum]
+      );
+    }
+
+    // 3. Issue a new JWT token (with updated companyRegNum if demo was upgraded)
+    const newToken = jwt.sign(
+      {
+        id: req.user.id,
+        name: req.user.name,
+        email: req.user.email,
+        role: req.user.role,
+        companyRegNum: finalRegNum
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
     );
 
     res.json({
       success: true,
       plan,
       subscriptionEnd,
-      message: 'Subscription renewed successfully!'
+      newRegNum: finalRegNum,
+      token: newToken,
+      message: isDemo
+        ? `Demo account successfully upgraded! Your new registration code is ${finalRegNum}.`
+        : 'Subscription renewed successfully!'
     });
 
   } catch (error) {

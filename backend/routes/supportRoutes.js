@@ -2,9 +2,29 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const authMiddleware = require('../middleware/auth');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Setup support ticket attachments directory
+const supportUploadsDir = path.join(__dirname, '../uploads/support');
+if (!fs.existsSync(supportUploadsDir)) {
+  fs.mkdirSync(supportUploadsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, supportUploadsDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `ticket-${Date.now()}-${file.originalname}`);
+  }
+});
+
+const upload = multer({ storage });
 
 // POST /api/support/tickets — Company admin submits a support ticket
-router.post('/tickets', authMiddleware('admin'), async (req, res) => {
+router.post('/tickets', authMiddleware('admin'), upload.single('image'), async (req, res) => {
   const { subject, message } = req.body;
   const user = req.user;
 
@@ -25,10 +45,15 @@ router.post('/tickets', authMiddleware('admin'), async (req, res) => {
 
     const companyName = companyRes.rows.length > 0 ? companyRes.rows[0].name : 'Unknown Company';
 
+    let imageUrl = null;
+    if (req.file) {
+      imageUrl = `/uploads/support/${req.file.filename}`;
+    }
+
     await db.queryMain(
-      `INSERT INTO support_tickets (company_reg_num, company_name, admin_email, subject, message, status)
-       VALUES ($1, $2, $3, $4, $5, 'open')`,
-      [user.companyRegNum, companyName, user.email, subject, message]
+      `INSERT INTO support_tickets (company_reg_num, company_name, admin_email, subject, message, status, image_url)
+       VALUES ($1, $2, $3, $4, $5, 'open', $6)`,
+      [user.companyRegNum, companyName, user.email, subject, message, imageUrl]
     );
 
     res.status(201).json({ message: 'Support ticket submitted successfully.' });

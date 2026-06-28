@@ -21,7 +21,9 @@ import {
   PhoneOutgoing,
   PhoneMissed,
   Search,
-  Building2
+  Building2,
+  Calendar,
+  CalendarDays
 } from 'lucide-react';
 
 const decodeToken = (token) => {
@@ -94,9 +96,9 @@ const DemoValidityBadge = ({ subscriptionEnd }) => {
       gap: '6px',
       padding: '6px 12px',
       borderRadius: '8px',
-      backgroundColor: 'rgba(245, 158, 11, 0.1)',
-      border: '1px solid rgba(245, 158, 11, 0.35)',
-      color: '#f59e0b',
+      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+      border: '1px solid rgba(239, 68, 68, 0.35)',
+      color: '#ef4444',
       fontSize: '0.82rem',
       fontWeight: '700',
     }}>
@@ -115,6 +117,17 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTelecaller, setSelectedTelecaller] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().substring(0, 10));
+  const [dateMode, setDateMode] = useState('day'); // 'day' or 'month'
+
+  const handleDateModeChange = (mode) => {
+    setDateMode(mode);
+    if (mode === 'day') {
+      setSelectedDate(new Date().toISOString().substring(0, 10));
+    } else {
+      setSelectedDate(new Date().toISOString().substring(0, 7));
+    }
+  };
 
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -246,7 +259,15 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
         return;
       }
 
-      const queryParams = selectedTelecaller ? `?telecallerId=${selectedTelecaller}` : '';
+      // Prepare query params with selectedTelecaller and selectedDate
+      const paramsArray = [];
+      if (selectedTelecaller) {
+        paramsArray.push(`telecallerId=${selectedTelecaller}`);
+      }
+      if (selectedDate && activeUser && activeUser.role !== 'superadmin') {
+        paramsArray.push(`date=${selectedDate}`);
+      }
+      const queryParams = paramsArray.length > 0 ? `?${paramsArray.join('&')}` : '';
 
       // Fetch analytics, logs, and notifications in parallel
       const [analyticsRes, logsRes, notificationsRes] = await Promise.all([
@@ -309,7 +330,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
     // Poll analytics every 8 seconds for real-time monitoring
     const interval = setInterval(fetchDashboardData, 8000);
     return () => clearInterval(interval);
-  }, [selectedTelecaller]);
+  }, [selectedTelecaller, selectedDate]);
 
   const formatDuration = (seconds) => {
     if (!seconds) return '0s';
@@ -562,6 +583,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
   const totalCalls = connectedCount + nonConnectedCount + receivedCount + missedCount;
   const successfulCalls = connectedCount + receivedCount;
   const connectionRate = totalCalls > 0 ? Math.round((successfulCalls / totalCalls) * 100) : 0;
+  const hasNoWorkThisMonth = dateMode === 'month' && totalCalls === 0 && (!overview.total_talk_time || parseInt(overview.total_talk_time) === 0);
 
   // Sort telecallers by talktime to build the leaderboard
   const topCallers = [...callers].sort((a, b) => b.calling_time - a.calling_time);
@@ -578,7 +600,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
               </h1>
             )}
           </div>
-          {activeUser && activeUser.companyRegNum && activeUser.companyRegNum.startsWith('EAZ-DEMO-') && (
+          {activeUser && activeUser.companyRegNum && activeUser.companyRegNum.startsWith('EAZ-DEMO-') && (activeUser.planType ? activeUser.planType === 'demo' : true) && (
             <div style={{ marginTop: '12px' }}>
               <DemoValidityBadge subscriptionEnd={activeUser.subscriptionEnd} />
             </div>
@@ -594,6 +616,106 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
               className="dashboard-search-input"
             />
           </div>
+          {activeUser && activeUser.role !== 'superadmin' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }} className="dashboard-date-filter-group">
+                {/* Segmented control for Mode selection */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  backgroundColor: 'var(--bg-secondary)', 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: '12px', 
+                  padding: '2px', 
+                  height: '38px', 
+                  boxSizing: 'border-box',
+                  gap: '2px'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => handleDateModeChange('day')}
+                    style={{
+                      padding: '0 10px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      fontSize: '0.75rem',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      backgroundColor: dateMode === 'day' ? '#6366f1' : 'transparent',
+                      color: dateMode === 'day' ? '#ffffff' : 'var(--text-secondary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      transition: 'all 0.2s ease',
+                      height: '32px',
+                      lineHeight: '32px',
+                      outline: 'none'
+                    }}
+                    title="Filter by Specific Day"
+                  >
+                    <Calendar size={13} />
+                    Day
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDateModeChange('month')}
+                    style={{
+                      padding: '0 10px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      fontSize: '0.75rem',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      backgroundColor: dateMode === 'month' ? '#6366f1' : 'transparent',
+                      color: dateMode === 'month' ? '#ffffff' : 'var(--text-secondary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      transition: 'all 0.2s ease',
+                      height: '32px',
+                      lineHeight: '32px',
+                      outline: 'none'
+                    }}
+                    title="Filter by Whole Month"
+                  >
+                    <CalendarDays size={13} />
+                    Month
+                  </button>
+                </div>
+
+                {/* Date Input */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', position: 'relative' }}>
+                  <input 
+                    type={dateMode === 'day' ? 'date' : 'month'}
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    style={{
+                      ...styles.telecallerSelect,
+                      minWidth: dateMode === 'day' ? '150px' : '130px',
+                      paddingLeft: '32px',
+                    }}
+                    className="dashboard-date-select"
+                    title={dateMode === 'day' ? "Select Date" : "Select Month"}
+                  />
+                  <Calendar 
+                    size={14} 
+                    color="var(--text-muted)" 
+                    style={{ 
+                      position: 'absolute', 
+                      left: '10px', 
+                      top: '12px', 
+                      pointerEvents: 'none' 
+                    }} 
+                  />
+                </div>
+              </div>
+              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textAlign: 'right', fontWeight: '500', marginTop: '2px' }}>
+                Always updates at 12:00 PM
+              </span>
+            </div>
+          )}
           <select
             value={selectedTelecaller}
             onChange={(e) => setSelectedTelecaller(e.target.value)}
@@ -609,6 +731,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             ))}
           </select>
           <button 
+            className="dashboard-action-icon-btn"
             style={{
               ...styles.headerActionBtn,
               backgroundColor: showNotifications ? 'rgba(124, 58, 237, 0.12)' : 'var(--bg-card)',
@@ -639,6 +762,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             )}
           </button>
           <button 
+            className="dashboard-action-icon-btn"
             style={{
               ...styles.headerActionBtn,
               backgroundColor: showSettings ? 'rgba(124, 58, 237, 0.12)' : 'var(--bg-card)',
@@ -715,7 +839,43 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
         </div>
       </div>
 
-      {/* Active Recording Sticky Player */}
+      {hasNoWorkThisMonth ? (
+        <div className="glass-card" style={{
+          padding: '3.5rem 2rem',
+          textAlign: 'center',
+          marginTop: '1.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '1.25rem',
+          border: '1px dashed var(--border-color)',
+          borderRadius: '16px',
+          animation: 'fadeIn 0.3s ease'
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#6366f1',
+            marginBottom: '0.5rem'
+          }}>
+            <Calendar size={32} />
+          </div>
+          <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+            No Work Done This Month
+          </h3>
+          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: '300px', lineHeight: '1.5' }}>
+            There is no telecalling or session history recorded for the selected month. Please choose another date or start a campaign.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Active Recording Sticky Player */}
       {activeRecordingUrl && (
         <div className="glass-card" style={styles.audioPlayerPanel}>
           <div style={styles.playerInfo}>
@@ -960,7 +1120,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
         {/* Right Side: Campaigns Summary & Top Performers stacked */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Campaign Overview Card */}
-          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: '160px' }}>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem', fontSize: '1.2rem', color: 'var(--text-primary)' }}>
               <div style={{ width: '6px', height: '24px', backgroundColor: '#6366f1', borderRadius: '9999px' }}></div>
               Campaign Overview
@@ -1046,41 +1206,117 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
           </div>
 
           {/* Top Performers Leaderboard Card */}
-          <div className="glass-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <div className="glass-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: '220px' }}>
             <div style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)', padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#FFFFFF' }}>
                 <Trophy size={18} color="#FFFFFF" />
                 <span style={{ fontSize: '1rem', fontWeight: '700', letterSpacing: '0.5px' }}>Top Performers</span>
               </div>
               <span style={{ fontSize: '0.7rem', fontWeight: '700', backgroundColor: 'rgba(255, 255, 255, 0.2)', padding: '3px 8px', borderRadius: '99px', color: '#FFFFFF', letterSpacing: '0.5px' }}>
-                RANK #1
+                TODAY
               </span>
             </div>
             
-            <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', justifyContent: 'center', flex: 1 }}>
+            <div style={{ padding: '1.25rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', justifyContent: 'flex-start', flex: 1 }}>
               {topCallers.length === 0 ? (
                 <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '0.5rem' }}>No active telecallers.</div>
               ) : (
-                topCallers.slice(0, 2).map((caller) => (
-                  <div key={caller.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', borderRadius: '10px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#F3E8FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                        {caller.name.charAt(0).toUpperCase()}
+                topCallers.slice(0, 3).map((caller, index) => {
+                  const badgeStyle = {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    fontSize: '0.7rem',
+                    fontWeight: '800',
+                    color: '#ffffff',
+                    flexShrink: 0
+                  };
+
+                  let rankBadge = null;
+                  if (index === 0) {
+                    rankBadge = (
+                      <div style={{ ...badgeStyle, backgroundColor: '#fbbf24', boxShadow: '0 0 8px rgba(251, 191, 36, 0.4)' }} title="Rank 1">
+                        1
                       </div>
-                      <div>
-                        <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '0.85rem' }}>{caller.name}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                          <span className={`dot dot-${caller.status}`} style={{ margin: 0, width: '5px', height: '5px' }}></span>
-                          <span style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{caller.status}</span>
+                    );
+                  } else if (index === 1) {
+                    rankBadge = (
+                      <div style={{ ...badgeStyle, backgroundColor: '#94a3b8' }} title="Rank 2">
+                        2
+                      </div>
+                    );
+                  } else if (index === 2) {
+                    rankBadge = (
+                      <div style={{ ...badgeStyle, backgroundColor: '#b45309' }} title="Rank 3">
+                        3
+                      </div>
+                    );
+                  } else {
+                    rankBadge = (
+                      <div style={{ ...badgeStyle, backgroundColor: '#cbd5e1', color: '#475569' }}>
+                        {index + 1}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div 
+                      key={caller.id} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        padding: '0.75rem', 
+                        borderRadius: '10px', 
+                        backgroundColor: 'var(--bg-primary)', 
+                        border: '1px solid var(--border-color)',
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                        cursor: 'default'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.04)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {rankBadge}
+                        <div style={{ 
+                          width: '32px', 
+                          height: '32px', 
+                          borderRadius: '50%', 
+                          backgroundColor: index === 0 ? 'rgba(251, 191, 36, 0.12)' : 'rgba(124, 58, 237, 0.08)', 
+                          color: index === 0 ? '#d97706' : '#7C3AED', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontSize: '0.85rem', 
+                          fontWeight: 'bold',
+                          flexShrink: 0
+                        }}>
+                          {caller.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '0.85rem' }}>{caller.name}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                            <span className={`dot dot-${caller.status}`} style={{ margin: 0, width: '5px', height: '5px' }}></span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{caller.status}</span>
+                          </div>
                         </div>
                       </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Talk Time</div>
+                        <div style={{ fontSize: '0.95rem', fontWeight: '800', color: index === 0 ? '#d97706' : '#7C3AED', marginTop: '1px' }}>{formatDuration(caller.calling_time)}</div>
+                      </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Talk Time</div>
-                      <div style={{ fontSize: '0.95rem', fontWeight: '800', color: '#7C3AED', marginTop: '1px' }}>{formatDuration(caller.calling_time)}</div>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -1248,6 +1484,8 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             </form>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

@@ -3,7 +3,7 @@ import API_BASE_URL from '../config/api';
 import { 
   Search, RefreshCw, Building, Users, Calendar, Hash, 
   IndianRupee, Briefcase, Trash2, Monitor, Grid2X2, Grid3X3, 
-  LayoutGrid, X 
+  LayoutGrid, X, Maximize2, Minimize2
 } from 'lucide-react';
 
 const GRID_OPTIONS = [
@@ -20,6 +20,26 @@ const Companies = () => {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [gridSize, setGridSize] = useState(3); // Default 3 columns (3x3 grid)
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = React.useRef(null);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === containerRef.current);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(err => {
+        console.error('Error enabling fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   // Company Telecaller Detail modal states
   const [selectedCompany, setSelectedCompany] = useState(null);
@@ -131,63 +151,120 @@ const Companies = () => {
   const colsStyle = `repeat(${gridSize}, 1fr)`;
 
   return (
-    <div style={styles.page}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div>
-          <h1 style={styles.title}>
-            <Building size={26} style={{ marginRight: 10, color: 'var(--color-primary)' }} />
-            Live Monitor Grid (Companies)
-          </h1>
-          <p style={styles.subtitle}>Overview, columns controls, deletion, and telecaller selection dashboard</p>
-        </div>
-
-        <button 
-          onClick={fetchCompanies} 
-          style={styles.refreshBtn}
-          disabled={refreshing}
-          title="Refresh List"
+    <div ref={containerRef} style={{ ...styles.page, position: isFullscreen ? 'relative' : 'static' }} className="monitor-grid-fullscreen-container">
+      {isFullscreen && (
+        <button
+          onClick={toggleFullscreen}
+          style={{
+            position: 'fixed',
+            top: '1rem',
+            right: '1rem',
+            zIndex: 99999,
+            backgroundColor: 'rgba(239, 68, 68, 0.9)',
+            color: '#fff',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
         >
-          <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
-          <span style={{ marginLeft: '8px' }}>Refresh</span>
+          <Minimize2 size={16} />
+          Exit Fullscreen
         </button>
-      </div>
+      )}
+
+      {/* Header */}
+      {!isFullscreen && (
+        <div style={styles.header}>
+          <div>
+            <h1 style={styles.title}>
+              <Building size={26} style={{ marginRight: 10, color: 'var(--color-primary)' }} />
+              Live Monitor Grid (Companies)
+            </h1>
+            <p style={styles.subtitle}>Overview, columns controls, deletion, and telecaller selection dashboard</p>
+          </div>
+
+          <button 
+            onClick={fetchCompanies} 
+            style={styles.refreshBtn}
+            disabled={refreshing}
+            title="Refresh List"
+          >
+            <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+            <span style={{ marginLeft: '8px' }}>Refresh</span>
+          </button>
+        </div>
+      )}
 
       {/* Toolbar */}
-      <div style={styles.toolbar}>
-        <div style={styles.searchWrapper}>
-          <Search size={18} style={styles.searchIcon} />
-          <input 
-            type="text" 
-            placeholder="Search by company name, registration code, or email..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={styles.searchInput}
-          />
-        </div>
+      {!isFullscreen && (
+        <div style={styles.toolbar}>
+          <div style={styles.searchWrapper}>
+            <Search size={18} style={styles.searchIcon} />
+            <input 
+              type="text" 
+              placeholder="Search by company name, registration code, or email..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={styles.searchInput}
+            />
+          </div>
 
-        {/* Grid selector buttons */}
-        <div className="companies-grid-selector" style={styles.gridSelector}>
-          {GRID_OPTIONS.map(opt => {
-            const Icon = opt.icon;
-            const active = gridSize === opt.value;
-            return (
-              <button
-                key={opt.value}
-                onClick={() => setGridSize(opt.value)}
-                title={`${opt.label} Grid`}
-                style={{
-                  ...styles.gridBtn,
-                  ...(active ? styles.gridBtnActive : {}),
-                }}
-              >
-                <Icon size={16} />
-                <span style={{ marginLeft: 6, fontSize: '0.82rem', fontWeight: 600 }}>{opt.label}</span>
-              </button>
-            );
-          })}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {/* Grid selector buttons */}
+            <div className="companies-grid-selector" style={styles.gridSelector}>
+              {GRID_OPTIONS.map(opt => {
+                const Icon = opt.icon;
+                const active = gridSize === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setGridSize(opt.value)}
+                    title={`${opt.label} Grid`}
+                    style={{
+                      ...styles.gridBtn,
+                      ...(active ? styles.gridBtnActive : {}),
+                    }}
+                  >
+                    <Icon size={16} />
+                    <span style={{ marginLeft: 6, fontSize: '0.82rem', fontWeight: 600 }}>{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Fullscreen Button */}
+            <button
+              onClick={toggleFullscreen}
+              style={{
+                ...styles.gridBtn,
+                padding: '0 12px',
+                height: '38px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.82rem',
+                transition: 'all 0.2s'
+              }}
+              title="Toggle Fullscreen"
+            >
+              <Maximize2 size={15} style={{ marginRight: '6px' }} />
+              {isFullscreen ? 'Exit Full' : 'Fullscreen'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Grid Content */}
       {loading ? (
@@ -410,6 +487,7 @@ const Companies = () => {
                           <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Telecaller Name</th>
                           <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Registered Mobile / Email</th>
                           <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Status</th>
+                          <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Today's Calls</th>
                           <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Created At</th>
                         </tr>
                       </thead>
@@ -446,6 +524,22 @@ const Companies = () => {
                                   }} />
                                   {tc.status}
                                 </span>
+                              </td>
+                              <td style={{ padding: '14px 16px' }}>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                  <span style={{ fontSize: '0.72rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }} title="Connected">
+                                    C: {tc.connected_count || 0}
+                                  </span>
+                                  <span style={{ fontSize: '0.72rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }} title="Non-Connected">
+                                    NC: {tc.non_connected_count || 0}
+                                  </span>
+                                  <span style={{ fontSize: '0.72rem', backgroundColor: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }} title="Received">
+                                    R: {tc.received_count || 0}
+                                  </span>
+                                  <span style={{ fontSize: '0.72rem', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }} title="Missed">
+                                    M: {tc.missed_count || 0}
+                                  </span>
+                                </div>
                               </td>
                               <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>{formatDate(tc.created_at)}</td>
                             </tr>
@@ -484,6 +578,14 @@ const Companies = () => {
           transform: translateY(-4px) scale(1.01);
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 20px rgba(99, 102, 241, 0.15) !important;
           cursor: pointer;
+        }
+        .monitor-grid-fullscreen-container:fullscreen {
+          background-color: var(--bg-primary, #090d16) !important;
+          padding: 2rem !important;
+          overflow-y: auto !important;
+          box-sizing: border-box !important;
+          width: 100vw !important;
+          height: 100vh !important;
         }
       `}</style>
     </div>

@@ -317,6 +317,20 @@ const SupportTickets = () => {
                       }}>
                         {ticket.message}
                       </p>
+                      {ticket.image_url && (
+                        <div style={{ marginTop: '16px', borderTop: '1px dashed var(--border-color)', paddingTop: '12px' }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Attachment / Screenshot
+                          </div>
+                          <a href={`${API_BASE_URL}${ticket.image_url}`} target="_blank" rel="noopener noreferrer">
+                            <img 
+                              src={`${API_BASE_URL}${ticket.image_url}`} 
+                              alt="Screenshot of support issue" 
+                              style={{ maxWidth: '100%', maxHeight: '350px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
+                            />
+                          </a>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

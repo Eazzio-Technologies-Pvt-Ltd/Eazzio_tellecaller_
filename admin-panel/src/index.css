@@ -2212,3 +2212,51 @@ tr:hover td {
     gap: 0.85rem !important;
   }
 }
+
+/* Responsive fixes for screen widths 380px - 450px */
+@media screen and (max-width: 450px) {
+  .login-glass-card-premium {
+    padding: 1.25rem 1rem !important;
+    width: 95% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+  }
+  .plan-selection-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .auth-input-field {
+    padding-left: 2.75rem !important;
+    padding-right: 2.75rem !important;
+  }
+
+  /* Fixed header action icon buttons stretching */
+  .dashboard-action-icon-btn {
+    width: 42px !important;
+    height: 42px !important;
+    flex: 0 0 42px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+  }
+
+  /* Date filter group on mobile: keep items side-by-side */
+  .dashboard-date-filter-group {
+    display: flex !important;
+    width: 100% !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  /* Telecaller selector dropdown: share space next to icon buttons */
+  .dashboard-telecaller-select {
+    width: auto !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+}
+

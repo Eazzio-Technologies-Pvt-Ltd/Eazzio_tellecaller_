@@ -47,38 +47,46 @@ module.exports = (roles = []) => {
         return res.status(403).json({ error: 'Access forbidden. Insufficient permissions.' });
       }
 
-      // If user is associated with a company, check if subscription is expired
+      // If user is associated with a company, check schema health and subscription expiry
       if (req.user.companyRegNum) {
-        const path = req.originalUrl || '';
-        const isRenewalOrMe = path.includes('/renew-subscription-with-payment') || 
-                              path.includes('/razorpay-order') || 
-                              path.includes('/me') ||
-                              path.includes('/login');
+        try {
+          const compCheck = await db.queryMain('SELECT name, admin_email, admin_password_hash, admin_plain_password, subscription_end FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
+          if (compCheck.rows.length > 0) {
+            const company = compCheck.rows[0];
+            
+            // Auto-heal missing sqlite files/tables on demand
+            await db.ensureCompanySchema(
+              req.user.companyRegNum,
+              company.name,
+              company.admin_email,
+              company.admin_password_hash,
+              company.admin_plain_password
+            );
 
-        if (!isRenewalOrMe) {
-          db.queryMain('SELECT subscription_end FROM companies WHERE reg_num = $1', [req.user.companyRegNum])
-            .then(compCheck => {
-              if (compCheck.rows.length > 0 && compCheck.rows[0].subscription_end) {
-                const now = new Date();
-                let expiryStr = compCheck.rows[0].subscription_end.toString();
-                if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
-                  expiryStr = expiryStr.replace(' ', 'T') + 'Z';
-                }
-                const expiry = new Date(expiryStr);
-                if (expiry < now) {
-                  return res.status(403).json({ 
-                    error: 'subscription_expired',
-                    message: 'Your company\'s Eazzio subscription has expired. Please renew your subscription to access this resource.' 
-                  });
-                }
+            // Subscription check
+            const path = req.originalUrl || '';
+            const isRenewalOrMe = path.includes('/renew-subscription-with-payment') || 
+                                  path.includes('/razorpay-order') || 
+                                  path.includes('/me') ||
+                                  path.includes('/login');
+
+            if (!isRenewalOrMe && company.subscription_end) {
+              const now = new Date();
+              let expiryStr = company.subscription_end.toString();
+              if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+                expiryStr = expiryStr.replace(' ', 'T') + 'Z';
               }
-              next();
-            })
-            .catch(err => {
-              console.error('Subscription check middleware error:', err);
-              next(); // Fallback to allow if database fails
-            });
-          return;
+              const expiry = new Date(expiryStr);
+              if (expiry < now) {
+                return res.status(403).json({ 
+                  error: 'subscription_expired',
+                  message: 'Your company\'s Eazzio subscription has expired. Please renew your subscription to access this resource.' 
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Middleware schema / subscription check error:', err);
         }
       }
 

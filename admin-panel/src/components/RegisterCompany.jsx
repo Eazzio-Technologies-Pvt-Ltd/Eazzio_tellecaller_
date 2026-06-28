@@ -403,7 +403,7 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
               e.stopPropagation();
               setIncludeCallRecording(e.target.checked);
             }}
-            style={{ marginTop: '3px', cursor: 'pointer' }}
+            style={{ marginTop: '3px', cursor: 'pointer', flexShrink: 0 }}
           />
           <div>
             <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>

@@ -4,7 +4,7 @@ import {
   LayoutGrid, Grid2X2, Grid3X3, Monitor,
   Phone, Clock, Coffee, Wifi, WifiOff,
   PhoneCall, Maximize2, RefreshCw, BarChart2,
-  Activity, X
+  Activity, X, Minimize2
 } from 'lucide-react';
 
 const GRID_OPTIONS = [
@@ -134,8 +134,36 @@ const CallerCard = ({ caller, gridSize, isExpanded, onClick }) => {
         />
       </div>
 
+      {/* Daily Call Stats Section */}
+      <div style={{
+        marginTop: gridSize <= 2 ? '10px' : '6px',
+        paddingTop: gridSize <= 2 ? '10px' : '6px',
+        borderTop: '1px dashed rgba(255,255,255,0.15)',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: gridSize <= 2 ? '6px' : '4px',
+        textAlign: 'center'
+      }}>
+        <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', padding: gridSize <= 2 ? '4px 2px' : '2px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+          <div style={{ fontSize: gridSize <= 2 ? '0.8rem' : '0.65rem', fontWeight: '800', color: '#10b981' }}>{caller.connected_count || 0}</div>
+          <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.2px' }}>Conn</div>
+        </div>
+        <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)', padding: gridSize <= 2 ? '4px 2px' : '2px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+          <div style={{ fontSize: gridSize <= 2 ? '0.8rem' : '0.65rem', fontWeight: '800', color: '#ef4444' }}>{caller.non_connected_count || 0}</div>
+          <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.2px' }}>Non-C</div>
+        </div>
+        <div style={{ backgroundColor: 'rgba(99, 102, 241, 0.08)', padding: gridSize <= 2 ? '4px 2px' : '2px', borderRadius: '6px', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+          <div style={{ fontSize: gridSize <= 2 ? '0.8rem' : '0.65rem', fontWeight: '800', color: '#6366f1' }}>{caller.received_count || 0}</div>
+          <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.2px' }}>Recv</div>
+        </div>
+        <div style={{ backgroundColor: 'rgba(245, 158, 11, 0.08)', padding: gridSize <= 2 ? '4px 2px' : '2px', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+          <div style={{ fontSize: gridSize <= 2 ? '0.8rem' : '0.65rem', fontWeight: '800', color: '#f59e0b' }}>{caller.missed_count || 0}</div>
+          <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.2px' }}>Miss</div>
+        </div>
+      </div>
+
       {/* Activity bar */}
-      <div style={{ ...styles.barTrack, height: barHeight, marginTop: gridSize <= 2 ? 6 : 4 }}>
+      <div style={{ ...styles.barTrack, height: barHeight, marginTop: gridSize <= 2 ? 8 : 6 }}>
         <div style={{
           ...styles.barFill,
           width: `${callPct}%`,
@@ -167,7 +195,9 @@ const MonitorGrid = () => {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [expandedCallerId, setExpandedCallerId] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const intervalRef = useRef(null);
+  const containerRef = useRef(null);
 
   const fetchCallers = async () => {
     try {
@@ -199,6 +229,24 @@ const MonitorGrid = () => {
     return () => clearInterval(intervalRef.current);
   }, [autoRefresh]);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === containerRef.current);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(err => {
+        console.error('Error enabling fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
   const perPage   = gridSize * gridSize;
   const visible   = callers.slice(0, perPage);
   const colsStyle = `repeat(${gridSize}, 1fr)`;
@@ -209,7 +257,33 @@ const MonitorGrid = () => {
   const onbreak = callers.filter(c => c.status === 'break').length;
 
   return (
-    <div style={styles.page}>
+    <div ref={containerRef} style={{ ...styles.page, position: isFullscreen ? 'relative' : 'static' }} className="monitor-grid-fullscreen-container">
+      {isFullscreen && (
+        <button
+          onClick={toggleFullscreen}
+          style={{
+            position: 'fixed',
+            top: '1rem',
+            right: '1rem',
+            zIndex: 99999,
+            backgroundColor: 'rgba(239, 68, 68, 0.9)',
+            color: '#fff',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          <Minimize2 size={16} />
+          Exit Fullscreen
+        </button>
+      )}
+
       {expandedCallerId ? (
         <div>
           {/* Expanded detailed view header */}
@@ -238,6 +312,7 @@ const MonitorGrid = () => {
                 border: '1px solid rgba(239, 68, 68, 0.3)',
                 boxShadow: '0 4px 12px rgba(239, 68, 68, 0.1)',
                 transition: 'all 0.2s',
+                ...(isFullscreen ? { marginRight: '145px' } : {})
               }}
             >
               <X size={16} />
@@ -263,26 +338,29 @@ const MonitorGrid = () => {
       ) : (
         <>
           {/* ── Page header ── */}
-          <div style={styles.header}>
-            <div>
-              <h1 style={styles.title}>
-                <Monitor size={26} style={{ marginRight: 10, color: '#6366f1' }} />
-                Live Monitor Grid
-              </h1>
-              <p style={styles.subtitle}>Real-time overview of all telecaller activity</p>
-            </div>
+          {!isFullscreen && (
+            <div style={styles.header}>
+              <div>
+                <h1 style={styles.title}>
+                  <Monitor size={26} style={{ marginRight: 10, color: '#6366f1' }} />
+                  Live Monitor Grid
+                </h1>
+                <p style={styles.subtitle}>Real-time overview of all telecaller activity</p>
+              </div>
 
-            {/* Summary pills */}
-            <div style={styles.pillRow}>
-              <Pill color="#10b981" label="Online"   count={online} />
-              <Pill color="#6366f1" label="Calling"  count={calling} />
-              <Pill color="#f59e0b" label="Break"    count={onbreak} />
-              <Pill color="#6b7280" label="Offline"  count={offline} />
+              {/* Summary pills */}
+              <div style={styles.pillRow}>
+                <Pill color="#10b981" label="Online"   count={online} />
+                <Pill color="#6366f1" label="Calling"  count={calling} />
+                <Pill color="#f59e0b" label="Break"    count={onbreak} />
+                <Pill color="#6b7280" label="Offline"  count={offline} />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ── Toolbar ── */}
-          <div style={styles.toolbar}>
+          {!isFullscreen && (
+            <div style={styles.toolbar}>
             {/* Grid selector */}
             <div style={styles.gridSelector}>
               {GRID_OPTIONS.map(opt => {
@@ -318,6 +396,18 @@ const MonitorGrid = () => {
                 </span>
               </button>
 
+              {/* Fullscreen Mode */}
+              <button
+                onClick={toggleFullscreen}
+                style={styles.toolBtn}
+                title="Toggle fullscreen mode"
+              >
+                <Maximize2 size={16} />
+                <span style={{ marginLeft: 6, fontSize: '0.8rem' }}>
+                  {isFullscreen ? 'Exit Full' : 'Fullscreen'}
+                </span>
+              </button>
+
               {/* Manual refresh */}
               <button
                 onClick={fetchCallers}
@@ -335,6 +425,7 @@ const MonitorGrid = () => {
               )}
             </div>
           </div>
+          )}
 
           {/* ── Grid ── */}
           {loading ? (
@@ -394,6 +485,14 @@ const MonitorGrid = () => {
           transform: translateY(-4px) scale(1.02);
           border-color: var(--color-primary) !important;
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 20px rgba(99, 102, 241, 0.3) !important;
+        }
+        .monitor-grid-fullscreen-container:fullscreen {
+          background-color: var(--bg-primary, #090d16) !important;
+          padding: 2rem !important;
+          overflow-y: auto !important;
+          box-sizing: border-box !important;
+          width: 100vw !important;
+          height: 100vh !important;
         }
       `}</style>
     </div>

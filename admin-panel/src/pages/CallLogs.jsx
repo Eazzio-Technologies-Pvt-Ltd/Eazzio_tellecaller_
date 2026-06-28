@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import API_BASE_URL from '../config/api';
-import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock } from 'lucide-react';
+import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock, Calendar, Clock, Activity } from 'lucide-react';
 
-const CallLogs = ({ user }) => {
+const CallLogs = ({ user, setActiveTab }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -12,8 +12,14 @@ const CallLogs = ({ user }) => {
   const [recordingToggling, setRecordingToggling] = useState(false);
   const [recordingMsg, setRecordingMsg] = useState('');
 
+  // Filters State
+  const [timeFilter, setTimeFilter] = useState('all'); // all, today, yesterday, week, month, custom
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [durationFilter, setDurationFilter] = useState('all'); // all, connected, short, medium, long
+
   const isCompanyAdmin = user && user.companyRegNum;
-  const isDemo = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-');
+  const isDemo = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
   const isAnnual = user?.planType === 'annual';
   // Pricing: ₹49/month extra for monthly plan, ₹399/year for annual plan
   const recordingPrice = isAnnual ? '₹399/year' : '₹49/month';
@@ -64,6 +70,13 @@ const CallLogs = ({ user }) => {
     fetchLogs();
     setRecordingEnabled(user?.callRecordingEnabled || false);
     setRecordingEndDate(user?.callRecordingEndDate || null);
+
+    // Auto-update polling: refresh logs every 10 seconds
+    const interval = setInterval(() => {
+      fetchLogs();
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, [user]);
 
   const formatDuration = (seconds) => {
@@ -98,9 +111,11 @@ const CallLogs = ({ user }) => {
       }
     }
 
-    if (!recActive && !recordingEnabled) {
-      setRecordingMsg('Inactive subscription. Please activate call recording in the Billing page first.');
-      setTimeout(() => setRecordingMsg(''), 5000);
+    if (!recActive) {
+      // Redirect to call recording subscription page
+      if (setActiveTab) {
+        setActiveTab('billing');
+      }
       return;
     }
 
@@ -132,21 +147,161 @@ const CallLogs = ({ user }) => {
     }
   };
 
+  const isToday = (date) => {
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const getTodayStats = () => {
+    let total = 0;
+    let connected = 0;
+    let talkTime = 0;
+
+    logs.forEach(log => {
+      const logDate = parseDbDate(log.called_at);
+      if (isToday(logDate)) {
+        total++;
+        if (log.call_status === 'connected' || log.call_status === 'received') {
+          connected++;
+          talkTime += (log.duration || 0);
+        }
+      }
+    });
+
+    return { total, connected, talkTime };
+  };
+
+  const todayStats = getTodayStats();
+
   const filteredLogs = logs.filter(log => {
     const term = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = (
       log.contact_name?.toLowerCase().includes(term) ||
       log.contact_phone?.includes(term) ||
       log.telecaller_name?.toLowerCase().includes(term) ||
       log.campaign_name?.toLowerCase().includes(term) ||
       log.feedback?.toLowerCase().includes(term)
     );
+
+    if (!matchesSearch) return false;
+
+    // Timing filter
+    const logDate = parseDbDate(log.called_at);
+    const now = new Date();
+    
+    if (timeFilter === 'today') {
+      if (!isToday(logDate)) return false;
+    } else if (timeFilter === 'yesterday') {
+      const yesterday = new Date();
+      yesterday.setDate(now.getDate() - 1);
+      const isYesterday = (
+        logDate.getDate() === yesterday.getDate() &&
+        logDate.getMonth() === yesterday.getMonth() &&
+        logDate.getFullYear() === yesterday.getFullYear()
+      );
+      if (!isYesterday) return false;
+    } else if (timeFilter === 'week') {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(now.getDate() - 7);
+      if (logDate < sevenDaysAgo) return false;
+    } else if (timeFilter === 'month') {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      if (logDate < thirtyDaysAgo) return false;
+    } else if (timeFilter === 'custom') {
+      if (startDate) {
+        const start = new Date(startDate);
+        if (logDate < start) return false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        if (logDate > end) return false;
+      }
+    }
+
+    // Duration filter
+    if (durationFilter === 'connected') {
+      if (log.call_status !== 'connected' && log.call_status !== 'received') return false;
+    } else if (durationFilter === 'short') {
+      if ((log.call_status !== 'connected' && log.call_status !== 'received') || log.duration >= 60) return false;
+    } else if (durationFilter === 'medium') {
+      if ((log.call_status !== 'connected' && log.call_status !== 'received') || log.duration < 60 || log.duration > 300) return false;
+    } else if (durationFilter === 'long') {
+      if ((log.call_status !== 'connected' && log.call_status !== 'received') || log.duration <= 300) return false;
+    }
+
+    return true;
   });
 
   return (
     <div>
-      <h1>Call Records &amp; Logs</h1>
-      <p className="subtitle">Audit telecaller communications and play back call recordings.</p>
+      <style>{`
+        @keyframes pulse-live {
+          0% {
+            transform: scale(0.9);
+            opacity: 0.6;
+          }
+          50% {
+            transform: scale(1.1);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(0.9);
+            opacity: 0.6;
+          }
+        }
+        .live-pulsing-dot {
+          animation: pulse-live 1.8s infinite ease-in-out;
+        }
+      `}</style>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.75rem' }}>
+        <div>
+          <h1 style={{ margin: 0 }}>Call Records &amp; Logs</h1>
+          <p className="subtitle" style={{ margin: '4px 0 0 0' }}>Audit telecaller communications and play back call recordings.</p>
+        </div>
+        <div style={styles.liveIndicator}>
+          <span style={styles.liveDot} className="live-pulsing-dot" />
+          <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#10b981' }}>Live Auto-Updating</span>
+        </div>
+      </div>
+
+      {/* Daily Stats Grid */}
+      <div style={styles.statsGrid}>
+        <div className="glass-card" style={{ ...styles.statCard, borderLeft: '4px solid #3b82f6' }}>
+          <div style={styles.statIconWrapBlue}>
+            <Activity size={20} />
+          </div>
+          <div>
+            <div style={styles.statLabel}>Today's Total Calls</div>
+            <div style={styles.statValue}>{todayStats.total}</div>
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ ...styles.statCard, borderLeft: '4px solid #10b981' }}>
+          <div style={styles.statIconWrapGreen}>
+            <Play size={20} fill="currentColor" />
+          </div>
+          <div>
+            <div style={styles.statLabel}>Today's Connected</div>
+            <div style={styles.statValue}>{todayStats.connected}</div>
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ ...styles.statCard, borderLeft: '4px solid #a855f7' }}>
+          <div style={styles.statIconWrapPurple}>
+            <Clock size={20} />
+          </div>
+          <div>
+            <div style={styles.statLabel}>Today's Talk Time</div>
+            <div style={styles.statValue}>{formatDuration(todayStats.talkTime)}</div>
+          </div>
+        </div>
+      </div>
 
       {/* Allow Recording Banner — only for company admins */}
       {isCompanyAdmin && (() => {
@@ -269,16 +424,87 @@ const CallLogs = ({ user }) => {
       );
     })()}
 
-      {/* Search Filter Bar */}
-      <div style={styles.searchBar}>
-        <Search size={18} style={styles.searchIcon} />
-        <input
-          type="text"
-          placeholder="Search by caller, lead name, phone number, campaign or notes..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={styles.searchInput}
-        />
+      {/* Search & Filters Panel */}
+      <div className="glass-card" style={styles.filterPanel}>
+        <div style={styles.filterRow}>
+          {/* Text Search */}
+          <div style={{ ...styles.filterGroup, flex: 2 }}>
+            <label style={styles.filterLabel}>Search Logs</label>
+            <div style={styles.searchContainer}>
+              <Search size={16} style={styles.searchIconInside} />
+              <input
+                type="text"
+                placeholder="Search by caller, lead, phone, campaign, feedback..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={styles.filterInputSearch}
+              />
+            </div>
+          </div>
+
+          {/* Timing Preset Filter */}
+          <div style={styles.filterGroup}>
+            <label style={styles.filterLabel}>Time Period</label>
+            <div style={{ position: 'relative' }}>
+              <Calendar size={16} style={styles.selectIcon} />
+              <select
+                value={timeFilter}
+                onChange={(e) => setTimeFilter(e.target.value)}
+                style={styles.filterSelect}
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">Last 30 Days</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Talk Time Duration Filter */}
+          <div style={styles.filterGroup}>
+            <label style={styles.filterLabel}>Duration</label>
+            <div style={{ position: 'relative' }}>
+              <Clock size={16} style={styles.selectIcon} />
+              <select
+                value={durationFilter}
+                onChange={(e) => setDurationFilter(e.target.value)}
+                style={styles.filterSelect}
+              >
+                <option value="all">All Durations</option>
+                <option value="connected">Connected Only</option>
+                <option value="short">Short (&lt; 1 min)</option>
+                <option value="medium">Medium (1 - 5 mins)</option>
+                <option value="long">Long (&gt; 5 mins)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Custom Date Range Pickers (conditional) */}
+        {timeFilter === 'custom' && (
+          <div style={styles.customDateRow}>
+            <div style={styles.filterGroup}>
+              <label style={styles.filterLabel}>Start Date &amp; Time</label>
+              <input
+                type="datetime-local"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                style={styles.dateInput}
+              />
+            </div>
+            <div style={styles.filterGroup}>
+              <label style={styles.filterLabel}>End Date &amp; Time</label>
+              <input
+                type="datetime-local"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                style={styles.dateInput}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Active Recording Sticky Player */}
@@ -379,22 +605,172 @@ const CallLogs = ({ user }) => {
 };
 
 const styles = {
-  searchBar: {
+  liveIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '6px 12px',
+    borderRadius: '20px',
+    background: 'rgba(16, 185, 129, 0.1)',
+    border: '1px solid rgba(16, 185, 129, 0.25)',
+  },
+  liveDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    background: '#10b981',
+  },
+  statsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: '1rem',
+    marginBottom: '1.5rem',
+  },
+  statCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+    padding: '1.25rem',
+    borderRadius: '12px',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-color)',
+    boxShadow: 'var(--shadow-sm)',
+  },
+  statIconWrapBlue: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '10px',
+    background: 'rgba(59, 130, 246, 0.1)',
+    color: '#3b82f6',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  statIconWrapGreen: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '10px',
+    background: 'rgba(16, 185, 129, 0.1)',
+    color: '#10b981',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  statIconWrapPurple: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '10px',
+    background: 'rgba(168, 85, 247, 0.1)',
+    color: '#a855f7',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  statLabel: {
+    fontSize: '0.75rem',
+    color: 'var(--text-muted)',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  statValue: {
+    fontSize: '1.4rem',
+    fontWeight: '800',
+    color: 'var(--text-primary)',
+    marginTop: '2px',
+  },
+  filterPanel: {
+    padding: '1.25rem',
+    borderRadius: '14px',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-color)',
+    marginBottom: '1.5rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+  },
+  filterRow: {
+    display: 'flex',
+    gap: '1rem',
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+  },
+  filterGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    flex: 1,
+    minWidth: '200px',
+  },
+  filterLabel: {
+    fontSize: '0.78rem',
+    fontWeight: '600',
+    color: 'var(--text-secondary)',
+  },
+  searchContainer: {
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
-    marginBottom: '1.5rem',
   },
-  searchIcon: {
+  searchIconInside: {
     position: 'absolute',
-    left: '16px',
+    left: '12px',
     color: 'var(--text-muted)',
   },
-  searchInput: {
+  filterInputSearch: {
     width: '100%',
-    paddingLeft: '3rem',
-    height: '48px',
-    fontSize: '0.95rem',
+    paddingLeft: '2.5rem',
+    paddingRight: '12px',
+    height: '40px',
+    fontSize: '0.88rem',
+    borderRadius: '8px',
+    border: '1px solid var(--border-color)',
+    background: 'rgba(255, 255, 255, 0.03)',
+    color: 'var(--text-primary)',
+    outline: 'none',
+  },
+  filterSelect: {
+    width: '100%',
+    paddingLeft: '2.5rem',
+    paddingRight: '2rem',
+    height: '40px',
+    fontSize: '0.88rem',
+    borderRadius: '8px',
+    border: '1px solid var(--border-color)',
+    background: 'rgba(255, 255, 255, 0.03)',
+    color: 'var(--text-primary)',
+    outline: 'none',
+    appearance: 'none',
+    cursor: 'pointer',
+  },
+  selectIcon: {
+    position: 'absolute',
+    left: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    color: 'var(--text-muted)',
+    pointerEvents: 'none',
+  },
+  customDateRow: {
+    display: 'flex',
+    gap: '1rem',
+    flexWrap: 'wrap',
+    paddingTop: '0.5rem',
+    borderTop: '1px dashed var(--border-color)',
+  },
+  dateInput: {
+    width: '100%',
+    padding: '0 12px',
+    height: '40px',
+    fontSize: '0.88rem',
+    borderRadius: '8px',
+    border: '1px solid var(--border-color)',
+    background: 'rgba(255, 255, 255, 0.03)',
+    color: 'var(--text-primary)',
+    outline: 'none',
   },
   audioPlayerPanel: {
     display: 'flex',

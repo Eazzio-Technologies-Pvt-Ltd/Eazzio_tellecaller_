@@ -13,7 +13,7 @@ import Companies from './pages/Companies';
 import BillingPage from './pages/BillingPage';
 import HelpDesk from './pages/HelpDesk';
 import SupportTickets from './pages/SupportTickets';
-import { Mail, Lock, LogIn, AlertCircle, Menu, X, ShieldCheck, ArrowLeft, RefreshCw, Phone, Users, TrendingUp, Shield, Zap, Building2, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, LogIn, AlertCircle, Menu, X, ShieldCheck, ArrowLeft, RefreshCw, Phone, Users, TrendingUp, Shield, Zap, Building2, Eye, EyeOff, Briefcase, Tag } from 'lucide-react';
 import Logo from './components/Logo';
 
 // Interactive Network Constellation Background Animation
@@ -277,8 +277,9 @@ const getDemoDeviceId = () => {
   return devId;
 };
 
-const DemoValidityBanner = ({ subscriptionEnd }) => {
+const DemoValidityBanner = ({ subscriptionEnd, onClose }) => {
   const [timeLeft, setTimeLeft] = useState('');
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     if (!subscriptionEnd) {
@@ -320,6 +321,8 @@ const DemoValidityBanner = ({ subscriptionEnd }) => {
     return () => clearInterval(interval);
   }, [subscriptionEnd]);
 
+  if (!visible) return null;
+
   return (
     <div style={{
       background: 'linear-gradient(90deg, #f59e0b 0%, #ef4444 50%, #ec4899 100%)',
@@ -329,12 +332,14 @@ const DemoValidityBanner = ({ subscriptionEnd }) => {
       justifyContent: 'center',
       fontSize: '0.88rem',
       fontWeight: '700',
-      padding: '10px',
+      padding: '10px 40px 10px 10px',
       textAlign: 'center',
       boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
       gap: '8px',
       width: '100%',
-      boxSizing: 'border-box'
+      boxSizing: 'border-box',
+      position: 'relative',
+      zIndex: 1000
     }}>
       <span>⚠️</span>
       <span>
@@ -352,6 +357,30 @@ const DemoValidityBanner = ({ subscriptionEnd }) => {
           {timeLeft}
         </span>
       </span>
+      <button 
+        onClick={() => {
+          setVisible(false);
+          if (onClose) onClose();
+        }}
+        style={{
+          position: 'absolute',
+          right: '15px',
+          background: 'none',
+          border: 'none',
+          color: '#ffffff',
+          cursor: 'pointer',
+          fontWeight: 'bold',
+          fontSize: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '4px',
+          zIndex: 1001
+        }}
+        title="Dismiss banner"
+      >
+        ✕
+      </button>
     </div>
   );
 };
@@ -363,6 +392,7 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [theme, setTheme] = useState('light');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showDemoBanner, setShowDemoBanner] = useState(true);
   const [isRegistering, setIsRegistering] = useState(false);
   const [subscriptionExpired, setSubscriptionExpired] = useState(false);
   const [loginType, setLoginType] = useState('company'); // 'company' or 'superadmin'
@@ -371,9 +401,14 @@ const App = () => {
   const [demoName, setDemoName] = useState('');
   const [demoEmail, setDemoEmail] = useState('');
   const [demoPassword, setDemoPassword] = useState('');
+  const [demoCompanyName, setDemoCompanyName] = useState('');
+  const [demoCompanyNature, setDemoCompanyNature] = useState('');
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoError, setDemoError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showDemoPassword, setShowDemoPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Oscillating metrics for left pane stats card
   const [liveCalls, setLiveCalls] = useState(2841);
@@ -639,8 +674,8 @@ const App = () => {
     setDemoError('');
     setDemoLoading(true);
 
-    if (!demoName || !demoEmail || !demoPassword) {
-      setDemoError('Please provide name, email, and password.');
+    if (!demoName || !demoEmail || !demoPassword || !demoCompanyName || !demoCompanyNature) {
+      setDemoError('Please provide all details, including company name and nature.');
       setDemoLoading(false);
       return;
     }
@@ -655,6 +690,8 @@ const App = () => {
           name: demoName, 
           email: demoEmail,
           password: demoPassword,
+          companyName: demoCompanyName,
+          nature: demoCompanyNature,
           macAddress: getDemoDeviceId()
         })
       });
@@ -676,9 +713,10 @@ const App = () => {
       setDemoName('');
       setDemoEmail('');
       setDemoPassword('');
+      setDemoCompanyName('');
+      setDemoCompanyNature('');
     } catch (err) {
       setDemoError(err.message);
-    } finally {
       setDemoLoading(false);
     }
   };
@@ -700,7 +738,7 @@ const App = () => {
         case 'support':
           return <SupportTickets />;
         case 'billing':
-          return <BillingPage theme={theme} user={user} />;
+          return <BillingPage theme={theme} user={user} setToken={setToken} setUser={setUser} />;
         default:
           return <Dashboard setActiveTab={setActiveTab} theme={theme} user={user} />;
       }
@@ -719,11 +757,11 @@ const App = () => {
       case 'contacts':
         return <Contacts />;
       case 'call-logs':
-        return <CallLogs user={user} />;
+        return <CallLogs user={user} setActiveTab={setActiveTab} />;
       case 'accounts':
         return <TelecallerAccounts />;
       case 'billing':
-        return <BillingPage theme={theme} user={user} />;
+        return <BillingPage theme={theme} user={user} setToken={setToken} setUser={setUser} />;
       case 'help-desk':
         return <HelpDesk user={user} />;
       default:
@@ -816,17 +854,69 @@ const App = () => {
               </div>
 
               <div className="form-group">
+                <label className="auth-input-label">Company Name</label>
+                <div className="auth-input-container">
+                  <Building2 size={18} className="auth-input-icon" />
+                  <input 
+                    type="text" 
+                    placeholder="Enter company name" 
+                    value={demoCompanyName}
+                    onChange={(e) => setDemoCompanyName(e.target.value)}
+                    required
+                    className="auth-input-field"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="auth-input-label">Nature of Company</label>
+                <div className="auth-input-container">
+                  <Briefcase size={18} className="auth-input-icon" />
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Real Estate, Finance, Insurance" 
+                    value={demoCompanyNature}
+                    onChange={(e) => setDemoCompanyNature(e.target.value)}
+                    required
+                    className="auth-input-field"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
                 <label className="auth-input-label">Choose Password</label>
                 <div className="auth-input-container">
                   <Lock size={18} className="auth-input-icon" />
                   <input 
-                    type="password" 
+                    type={showDemoPassword ? "text" : "password"} 
                     placeholder="Create a password" 
                     value={demoPassword}
                     onChange={(e) => setDemoPassword(e.target.value)}
                     required
                     className="auth-input-field"
+                    style={{ paddingRight: '2.75rem' }}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowDemoPassword(!showDemoPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '14px',
+                      background: 'none',
+                      border: 'none',
+                      color: '#64748b',
+                      cursor: 'pointer',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 2,
+                    }}
+                    className="password-toggle-btn"
+                    aria-label={showDemoPassword ? "Hide password" : "Show password"}
+                  >
+                    {showDemoPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
 
@@ -996,13 +1086,34 @@ const App = () => {
                     <div className="auth-input-container">
                       <Lock size={18} className="auth-input-icon" />
                       <input 
-                        type="password" 
+                        type={showNewPassword ? "text" : "password"} 
                         placeholder="Enter new password (min 6 chars)" 
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         className="auth-input-field"
+                        style={{ paddingRight: '2.75rem' }}
                         required
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '14px',
+                          background: 'none',
+                          border: 'none',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          zIndex: 2,
+                        }}
+                        className="password-toggle-btn"
+                      >
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
                     </div>
                   </div>
 
@@ -1011,13 +1122,34 @@ const App = () => {
                     <div className="auth-input-container">
                       <Lock size={18} className="auth-input-icon" />
                       <input 
-                        type="password" 
+                        type={showConfirmPassword ? "text" : "password"} 
                         placeholder="Confirm new password" 
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         className="auth-input-field"
+                        style={{ paddingRight: '2.75rem' }}
                         required
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '14px',
+                          background: 'none',
+                          border: 'none',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          zIndex: 2,
+                        }}
+                        className="password-toggle-btn"
+                      >
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
                     </div>
                   </div>
 
@@ -1223,10 +1355,10 @@ const App = () => {
   }
 
   if (subscriptionExpired && user && user.companyRegNum) {
-    const isDemo = user.companyRegNum.startsWith('EAZ-DEMO-');
+    const isDemo = user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
     return (
       <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme} liveCalls={liveCalls} agentsOnline={agentsOnline} dialSuccess={dialSuccess}>
-        <div className="login-glass-card-premium" style={{ padding: '2rem 2.25rem', maxWidth: '620px' }}>
+        <div className="login-glass-card-premium" style={{ padding: '2rem 2.25rem', maxWidth: '620px', textAlign: 'center' }}>
           <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.12)', border: '2px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
               <AlertCircle size={30} color="#ef4444" />
@@ -1234,46 +1366,73 @@ const App = () => {
             <h2 className="auth-header-title" style={{ fontSize: '1.6rem', textAlign: 'center' }}>
               {isDemo ? 'please take subscription' : 'Subscription Expired'}
             </h2>
-            <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '0.95rem', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '0.95rem', textAlign: 'center', lineHeight: '1.5' }}>
               {isDemo 
                 ? 'Your 1-week free trial has expired. To continue using Eazzio and access your campaigns, please purchase a subscription.'
-                : 'Your Eazzio subscription has expired. Please renew to continue using the platform.'}
+                : 'Your Eazzio subscription has expired. Please contact Eazzio Support or the system administrator to renew the plan.'}
             </p>
           </div>
-          <RegisterCompany
-            onBack={handleLogout}
-            theme={theme}
-            renewalMode={true}
-            prefillEmail={user.email}
-            prefillNoOfTelecallers={user.noOfTelecallers}
-            onRenewalSuccess={(data) => {
-              setSubscriptionExpired(false);
-              fetch(`${API_BASE_URL}/api/auth/me`, {
-                headers: {
-                  'Authorization': `Bearer ${token}`
+          {isDemo ? (
+            <RegisterCompany
+              onBack={handleLogout}
+              theme={theme}
+              renewalMode={true}
+              prefillEmail={user.email}
+              prefillNoOfTelecallers={user.noOfTelecallers}
+              onRenewalSuccess={(data) => {
+                setSubscriptionExpired(false);
+                // If backend returned a new token (demo → normal upgrade), update it first
+                const activeToken = (data && data.token) ? data.token : token;
+                if (data && data.token) {
+                  localStorage.setItem('token', data.token);
+                  setToken(data.token);
                 }
-              })
-              .then(res => res.json())
-              .then(userData => {
-                setUser(userData);
-              })
-              .catch(err => console.error('Error fetching updated user after renewal:', err));
-            }}
-          />
+                fetch(`${API_BASE_URL}/api/auth/me`, {
+                  headers: {
+                    'Authorization': `Bearer ${activeToken}`
+                  }
+                })
+                .then(res => res.json())
+                .then(userData => {
+                  setUser(userData);
+                })
+                .catch(err => console.error('Error fetching updated user after renewal:', err));
+              }}
+            />
+          ) : (
+            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center' }}>
+              <button
+                onClick={handleLogout}
+                style={{
+                  padding: '10px 24px',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                }}
+              >
+                Sign Out / Back to Login
+              </button>
+            </div>
+          )}
         </div>
       </AuthLayoutWrapper>
     );
   }
 
-  const isDemoUser = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-');
+  const isDemoUser = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
 
   // Render main dashboard template if authenticated
   return (
     <div className="app-container" style={isDemoUser ? { display: 'block' } : {}}>
-      {isDemoUser && (
-        <DemoValidityBanner subscriptionEnd={user?.subscriptionEnd} />
+      {isDemoUser && showDemoBanner && (
+        <DemoValidityBanner subscriptionEnd={user?.subscriptionEnd} onClose={() => setShowDemoBanner(false)} />
       )}
-      <div className="app-layout-wrapper" style={{ display: 'flex', width: '100%', minHeight: isDemoUser ? 'calc(100vh - 38px)' : '100vh' }}>
+      <div className="app-layout-wrapper" style={{ display: 'flex', width: '100%', minHeight: (isDemoUser && showDemoBanner) ? 'calc(100vh - 38px)' : '100vh' }}>
         <div className="mobile-header">
           <Logo theme={theme} mode="sidebar" />
           <button 
@@ -1298,6 +1457,7 @@ const App = () => {
           toggleTheme={toggleTheme}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
+          showDemoBanner={showDemoBanner}
         />
         <main className="main-content">
           {renderActivePage()}

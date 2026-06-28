@@ -18,8 +18,9 @@ import {
 
 import Logo from './Logo';
 
-const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, isOpen, onClose }) => {
+const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, isOpen, onClose, showDemoBanner }) => {
   const isSuperadmin = user && (user.companyRegNum === null || user.email === 'tellecaller111@eazzio.com');
+  const isDemoUser = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
 
   const rawMenuItems = isSuperadmin
     ? [
@@ -33,7 +34,8 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
         { id: 'telecallers',  label: 'Telecallers',    icon: Users },
         { id: 'monitor-grid', label: 'Monitor Grid',   icon: LayoutGrid },
         { id: 'accounts',    label: 'Accounts Info',   icon: Key },
-        { id: 'billing',     label: 'Billing',         icon: IndianRupee },
+        // Only show billing tab for demo users (they need to subscribe to upgrade)
+        ...(isDemoUser ? [{ id: 'billing', label: 'Subscribe', icon: IndianRupee }] : []),
         { id: 'campaigns',   label: 'Campaigns',       icon: PhoneOutgoing },
         { id: 'contacts',    label: 'Contacts',        icon: Contact2 },
         { id: 'call-logs',   label: 'Call Logs',       icon: History },
@@ -42,12 +44,10 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
 
   const menuItems = rawMenuItems;
 
-  const isDemoUser = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-');
-
   return (
     <aside style={{
       ...styles.sidebar,
-      ...(isDemoUser ? { top: '38px', height: 'calc(100vh - 38px)' } : {})
+      ...(isDemoUser && showDemoBanner ? { top: '38px', height: 'calc(100vh - 38px)' } : {})
     }} className={isOpen ? 'open' : ''}>
       {/* Brand Header */}
       <div style={styles.brand}>

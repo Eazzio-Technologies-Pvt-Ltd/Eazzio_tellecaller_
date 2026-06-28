@@ -12,6 +12,8 @@ const HelpDesk = ({ user }) => {
   const [submitSuccess, setSubmitSuccess] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [expandedTicket, setExpandedTicket] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [fileInputKey, setFileInputKey] = useState(Date.now());
 
   const fetchTickets = async () => {
     try {
@@ -45,13 +47,19 @@ const HelpDesk = ({ user }) => {
 
     setSubmitting(true);
     try {
+      const formData = new FormData();
+      formData.append('subject', subject.trim());
+      formData.append('message', message.trim());
+      if (imageFile) {
+        formData.append('image', imageFile);
+      }
+
       const res = await fetch(`${API_BASE_URL}/api/support/tickets`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ subject: subject.trim(), message: message.trim() })
+        body: formData
       });
 
       const data = await res.json();
@@ -60,6 +68,8 @@ const HelpDesk = ({ user }) => {
       setSubmitSuccess('Your support ticket has been submitted successfully! Our team will review it shortly.');
       setSubject('');
       setMessage('');
+      setImageFile(null);
+      setFileInputKey(Date.now());
       fetchTickets();
     } catch (err) {
       setSubmitError(err.message);
@@ -192,6 +202,28 @@ const HelpDesk = ({ user }) => {
               {message.length}/2000
             </div>
           </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label style={{ fontSize: '0.88rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' }}>
+              Upload Screenshot / Image (Optional)
+            </label>
+            <input
+              key={fileInputKey}
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImageFile(e.target.files[0] || null)}
+              style={{
+                padding: '8px 12px',
+                height: 'auto',
+                fontSize: '0.9rem',
+                border: '1px dashed var(--border-color)',
+                backgroundColor: 'rgba(255,255,255,0.02)',
+                borderRadius: '8px',
+                width: '100%',
+                boxSizing: 'border-box',
+                cursor: 'pointer'
+              }}
+            />
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
@@ -300,9 +332,21 @@ const HelpDesk = ({ user }) => {
                       padding: '0 16px 14px 16px', borderTop: '1px solid var(--border-color)',
                       marginTop: '0', paddingTop: '14px'
                     }}>
-                      <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
+                      <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.6', margin: '0 0 12px 0', whiteSpace: 'pre-wrap' }}>
                         {ticket.message}
                       </p>
+                      {ticket.image_url && (
+                        <div style={{ marginTop: '14px', borderTop: '1px dashed var(--border-color)', paddingTop: '10px' }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '6px' }}>Attachment:</div>
+                          <a href={`${API_BASE_URL}${ticket.image_url}`} target="_blank" rel="noopener noreferrer">
+                            <img 
+                              src={`${API_BASE_URL}${ticket.image_url}`} 
+                              alt="Screenshot" 
+                              style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
+                            />
+                          </a>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

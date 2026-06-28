@@ -115,17 +115,27 @@ async function query(text, params = []) {
     return await pgPool.query(text, params);
   } else {
     const dbConn = getActiveDb();
-    // Translate $1, $2 -> ? for SQLite
-    const sqliteText = text.replace(/\$\d+/g, '?');
+    // Translate $1, $2 -> ? for SQLite with parameter replication
+    const matches = text.match(/\$\d+/g);
+    let sqliteText = text;
+    let sqliteParams = params;
+    if (matches) {
+      sqliteParams = [];
+      sqliteText = text.replace(/\$\d+/g, (match) => {
+        const index = parseInt(match.substring(1), 10) - 1;
+        sqliteParams.push(params[index]);
+        return '?';
+      });
+    }
     
     // Determine whether to use run or all
     const cleanText = sqliteText.trim().toLowerCase();
     const isSelect = cleanText.startsWith('select') || cleanText.startsWith('with') || cleanText.includes('returning');
     
     if (isSelect) {
-      return await sqliteAll(dbConn, sqliteText, params);
+      return await sqliteAll(dbConn, sqliteText, sqliteParams);
     } else {
-      return await sqliteRun(dbConn, sqliteText, params);
+      return await sqliteRun(dbConn, sqliteText, sqliteParams);
     }
   }
 }
@@ -143,15 +153,25 @@ async function queryMain(text, params = []) {
       client.release();
     }
   } else {
-    // Translate $1, $2 -> ? for SQLite
-    const sqliteText = text.replace(/\$\d+/g, '?');
+    // Translate $1, $2 -> ? for SQLite with parameter replication
+    const matches = text.match(/\$\d+/g);
+    let sqliteText = text;
+    let sqliteParams = params;
+    if (matches) {
+      sqliteParams = [];
+      sqliteText = text.replace(/\$\d+/g, (match) => {
+        const index = parseInt(match.substring(1), 10) - 1;
+        sqliteParams.push(params[index]);
+        return '?';
+      });
+    }
     const cleanText = sqliteText.trim().toLowerCase();
     const isSelect = cleanText.startsWith('select') || cleanText.startsWith('with') || cleanText.includes('returning');
     
     if (isSelect) {
-      return await sqliteAll(sqliteDb, sqliteText, params);
+      return await sqliteAll(sqliteDb, sqliteText, sqliteParams);
     } else {
-      return await sqliteRun(sqliteDb, sqliteText, params);
+      return await sqliteRun(sqliteDb, sqliteText, sqliteParams);
     }
   }
 }
@@ -267,6 +287,7 @@ async function initializeSchema() {
       subject VARCHAR(255) NOT NULL,
       message ${textType} NOT NULL,
       status VARCHAR(20) DEFAULT 'open',
+      image_url VARCHAR(255) DEFAULT NULL,
       created_at ${timestampType},
       resolved_at ${timestampType}
     )`,
@@ -362,6 +383,12 @@ async function initializeSchema() {
     const tsType = dbType === 'postgres' ? 'TIMESTAMP' : 'DATETIME';
     await queryMain(`ALTER TABLE companies ADD COLUMN call_recording_end_date ${tsType}`);
     console.log('Added call_recording_end_date column to companies table.');
+  } catch (err) { /* already exists */ }
+
+  // Add image_url column to support_tickets table if it doesn't exist
+  try {
+    await queryMain('ALTER TABLE support_tickets ADD COLUMN image_url VARCHAR(255)');
+    console.log('Added image_url column to support_tickets table.');
   } catch (err) { /* already exists */ }
 
   // Create default admin user if none exists
@@ -672,6 +699,42 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
 }
 
 /**
+ * Ensures the company database is created and fully provisioned.
+ * Automatically runs dynamic schema creation if database exists but has no tables.
+ */
+async function ensureCompanySchema(regNum, companyName, adminEmail, adminPasswordHash, adminPlainPassword) {
+  if (dbType === 'sqlite') {
+    const sqliteFile = path.join(getDatabasesDir(), `company_${regNum}.sqlite`);
+    let needsInit = !fs.existsSync(sqliteFile);
+    if (!needsInit) {
+      const tables = await new Promise((resolve) => {
+        const compDb = new sqlite3.Database(sqliteFile, sqlite3.OPEN_READONLY, (err) => {
+          if (err) return resolve([]);
+          compDb.all("SELECT name FROM sqlite_master WHERE type='table' AND name='users'", (err, rows) => {
+            compDb.close();
+            if (err || !rows) return resolve([]);
+            resolve(rows);
+          });
+        });
+      });
+      if (tables.length === 0) {
+        needsInit = true;
+      }
+    }
+
+    if (needsInit) {
+      console.log(`[Database] Auto-initializing missing SQLite schema for company ${regNum}...`);
+      // Close active cached connection if it exists to avoid locking conflicts
+      if (companyConnections[regNum]) {
+        try { companyConnections[regNum].close(); } catch(e){}
+        delete companyConnections[regNum];
+      }
+      await initializeCompanySchema(regNum, companyName, adminEmail, adminPasswordHash, adminPlainPassword);
+    }
+  }
+}
+
+/**
  * Helper to fetch the number of telecallers inside a company's SQLite database file.
  */
 async function getCompanyTelecallerCount(regNum) {
@@ -719,6 +782,7 @@ module.exports = {
   queryMain,
   initializeSchema,
   initializeCompanySchema,
+  ensureCompanySchema,
   getCompanyTelecallerCount,
   closeCompanyConnection,
   getDatabasesDir,
