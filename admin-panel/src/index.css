@@ -2260,3 +2260,65 @@ tr:hover td {
   }
 }
 
+/* Premium Stat Cards with glowing theme borders and hover animations */
+.stat-card-purple {
+  border-color: rgba(124, 58, 237, 0.15) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.stat-card-purple:hover {
+  border-color: rgba(124, 58, 237, 0.6) !important;
+  box-shadow: 0 10px 25px rgba(124, 58, 237, 0.15) !important;
+  transform: translateY(-4px) !important;
+}
+
+.stat-card-blue {
+  border-color: rgba(37, 99, 235, 0.15) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.stat-card-blue:hover {
+  border-color: rgba(37, 99, 235, 0.6) !important;
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.15) !important;
+  transform: translateY(-4px) !important;
+}
+
+.stat-card-green {
+  border-color: rgba(16, 185, 129, 0.15) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.stat-card-green:hover {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.15) !important;
+  transform: translateY(-4px) !important;
+}
+
+.stat-card-orange {
+  border-color: rgba(245, 158, 11, 0.15) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.stat-card-orange:hover {
+  border-color: rgba(245, 158, 11, 0.6) !important;
+  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.15) !important;
+  transform: translateY(-4px) !important;
+}
+
+.stat-card-teal {
+  border-color: rgba(13, 148, 136, 0.15) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.stat-card-teal:hover {
+  border-color: rgba(13, 148, 136, 0.6) !important;
+  box-shadow: 0 10px 25px rgba(13, 148, 136, 0.15) !important;
+  transform: translateY(-4px) !important;
+}
+
+.stat-card-red {
+  border-color: rgba(239, 68, 68, 0.15) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.stat-card-red:hover {
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.15) !important;
+  transform: translateY(-4px) !important;
+}
+
+

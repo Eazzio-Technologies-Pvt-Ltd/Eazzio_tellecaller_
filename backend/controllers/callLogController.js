@@ -194,9 +194,9 @@ exports.getCallLogs = async (req, res) => {
         u.name as telecaller_name,
         camp.name as campaign_name
       FROM call_logs cl
-      JOIN contacts c ON cl.contact_id = c.id
-      JOIN users u ON cl.telecaller_id = u.id
-      JOIN campaigns camp ON c.campaign_id = camp.id
+      LEFT JOIN contacts c ON cl.contact_id = c.id
+      LEFT JOIN users u ON cl.telecaller_id = u.id
+      LEFT JOIN campaigns camp ON c.campaign_id = camp.id
     `;
     const params = [];
     const conditions = [];
@@ -209,7 +209,13 @@ exports.getCallLogs = async (req, res) => {
     if (date) {
       params.push(date);
       const isPg = db.dbType === 'postgres';
-      const dateCast = isPg ? `cl.called_at::date = $${params.length}` : `date(cl.called_at) = $${params.length}`;
+      const isMonth = date.length === 7;
+      let dateCast;
+      if (isMonth) {
+        dateCast = isPg ? `TO_CHAR(cl.called_at, 'YYYY-MM') = $${params.length}` : `substr(cl.called_at, 1, 7) = $${params.length}`;
+      } else {
+        dateCast = isPg ? `cl.called_at::date = $${params.length}` : `date(cl.called_at) = $${params.length}`;
+      }
       conditions.push(dateCast);
     }
 

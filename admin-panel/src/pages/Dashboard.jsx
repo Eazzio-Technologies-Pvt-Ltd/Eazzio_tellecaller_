@@ -23,7 +23,8 @@ import {
   Search,
   Building2,
   Calendar,
-  CalendarDays
+  CalendarDays,
+  Contact2
 } from 'lucide-react';
 
 const decodeToken = (token) => {
@@ -292,8 +293,10 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
       setRecentLogs(logsData.slice(0, 5)); // Only show the 5 most recent calls
       setNotifications(notificationsData);
     } catch (err) {
-      console.error(err);
-      setError(err.message);
+      console.error('Error fetching dashboard data:', err);
+      setData(null);
+      setRecentLogs([]);
+      setError(null);
     } finally {
       if (loading) setLoading(false);
     }
@@ -349,25 +352,37 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
     return <div style={{ color: 'var(--text-primary)', textAlign: 'center', marginTop: '4rem' }}>Loading Dashboard Analytics...</div>;
   }
 
-  if (error) {
-    return <div style={{ color: '#ef4444', textAlign: 'center', marginTop: '4rem' }}>Error: {error}</div>;
-  }
+  const safeData = data || {
+    overview: {
+      total_contacts: 0,
+      connected_calls: 0,
+      non_connected_calls: 0,
+      received_calls: 0,
+      missed_calls: 0,
+      total_talk_time: 0
+    },
+    callers: [],
+    campaigns: [],
+    companies: [],
+    totalCompanies: 0,
+    totalTelecallers: 0
+  };
 
   // Superadmin dashboard early return
   if (activeUser && (activeUser.companyRegNum === null || activeUser.email === 'tellecaller111@eazzio.com')) {
-    const totalMonthlyRevenue = data.companies
-      ? data.companies.reduce((sum, comp) => {
+    const totalMonthlyRevenue = safeData.companies
+      ? safeData.companies.reduce((sum, comp) => {
           const rate = comp.plan_type === 'demo' ? 0 : (comp.plan_type === 'annual' ? 49 : 59);
           return sum + (rate * (comp.telecaller_count || 0));
         }, 0)
       : 0;
 
-    const starterPlanCount = data.companies
-      ? data.companies.filter(c => (c.plan_type || 'monthly') === 'monthly').length
+    const starterPlanCount = safeData.companies
+      ? safeData.companies.filter(c => (c.plan_type || 'monthly') === 'monthly').length
       : 0;
 
-    const growthPlanCount = data.companies
-      ? data.companies.filter(c => c.plan_type === 'annual').length
+    const growthPlanCount = safeData.companies
+      ? safeData.companies.filter(c => c.plan_type === 'annual').length
       : 0;
 
     const formatDateStr = (dateString) => {
@@ -430,7 +445,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Registered Companies</span>
-              <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#7c3aed' }}>{data.totalCompanies || 0}</span>
+              <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#7c3aed' }}>{safeData.totalCompanies || 0}</span>
             </div>
           </div>
 
@@ -448,7 +463,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Total Platform Telecallers</span>
-              <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#10b981' }}>{data.totalTelecallers || 0}</span>
+              <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#10b981' }}>{safeData.totalTelecallers || 0}</span>
             </div>
           </div>
 
@@ -493,7 +508,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
               </tr>
             </thead>
             <tbody>
-              {data.companies && data.companies.map((comp) => {
+              {safeData.companies && safeData.companies.map((comp) => {
                 const expired = isCompanyExpired(comp.subscription_end);
                 return (
                   <tr key={comp.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }} className="table-row-hover">
@@ -590,7 +605,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
     );
   }
 
-  const { overview, callers, campaigns } = data;
+  const { overview, callers, campaigns } = safeData;
   const connectedCount = parseInt(overview.connected_calls || 0);
   const nonConnectedCount = parseInt(overview.non_connected_calls || 0);
   const receivedCount = parseInt(overview.received_calls || 0);
@@ -1028,6 +1043,213 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Missed (In)</span>
             <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#ef4444' }}>{overview.missed_calls || 0}</span>
           </div>
+        </div>
+      </div>
+
+      {/* Company Admin Operations & Subscription Overview */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        {/* Quick Actions Card */}
+        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: '700' }}>
+            <div style={{ width: '6px', height: '24px', backgroundColor: '#8b5cf6', borderRadius: '9999px' }}></div>
+            Quick Operations
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+            <button 
+              onClick={() => setActiveTab('campaigns')}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '1rem',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'rgba(124, 58, 237, 0.05)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(124, 58, 237, 0.1)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.borderColor = '#7c3aed';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(124, 58, 237, 0.05)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+              }}
+            >
+              <PhoneOutgoing size={20} color="#8b5cf6" />
+              <span style={{ fontSize: '0.82rem', fontWeight: '700' }}>Launch Campaign</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('telecallers')}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '1rem',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.borderColor = '#10b981';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.05)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+              }}
+            >
+              <Users size={20} color="#10b981" />
+              <span style={{ fontSize: '0.82rem', fontWeight: '700' }}>Add Telecaller</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('contacts')}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '1rem',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'rgba(37, 99, 235, 0.05)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(37, 99, 235, 0.1)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.borderColor = '#2563eb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(37, 99, 235, 0.05)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+              }}
+            >
+              <Contact2 size={20} color="#2563eb" />
+              <span style={{ fontSize: '0.82rem', fontWeight: '700' }}>Upload Contacts</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('monitor-grid')}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '1rem',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'rgba(245, 158, 11, 0.05)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.borderColor = '#f59e0b';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.05)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+              }}
+            >
+              <LayoutGrid size={20} color="#f59e0b" />
+              <span style={{ fontSize: '0.82rem', fontWeight: '700' }}>Monitor Live Feed</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Subscription & Seat Status Card */}
+        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: '700' }}>
+            <div style={{ width: '6px', height: '24px', backgroundColor: '#10b981', borderRadius: '9999px' }}></div>
+            Subscription Status
+          </h2>
+          {activeUser && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>Active Account Plan</span>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: '800',
+                    textTransform: 'uppercase',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    width: 'fit-content',
+                    backgroundColor: activeUser.planType === 'annual' 
+                      ? 'rgba(37, 99, 235, 0.12)' 
+                      : activeUser.planType === 'demo' 
+                        ? 'rgba(16, 185, 129, 0.12)' 
+                        : 'rgba(124, 58, 237, 0.12)',
+                    color: activeUser.planType === 'annual' 
+                      ? '#2563eb' 
+                      : activeUser.planType === 'demo' 
+                        ? '#10b981' 
+                        : '#7c3aed',
+                    border: activeUser.planType === 'annual'
+                      ? '1px solid rgba(37, 99, 235, 0.25)'
+                      : activeUser.planType === 'demo'
+                        ? '1px solid rgba(16, 185, 129, 0.25)'
+                        : '1px solid rgba(124, 58, 237, 0.25)'
+                  }}>
+                    {activeUser.planType === 'annual' 
+                      ? 'Growth Plan (Annual)' 
+                      : activeUser.planType === 'demo' 
+                        ? 'Free Demo Plan' 
+                        : 'Starter Plan (Monthly)'}
+                  </span>
+                </div>
+                
+                {activeUser.subscriptionEnd && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>Plan Expiry</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                      {new Date(activeUser.subscriptionEnd).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Progress Bar for seats usage */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Active Telecaller Seats</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '800' }}>
+                    {callers.length} / {activeUser.noOfTelecallers || 0} Seats Used
+                  </span>
+                </div>
+                {/* Progress bar container */}
+                <div style={{ width: '100%', height: '10px', backgroundColor: 'var(--bg-secondary)', borderRadius: '999px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                  <div style={{
+                    width: `${activeUser.noOfTelecallers > 0 ? Math.min(100, Math.round((callers.length / activeUser.noOfTelecallers) * 100)) : 0}%`,
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                    borderRadius: '999px',
+                    transition: 'width 0.4s ease'
+                  }}></div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
