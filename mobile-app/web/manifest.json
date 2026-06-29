@@ -1,6 +1,6 @@
 {
-    "name": "eazzio_telecaller",
-    "short_name": "eazzio_telecaller",
+    "name": "Eazzio Telecaller",
+    "short_name": "Eazzio Telecaller",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

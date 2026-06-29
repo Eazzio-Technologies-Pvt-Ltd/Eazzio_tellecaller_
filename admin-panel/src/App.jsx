@@ -151,11 +151,14 @@ const ConstellationCanvas = () => {
   return <canvas ref={canvasRef} className="login-canvas" />;
 };
 
-// Premium Dual-Pane Layout Frame
-const AuthLayoutWrapper = ({ children, theme, toggleTheme, liveCalls, agentsOnline, dialSuccess }) => {
+// Premium Dual-Pane Layout Frame Redesigned to Centered Single Pane
+const AuthLayoutWrapper = ({ children, theme, toggleTheme }) => {
   return (
     <div className="login-layout-container">
-      <ConstellationCanvas />
+      {/* Decorative background shapes mimicking the screenshot */}
+      <div className="bg-shape-left-bar"></div>
+      <div className="bg-shape-bottom-circle"></div>
+      <div className="bg-shape-right-curve"></div>
       
       {/* Theme Toggle Button */}
       <button onClick={toggleTheme} className="login-theme-toggle" aria-label="Toggle Theme">
@@ -172,89 +175,11 @@ const AuthLayoutWrapper = ({ children, theme, toggleTheme, liveCalls, agentsOnli
         )}
       </button>
 
-      {/* Left Pane (Informational & Branding) */}
-      <div className="login-left-pane">
-        <div className="left-pane-header">
-          <Logo theme="dark" mode="sidebar" />
-          <span className="left-pane-subtitle">SIM-BASED AUTO DIALER ADMIN PANEL</span>
-        </div>
-
-        <div className="left-pane-content">
-          <h1 className="left-pane-title">
-            Intelligent <br />
-            <span className="gradient-text">Call Management.</span>
-          </h1>
-          <p className="left-pane-description">
-            Automate your telecalling operations with AI-powered dialing, real-time analytics, and seamless agent management.
-          </p>
-
-          <div className="left-pane-stats-grid">
-            {/* Stat 1: Live Calls */}
-            <div className="stat-glass-card">
-              <div className="stat-card-header">
-                <div className="stat-card-icon-wrapper purple">
-                  <Phone size={18} />
-                </div>
-                <span className="stat-card-badge green">+12%</span>
-              </div>
-              <div className="stat-card-body">
-                <h3 className="stat-card-number">{liveCalls.toLocaleString()}</h3>
-                <p className="stat-card-label">Live Calls</p>
-              </div>
-            </div>
-
-            {/* Stat 2: Agents Online */}
-            <div className="stat-glass-card">
-              <div className="stat-card-header">
-                <div className="stat-card-icon-wrapper blue">
-                  <Users size={18} />
-                </div>
-                <span className="stat-card-badge green">+3</span>
-              </div>
-              <div className="stat-card-body">
-                <h3 className="stat-card-number">{agentsOnline}</h3>
-                <p className="stat-card-label">Agents Online</p>
-              </div>
-            </div>
-
-            {/* Stat 3: Dial Success */}
-            <div className="stat-glass-card">
-              <div className="stat-card-header">
-                <div className="stat-card-icon-wrapper green">
-                  <TrendingUp size={18} />
-                </div>
-                <span className="stat-card-badge green">+1.4%</span>
-              </div>
-              <div className="stat-card-body">
-                <h3 className="stat-card-number">{dialSuccess}%</h3>
-                <p className="stat-card-label">Dial Success</p>
-              </div>
-            </div>
-
-            {/* Stat 4: Uptime */}
-            <div className="stat-glass-card">
-              <div className="stat-card-header">
-                <div className="stat-card-icon-wrapper cyan">
-                  <Shield size={18} />
-                </div>
-                <span className="stat-card-badge green">30d</span>
-              </div>
-              <div className="stat-card-body">
-                <h3 className="stat-card-number">99.9%</h3>
-                <p className="stat-card-label">Uptime</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="left-pane-footer">
-          <span>Enterprise-grade security · Trusted by 500+ businesses</span>
-        </div>
-      </div>
-
-      {/* Right Pane (Card Holder) */}
-      <div className="login-right-pane">
+      <div className="login-centered-pane">
         {children}
+        <div className="auth-page-copyright">
+          © 2026 Eazzio Technologies Pvt Ltd | Eazzio v2.2.9 | Protected by Google reCAPTCHA
+        </div>
       </div>
     </div>
   );
@@ -727,6 +652,11 @@ const App = () => {
     setUser(null);
   };
 
+  const handleGoogleSignInClick = () => {
+    alert('Google Sign-In integration is coming soon! Please use your email and password to sign in.');
+  };
+
+
   const renderActivePage = () => {
     // 1. Eazzio Admin Pages (Superadmin)
     if (user && (user.companyRegNum === null || user.email === 'tellecaller111@eazzio.com')) {
@@ -791,8 +721,8 @@ const App = () => {
 
     if (showDemoPage) {
       return (
-        <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme} liveCalls={liveCalls} agentsOnline={agentsOnline} dialSuccess={dialSuccess}>
-          <div className="login-glass-card-premium" style={{ padding: '3rem 2.5rem', maxWidth: '480px' }}>
+        <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme}>
+          <div className="login-glass-card-premium" style={{ padding: '3rem 2.5rem', maxWidth: '620px' }}>
             <div style={{ alignSelf: 'flex-start', marginBottom: '1.5rem', display: 'flex', width: '100%' }}>
               <button
                 onClick={() => {
@@ -945,10 +875,10 @@ const App = () => {
     }
 
     return (
-      <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme} liveCalls={liveCalls} agentsOnline={agentsOnline} dialSuccess={dialSuccess}>
+      <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme}>
         <div className="login-glass-card-premium" style={{
-          padding: isRegistering ? '2rem 2.25rem' : '3.5rem 3rem',
-          maxWidth: isRegistering ? '620px' : '480px'
+          padding: (isRegistering || showForgotPassword) ? '2rem 2.25rem' : '3.5rem 3rem',
+          maxWidth: (isRegistering || showForgotPassword) ? '620px' : '850px'
         }}>
           {isRegistering ? (
             <RegisterCompany onBack={() => setIsRegistering(false)} theme={theme} />
@@ -1166,28 +1096,27 @@ const App = () => {
             </>
           ) : (
             <>
-              {/* Back to Website button */}
-              <div style={{ alignSelf: 'flex-start', marginBottom: '1.5rem', display: 'flex', width: '100%' }}>
-                <button
-                  onClick={() => {
-                    window.history.pushState({}, '', '/');
-                    setShowLogin(false);
-                  }}
-                  className="auth-footer-link-secondary"
-                >
-                  <ArrowLeft size={16} />
-                  Back to Website
+              {/* Card Header: Logo on left, SIGN UP button on right */}
+              <div className="auth-card-header">
+                <div className="auth-card-logo">
+                  <img 
+                    src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                    alt="Eazzio Telecaller" 
+                    className="auth-logo-img" 
+                    style={{ height: '36px', maxWidth: '160px', objectFit: 'contain' }}
+                  />
+                </div>
+                <button className="auth-signup-btn" type="button" onClick={() => setIsRegistering(true)}>
+                  SIGN UP <span style={{ marginLeft: '4px' }}>→</span>
                 </button>
               </div>
 
-              <div style={{ textAlign: 'center', marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                <h2 className="auth-header-title">Welcome back</h2>
-                <p className="auth-header-desc">
-                  {loginType === 'superadmin' ? 'Sign in to partner admin workspace' : 'Sign in to your telecaller dashboard'}
-                </p>
-              </div>
+              <h2 className="auth-main-title">Sign In</h2>
+              <p className="auth-main-subtitle">to access your account</p>
 
-              <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div className="auth-card-divider-line"></div>
+
+              <form onSubmit={handleLogin} className="auth-form-content">
                 {loginError && (
                   <div style={styles.errorAlert}>
                     <AlertCircle size={18} style={{ flexShrink: 0 }} />
@@ -1195,121 +1124,85 @@ const App = () => {
                   </div>
                 )}
 
-                <div className="form-group">
-                  <div className="auth-input-label-row">
-                    <label className="auth-input-label">Email Address</label>
-                  </div>
-                  <div className="auth-input-container">
-                    <Mail size={18} className="auth-input-icon" />
-                    <input 
-                      type="email" 
-                      placeholder={loginType === 'superadmin' ? 'Enter superadmin mail' : 'Enter company admin mail'} 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="auth-input-field"
-                      required
-                    />
-                  </div>
+                <div className="auth-input-group">
+                  <label className="auth-input-label-callyzer">
+                    Email Address <span>*</span>
+                  </label>
+                  <input 
+                    type="email" 
+                    placeholder="Enter Your Email Address" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="auth-input-field-callyzer"
+                    required
+                  />
                 </div>
 
-                <div className="form-group">
-                  <div className="auth-input-label-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <label className="auth-input-label">Password</label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowForgotPassword(true);
-                        setForgotStep(1);
-                        setForgotEmail('');
-                        setResetOtp('');
-                        setNewPassword('');
-                        setConfirmPassword('');
-                        setForgotError('');
-                        setForgotSuccess('');
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#6366f1',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        padding: 0,
-                        textDecoration: 'none'
-                      }}
-                      className="auth-forgot-password-link"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-                  <div className="auth-input-container">
-                    <Lock size={18} className="auth-input-icon" />
+                <div className="auth-input-group">
+                  <label className="auth-input-label-callyzer">
+                    Password <span>*</span>
+                  </label>
+                  <div className="auth-password-wrapper">
                     <input 
                       type={showPassword ? "text" : "password"} 
-                      placeholder="Enter password" 
+                      placeholder="Enter Your Password" 
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="auth-input-field"
-                      style={{ paddingRight: '2.75rem' }}
+                      className="auth-input-field-callyzer password-input"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      style={{
-                        position: 'absolute',
-                        right: '14px',
-                        background: 'none',
-                        border: 'none',
-                        color: '#64748b',
-                        cursor: 'pointer',
-                        padding: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 2,
-                      }}
-                      className="password-toggle-btn"
+                      className="auth-password-toggle"
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPassword(true);
+                      setForgotStep(1);
+                      setForgotEmail('');
+                      setResetOtp('');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setForgotError('');
+                      setForgotSuccess('');
+                    }}
+                    className="auth-forgot-password-link-callyzer"
+                  >
+                    Forgot Password?
+                  </button>
                 </div>
 
                 <button 
                   type="submit" 
-                  className="btn-gradient-auth" 
-                  style={{ marginTop: '0.75rem', position: 'relative' }}
+                  className="btn-signin-callyzer" 
                   disabled={loggingIn}
                 >
-                  {loggingIn ? (
-                    'Authenticating...'
-                  ) : (
-                    <>
-                      <Zap size={18} style={{ fill: 'currentColor', position: 'absolute', left: '20px' }} />
-                      <span>{loginType === 'superadmin' ? 'Superadmin Login' : 'Access Dashboard'}</span>
-                      <span style={{ fontSize: '1.1rem', position: 'absolute', right: '20px' }}>→</span>
-                    </>
-                  )}
+                  {loggingIn ? 'Signing In...' : 'SIGN IN'}
+                </button>
+
+                <div className="auth-or-separator">OR</div>
+
+                <button 
+                  type="button"
+                  onClick={handleGoogleSignInClick}
+                  className="btn-google-callyzer"
+                >
+                  <svg className="google-icon-svg" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.86-3.577-7.86-8s3.53-8 7.86-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.11C18.28 1.845 15.483 1 12.24 1 6.01 1 1 6.01 1 12.24s5.01 11.24 11.24 11.24c6.5 0 10.822-4.574 10.822-11.023 0-.74-.08-1.302-.178-1.742H12.24z"/>
+                  </svg>
+                  <span>Sign In with Google</span>
                 </button>
               </form>
 
               {loginType === 'company' && (
-                <div className="auth-divider">or continue with</div>
-              )}
-              
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', marginTop: loginType === 'company' ? '0' : '1.5rem' }}>
-                {loginType === 'company' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%', maxWidth: '440px', margin: '1rem auto 0 auto' }}>
                   <div style={{ width: '100%', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <button 
-                      type="button"
-                      onClick={() => setIsRegistering(true)}
-                      className="btn-auth-secondary"
-                    >
-                      <Building2 size={16} />
-                      Register Company
-                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -1324,7 +1217,11 @@ const App = () => {
                       Partner Login
                     </button>
                   </div>
-                ) : (
+                </div>
+              )}
+
+              {loginType === 'superadmin' && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%', maxWidth: '440px', margin: '1rem auto 0 auto' }}>
                   <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                     <button
                       type="button"
@@ -1335,17 +1232,47 @@ const App = () => {
                         setLoginError('');
                       }}
                       className="btn-auth-secondary"
-                      style={{ maxWidth: '240px' }}
                     >
                       <ArrowLeft size={16} />
                       Company Login
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              <div className="auth-card-footer-text">
-                © {new Date().getFullYear()} Eazzio Telecaller · Enterprise Security
+              <div className="auth-card-divider-line"></div>
+
+              {/* Three column footer */}
+              <div className="auth-card-footer-columns">
+                <div>
+                  <h3 className="auth-footer-col-title">Eazzio</h3>
+                  <div className="auth-footer-links-list">
+                    <a href="/" className="auth-footer-link-item">Home</a>
+                    <a href="/#features" className="auth-footer-link-item">Features</a>
+                    <a href="/#pricing" className="auth-footer-link-item">Pricing</a>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="auth-footer-col-title">Follow us on</h3>
+                  <div className="auth-social-icons-row">
+                    <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="auth-social-circle-btn" aria-label="Facebook">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/></svg>
+                    </a>
+                    <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="auth-social-circle-btn" aria-label="X (Twitter)">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    </a>
+                    <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="auth-social-circle-btn" aria-label="LinkedIn">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                    </a>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="auth-footer-col-title">Write us on</h3>
+                  <a href="mailto:hello@eazzio.com" className="auth-mail-contact-row">
+                    <Mail size={16} />
+                    <span>hello@eazzio.com</span>
+                  </a>
+                </div>
               </div>
             </>
           )}
@@ -1357,7 +1284,7 @@ const App = () => {
   if (subscriptionExpired && user && user.companyRegNum) {
     const isDemo = user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
     return (
-      <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme} liveCalls={liveCalls} agentsOnline={agentsOnline} dialSuccess={dialSuccess}>
+      <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme}>
         <div className="login-glass-card-premium" style={{ padding: '2rem 2.25rem', maxWidth: '620px', textAlign: 'center' }}>
           <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.12)', border: '2px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
