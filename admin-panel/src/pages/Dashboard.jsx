@@ -24,7 +24,8 @@ import {
   Building2,
   Calendar,
   CalendarDays,
-  Contact2
+  Contact2,
+  LayoutGrid
 } from 'lucide-react';
 
 const decodeToken = (token) => {

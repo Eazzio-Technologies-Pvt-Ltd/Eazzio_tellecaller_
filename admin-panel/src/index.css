@@ -1431,9 +1431,6 @@ tr:hover td {
 .auth-input-field::-ms-clear {
   display: none;
 }
-.auth-input-field::-webkit-textfield-decoration-container {
-  display: none;
-}
 .auth-input-field::-webkit-contacts-auto-fill-button,
 .auth-input-field::-webkit-credentials-auto-fill-button {
   visibility: hidden;
@@ -2319,6 +2316,12 @@ tr:hover td {
   border-color: rgba(239, 68, 68, 0.6) !important;
   box-shadow: 0 10px 25px rgba(239, 68, 68, 0.15) !important;
   transform: translateY(-4px) !important;
+}
+
+/* Ensure proper icon padding on all login forms and register forms on all viewport sizes */
+.login-glass-card-premium input {
+  padding-left: 2.75rem !important;
+  padding-right: 2.75rem !important;
 }
 
 
