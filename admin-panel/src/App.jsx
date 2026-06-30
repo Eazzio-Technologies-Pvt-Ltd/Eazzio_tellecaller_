@@ -722,29 +722,40 @@ const App = () => {
     if (showDemoPage) {
       return (
         <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme}>
-          <div className="login-glass-card-premium" style={{ padding: '3rem 2.5rem', maxWidth: '620px' }}>
-            <div style={{ alignSelf: 'flex-start', marginBottom: '1.5rem', display: 'flex', width: '100%' }}>
+          <div className="login-glass-card-premium" style={{ padding: '2rem 3rem', maxWidth: '620px' }}>
+
+            {/* Card Header: Back button left */}
+            <div className="auth-card-header" style={{ justifyContent: 'flex-start', marginBottom: '1rem' }}>
               <button
                 onClick={() => {
                   window.history.pushState({}, '', '/');
                   setShowDemoPage(false);
                 }}
-                className="auth-footer-link-secondary"
+                className="btn-back-link"
               >
-                <ArrowLeft size={16} />
+                <ArrowLeft size={14} />
                 Back to Website
               </button>
             </div>
 
-            <div style={{ textAlign: 'center', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              <Logo theme={theme} mode="login" />
-              <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginTop: '10px', fontWeight: '600' }}>Request 1-Week Trial Demo</p>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: '6px', lineHeight: '1.4' }}>
-                Type your details below to get instant admin access to a fully seeded, working demo workspace.
-              </p>
+            {/* Centered Logo */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+              <img
+                src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'}
+                alt="Eazzio Telecaller"
+                className="auth-logo-img"
+                style={{ height: '62px', maxWidth: '240px', objectFit: 'contain' }}
+              />
             </div>
 
-            <form onSubmit={handleDemoRequestSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <h2 className="auth-main-title" style={{ marginTop: '0.5rem' }}>Request 1-Week Trial Demo</h2>
+            <p className="auth-main-subtitle">
+              Type your details below to get instant admin access to a fully seeded, working demo workspace.
+            </p>
+
+            <div className="auth-card-divider-line"></div>
+
+            <form onSubmit={handleDemoRequestSubmit} className="auth-form-content">
               {demoError && (
                 <div style={styles.errorAlert}>
                   <AlertCircle size={18} style={{ flexShrink: 0 }} />
@@ -752,97 +763,81 @@ const App = () => {
                 </div>
               )}
 
-              <div className="form-group">
-                <label className="auth-input-label">Full Name</label>
-                <div className="auth-input-container">
-                  <span style={{ position: 'absolute', left: '14px', fontSize: '1.2rem', color: '#475569', pointerEvents: 'none' }}>👤</span>
-                  <input 
-                    type="text" 
-                    placeholder="Enter your name" 
-                    value={demoName}
-                    onChange={(e) => setDemoName(e.target.value)}
-                    required
-                    className="auth-input-field"
-                    style={{ paddingLeft: '2.75rem' }}
-                  />
-                </div>
+              <div className="auth-input-group">
+                <label className="auth-input-label-callyzer">
+                  Full Name <span>*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={demoName}
+                  onChange={(e) => setDemoName(e.target.value)}
+                  className="auth-input-field-callyzer"
+                  required
+                />
               </div>
 
-              <div className="form-group">
-                <label className="auth-input-label">Email Address</label>
-                <div className="auth-input-container">
-                  <Mail size={18} className="auth-input-icon" />
-                  <input 
-                    type="email" 
-                    placeholder="Enter your email" 
-                    value={demoEmail}
-                    onChange={(e) => setDemoEmail(e.target.value)}
-                    required
-                    className="auth-input-field"
-                  />
-                </div>
+              <div className="auth-input-group">
+                <label className="auth-input-label-callyzer">
+                  Email Address <span>*</span>
+                </label>
+                <input
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={demoEmail}
+                  onChange={(e) => setDemoEmail(e.target.value)}
+                  className="auth-input-field-callyzer"
+                  required
+                />
               </div>
 
-              <div className="form-group">
-                <label className="auth-input-label">Company Name</label>
-                <div className="auth-input-container">
-                  <Building2 size={18} className="auth-input-icon" />
-                  <input 
-                    type="text" 
-                    placeholder="Enter company name" 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="auth-input-group">
+                  <label className="auth-input-label-callyzer">
+                    Company Name <span>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter company name"
                     value={demoCompanyName}
                     onChange={(e) => setDemoCompanyName(e.target.value)}
+                    className="auth-input-field-callyzer"
                     required
-                    className="auth-input-field"
                   />
                 </div>
-              </div>
 
-              <div className="form-group">
-                <label className="auth-input-label">Nature of Company</label>
-                <div className="auth-input-container">
-                  <Briefcase size={18} className="auth-input-icon" />
-                  <input 
-                    type="text" 
-                    placeholder="e.g. Real Estate, Finance, Insurance" 
+                <div className="auth-input-group">
+                  <label className="auth-input-label-callyzer">
+                    Nature of Business <span>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Real Estate, Finance"
                     value={demoCompanyNature}
                     onChange={(e) => setDemoCompanyNature(e.target.value)}
+                    className="auth-input-field-callyzer"
                     required
-                    className="auth-input-field"
                   />
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="auth-input-label">Choose Password</label>
-                <div className="auth-input-container">
-                  <Lock size={18} className="auth-input-icon" />
-                  <input 
-                    type={showDemoPassword ? "text" : "password"} 
-                    placeholder="Create a password" 
+              <div className="auth-input-group">
+                <label className="auth-input-label-callyzer">
+                  Choose Password <span>*</span>
+                </label>
+                <div className="auth-password-wrapper">
+                  <input
+                    type={showDemoPassword ? "text" : "password"}
+                    placeholder="Create a password (min 6 characters)"
                     value={demoPassword}
                     onChange={(e) => setDemoPassword(e.target.value)}
+                    className="auth-input-field-callyzer password-input"
                     required
-                    className="auth-input-field"
-                    style={{ paddingRight: '2.75rem' }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowDemoPassword(!showDemoPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '14px',
-                      background: 'none',
-                      border: 'none',
-                      color: '#64748b',
-                      cursor: 'pointer',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      zIndex: 2,
-                    }}
-                    className="password-toggle-btn"
+                    className="auth-password-toggle"
                     aria-label={showDemoPassword ? "Hide password" : "Show password"}
                   >
                     {showDemoPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -850,10 +845,10 @@ const App = () => {
                 </div>
               </div>
 
-              <button 
-                type="submit" 
-                className="btn-gradient-auth" 
-                style={{ marginTop: '0.5rem' }}
+              <button
+                type="submit"
+                className="btn-signin-callyzer"
+                style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%' }}
                 disabled={demoLoading}
               >
                 {demoLoading ? (
@@ -863,12 +858,47 @@ const App = () => {
                   </>
                 ) : (
                   <>
-                    <LogIn size={20} />
-                    Start 1-Week Trial
+                    <LogIn size={18} />
+                    START 1-WEEK TRIAL
                   </>
                 )}
               </button>
             </form>
+
+            <div className="auth-card-divider-line"></div>
+
+            {/* Three column footer — same as login page */}
+            <div className="auth-card-footer-columns">
+              <div>
+                <h3 className="auth-footer-col-title">Eazzio</h3>
+                <div className="auth-footer-links-list">
+                  <a href="/" className="auth-footer-link-item">Home</a>
+                  <a href="/#features" className="auth-footer-link-item">Features</a>
+                  <a href="/#pricing" className="auth-footer-link-item">Pricing</a>
+                </div>
+              </div>
+              <div>
+                <h3 className="auth-footer-col-title">Follow us on</h3>
+                <div className="auth-social-icons-row">
+                  <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="auth-social-circle-btn" aria-label="Facebook">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/></svg>
+                  </a>
+                  <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="auth-social-circle-btn" aria-label="X (Twitter)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                  </a>
+                  <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="auth-social-circle-btn" aria-label="LinkedIn">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                  </a>
+                </div>
+              </div>
+              <div>
+                <h3 className="auth-footer-col-title">Write us on</h3>
+                <a href="mailto:hello@eazzio.com" className="auth-mail-contact-row">
+                  <Mail size={16} />
+                  <span>hello@eazzio.com</span>
+                </a>
+              </div>
+            </div>
           </div>
         </AuthLayoutWrapper>
       );
@@ -1096,8 +1126,19 @@ const App = () => {
             </>
           ) : (
             <>
-              {/* Card Header: SIGN UP button on right */}
-              <div className="auth-card-header" style={{ justifyContent: 'flex-end', marginBottom: '1rem' }}>
+              {/* Card Header: Back to Website on left, SIGN UP on right */}
+              <div className="auth-card-header" style={{ justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  className="btn-back-link"
+                  onClick={() => {
+                    window.history.pushState({}, '', '/');
+                    setShowLogin(false);
+                  }}
+                >
+                  <ArrowLeft size={14} />
+                  Back to Website
+                </button>
                 <button className="auth-signup-btn" type="button" onClick={() => setIsRegistering(true)}>
                   SIGN UP <span style={{ marginLeft: '4px' }}>→</span>
                 </button>

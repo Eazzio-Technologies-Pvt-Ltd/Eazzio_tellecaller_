@@ -1215,6 +1215,30 @@ tr:hover td {
   color: #ffffff;
 }
 
+/* Borderless "Back to Website" text-link button */
+.btn-back-link {
+  background: none;
+  border: none;
+  outline: none;
+  padding: 6px 2px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease, gap 0.2s ease;
+  box-shadow: none;
+}
+
+.btn-back-link:hover {
+  color: #ffa000;
+  gap: 10px;
+}
+
+
+
 /* Main title styling */
 .auth-main-title {
   font-size: 2rem;
