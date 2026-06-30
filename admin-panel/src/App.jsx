@@ -722,10 +722,10 @@ const App = () => {
     if (showDemoPage) {
       return (
         <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme}>
-          <div className="login-glass-card-premium" style={{ padding: '2rem 3rem', maxWidth: '620px' }}>
+          <div className="login-glass-card-premium auth-card-demo">
 
             {/* Card Header: Back button left */}
-            <div className="auth-card-header" style={{ justifyContent: 'flex-start', marginBottom: '1rem' }}>
+            <div className="auth-card-header" style={{ justifyContent: 'flex-start', marginBottom: '0.5rem' }}>
               <button
                 onClick={() => {
                   window.history.pushState({}, '', '/');
@@ -739,16 +739,16 @@ const App = () => {
             </div>
 
             {/* Centered Logo */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.4rem' }}>
               <img
                 src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'}
                 alt="Eazzio Telecaller"
                 className="auth-logo-img"
-                style={{ height: '62px', maxWidth: '240px', objectFit: 'contain' }}
+                style={{ height: '42px', maxWidth: '180px', objectFit: 'contain' }}
               />
             </div>
 
-            <h2 className="auth-main-title" style={{ marginTop: '0.5rem' }}>Request 1-Week Trial Demo</h2>
+            <h2 className="auth-main-title" style={{ marginTop: '0.25rem' }}>Request 1-Week Trial Demo</h2>
             <p className="auth-main-subtitle">
               Type your details below to get instant admin access to a fully seeded, working demo workspace.
             </p>
@@ -906,16 +906,13 @@ const App = () => {
 
     return (
       <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme}>
-        <div className="login-glass-card-premium" style={{
-          padding: isRegistering ? '1.25rem 1.75rem' : showForgotPassword ? '2rem 2.25rem' : '2rem 3rem',
-          maxWidth: (isRegistering || showForgotPassword) ? '620px' : '620px'
-        }}>
+        <div className={`login-glass-card-premium ${isRegistering ? 'auth-card-register' : showForgotPassword ? 'auth-card-forgot' : 'auth-card-login'}`}>
           {isRegistering ? (
             <RegisterCompany onBack={() => setIsRegistering(false)} theme={theme} />
           ) : showForgotPassword ? (
             <>
               {/* Back to Login Button */}
-              <div style={{ alignSelf: 'flex-start', marginBottom: '1.5rem', display: 'flex', width: '100%' }}>
+              <div style={{ alignSelf: 'flex-start', marginBottom: '0.75rem', display: 'flex', width: '100%' }}>
                 <button
                   onClick={() => {
                     setShowForgotPassword(false);
@@ -942,9 +939,9 @@ const App = () => {
                 </button>
               </div>
 
-              <div style={{ textAlign: 'center', marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                <h2 className="auth-header-title">Reset password</h2>
-                <p className="auth-header-desc">
+              <div style={{ textAlign: 'center', marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                <h2 className="auth-header-title" style={{ fontSize: '1.4rem' }}>Reset password</h2>
+                <p className="auth-header-desc" style={{ fontSize: '0.88rem' }}>
                   {forgotStep === 1 
                     ? 'Enter your email address to receive a password reset code.' 
                     : 'Enter the verification OTP and your new password below.'}
@@ -1145,12 +1142,12 @@ const App = () => {
               </div>
 
               {/* Centered Logo above Sign In */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.4rem' }}>
                 <img 
                   src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
                   alt="Eazzio Telecaller" 
                   className="auth-logo-img" 
-                  style={{ height: '62px', maxWidth: '240px', objectFit: 'contain' }}
+                  style={{ height: '42px', maxWidth: '180px', objectFit: 'contain' }}
                 />
               </div>
 
@@ -1244,8 +1241,8 @@ const App = () => {
               </form>
 
               {loginType === 'company' && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%', margin: '0.5rem auto 0 auto' }}>
-                  <div style={{ width: '100%', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '100%', margin: '0.25rem auto 0 auto' }}>
+                  <div style={{ width: '100%', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                     <button
                       type="button"
                       onClick={() => {
@@ -1264,7 +1261,7 @@ const App = () => {
               )}
 
               {loginType === 'superadmin' && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%', maxWidth: '440px', margin: '1rem auto 0 auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '100%', maxWidth: '440px', margin: '0.25rem auto 0 auto' }}>
                   <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                     <button
                       type="button"
@@ -1328,7 +1325,7 @@ const App = () => {
     const isDemo = user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
     return (
       <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme}>
-        <div className="login-glass-card-premium" style={{ padding: '2rem 2.25rem', maxWidth: '620px', textAlign: 'center' }}>
+        <div className="login-glass-card-premium auth-card-expired">
           <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.12)', border: '2px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
               <AlertCircle size={30} color="#ef4444" />
