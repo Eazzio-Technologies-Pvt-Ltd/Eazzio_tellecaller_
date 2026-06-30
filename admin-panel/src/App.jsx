@@ -877,8 +877,8 @@ const App = () => {
     return (
       <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme}>
         <div className="login-glass-card-premium" style={{
-          padding: (isRegistering || showForgotPassword) ? '2rem 2.25rem' : '3.5rem 3rem',
-          maxWidth: (isRegistering || showForgotPassword) ? '620px' : '850px'
+          padding: isRegistering ? '1.25rem 1.75rem' : showForgotPassword ? '2rem 2.25rem' : '2rem 3rem',
+          maxWidth: (isRegistering || showForgotPassword) ? '620px' : '620px'
         }}>
           {isRegistering ? (
             <RegisterCompany onBack={() => setIsRegistering(false)} theme={theme} />
@@ -1096,22 +1096,24 @@ const App = () => {
             </>
           ) : (
             <>
-              {/* Card Header: Logo on left, SIGN UP button on right */}
-              <div className="auth-card-header">
-                <div className="auth-card-logo">
-                  <img 
-                    src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
-                    alt="Eazzio Telecaller" 
-                    className="auth-logo-img" 
-                    style={{ height: '36px', maxWidth: '160px', objectFit: 'contain' }}
-                  />
-                </div>
+              {/* Card Header: SIGN UP button on right */}
+              <div className="auth-card-header" style={{ justifyContent: 'flex-end', marginBottom: '1rem' }}>
                 <button className="auth-signup-btn" type="button" onClick={() => setIsRegistering(true)}>
                   SIGN UP <span style={{ marginLeft: '4px' }}>→</span>
                 </button>
               </div>
 
-              <h2 className="auth-main-title">Sign In</h2>
+              {/* Centered Logo above Sign In */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                <img 
+                  src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                  alt="Eazzio Telecaller" 
+                  className="auth-logo-img" 
+                  style={{ height: '62px', maxWidth: '240px', objectFit: 'contain' }}
+                />
+              </div>
+
+              <h2 className="auth-main-title" style={{ marginTop: '0.5rem' }}>Sign In</h2>
               <p className="auth-main-subtitle">to access your account</p>
 
               <div className="auth-card-divider-line"></div>
@@ -1201,7 +1203,7 @@ const App = () => {
               </form>
 
               {loginType === 'company' && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%', maxWidth: '440px', margin: '1rem auto 0 auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '100%', margin: '0.5rem auto 0 auto' }}>
                   <div style={{ width: '100%', display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <button
                       type="button"

@@ -3,11 +3,11 @@ import React from 'react';
 const Logo = ({ theme = 'dark', mode = 'sidebar' }) => {
   const isSidebar = mode === 'sidebar';
   
-  // Sidebar: 220px width, Login: 480px width
-  const width = isSidebar ? 220 : 480;
+  // Sidebar: 220px width, Login: 540px width
+  const width = isSidebar ? 220 : 540;
   
   // Aspect ratio is 396/46 = ~8.6, height set proportionally
-  const height = isSidebar ? 25 : 56;
+  const height = isSidebar ? 25 : 68;
   
   const logoSrc = theme === 'dark' ? '/logo-light.png' : '/logo-dark.png';
 

@@ -1066,7 +1066,7 @@ tr:hover td {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 100vh;
   width: 100vw;
   background-color: #f7f9fb;
@@ -1075,7 +1075,7 @@ tr:hover td {
   overflow-y: auto;
   box-sizing: border-box;
   font-family: 'Inter', system-ui, sans-serif;
-  padding: 2rem 1rem;
+  padding: 1.5rem 1rem;
 }
 
 /* Decorative background shapes */
@@ -1152,6 +1152,7 @@ tr:hover td {
   max-width: 900px;
   z-index: 2;
   position: relative;
+  margin: auto 0;
 }
 
 .login-glass-card-premium {
@@ -1182,7 +1183,7 @@ tr:hover td {
 }
 
 .auth-logo-img {
-  height: 38px;
+  height: 64px;
   object-fit: contain;
 }
 
@@ -1216,11 +1217,11 @@ tr:hover td {
 
 /* Main title styling */
 .auth-main-title {
-  font-size: 2.2rem;
-  font-weight: 500;
+  font-size: 2rem;
+  font-weight: 600;
   color: #191d30;
   text-align: center;
-  margin: 1.5rem 0 0.5rem 0;
+  margin: 0.75rem 0 0.4rem 0;
   letter-spacing: -0.5px;
 }
 
@@ -1228,29 +1229,29 @@ tr:hover td {
   font-size: 0.95rem;
   color: #64748b;
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .auth-card-divider-line {
   border-bottom: 1px solid #e2e8f0;
   width: 100%;
-  margin: 1.5rem 0;
+  margin: 1rem 0;
 }
 
 /* Form block */
 .auth-form-content {
-  max-width: 440px;
+  max-width: 100%;
   width: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
 .auth-input-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   text-align: left;
 }
 
@@ -1270,11 +1271,11 @@ tr:hover td {
 
 .auth-input-field-callyzer {
   width: 100%;
-  height: 48px;
+  height: 46px;
   background-color: #ffffff;
   border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  padding: 0 16px;
+  border-radius: 6px;
+  padding: 0 14px;
   font-size: 0.95rem;
   color: #0f172a;
   outline: none;
@@ -1322,7 +1323,7 @@ tr:hover td {
 
 .auth-forgot-password-link-callyzer {
   align-self: flex-end;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: #ffa000;
   text-decoration: underline;
@@ -1330,7 +1331,7 @@ tr:hover td {
   background: none;
   border: none;
   padding: 0;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .auth-forgot-password-link-callyzer:hover {
@@ -1342,14 +1343,14 @@ tr:hover td {
   background-color: #ffa000;
   color: #ffffff;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 12px 36px;
   font-size: 0.95rem;
   font-weight: 700;
   text-transform: uppercase;
   cursor: pointer;
   transition: background-color 0.2s;
-  margin: 1rem auto 0 auto;
+  margin: 0.5rem auto 0 auto;
   display: block;
   min-width: 140px;
 }
@@ -1365,7 +1366,7 @@ tr:hover td {
   color: #94a3b8;
   font-size: 0.85rem;
   font-weight: 600;
-  margin: 1.25rem 0;
+  margin: 0.75rem 0;
   width: 100%;
 }
 
@@ -1387,19 +1388,19 @@ tr:hover td {
 .btn-google-callyzer {
   background: #ffffff;
   border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  padding: 10px 24px;
-  font-size: 0.95rem;
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 0.82rem;
   font-weight: 600;
   color: #475569;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
   margin: 0 auto;
-  width: fit-content;
+  width: auto;
 }
 
 .btn-google-callyzer:hover {
@@ -1416,26 +1417,26 @@ tr:hover td {
 .auth-card-footer-columns {
   display: grid;
   grid-template-columns: 1fr 1.2fr 1fr;
-  gap: 2rem;
+  gap: 1.25rem;
   text-align: left;
   padding-top: 0.5rem;
 }
 
 .auth-footer-col-title {
-  font-size: 1.15rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: #1e293b;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.4rem;
 }
 
 .auth-footer-links-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .auth-footer-link-item {
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   color: #64748b;
   text-decoration: none;
   cursor: pointer;
@@ -1448,13 +1449,13 @@ tr:hover td {
 
 .auth-social-icons-row {
   display: flex;
-  gap: 12px;
-  margin-top: 0.5rem;
+  gap: 8px;
+  margin-top: 0.25rem;
 }
 
 .auth-social-circle-btn {
-  width: 38px;
-  height: 38px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background-color: #1e293b;
   display: flex;
@@ -1475,10 +1476,10 @@ tr:hover td {
 .auth-mail-contact-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
+  gap: 6px;
+  font-size: 0.75rem;
   color: #64748b;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
   text-decoration: none;
 }
 

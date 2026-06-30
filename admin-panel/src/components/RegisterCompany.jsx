@@ -270,27 +270,27 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.8rem' }}>
         {onBack && (
           <button
             onClick={onBack}
             style={styles.backBtn}
             title={renewalMode ? "Logout" : "Go Back"}
           >
-            <ArrowLeft size={20} color="var(--text-primary)" />
+            <ArrowLeft size={16} color="var(--text-primary)" />
           </button>
         )}
         <div>
-          <h2 style={{ color: 'var(--text-primary)', fontSize: '1.8rem', fontWeight: '800', margin: 0 }}>
+          <h2 style={{ color: 'var(--text-primary)', fontSize: '1.35rem', fontWeight: '800', margin: 0 }}>
             {renewalMode ? "Renew Subscription" : "Register Company"}
           </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px', margin: 0 }}>
             {renewalMode ? "Select plan and seats to renew your portal" : "Create a new business portal on Eazzio"}
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         {error && (
           <div style={styles.errorAlert}>
             <span>{error}</span>
@@ -299,10 +299,10 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
 
         {!renewalMode && (
           <>
-            <div className="form-group">
+            <div className="form-group" style={{ marginBottom: '0px' }}>
               <label style={styles.label}>Company Name</label>
               <div style={styles.inputWrapper}>
-                <Briefcase size={18} style={styles.inputIcon} />
+                <Briefcase size={16} style={styles.inputIcon} />
                 <input
                   type="text"
                   placeholder="e.g. Acme Corporation"
@@ -314,10 +314,10 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="form-group" style={{ marginBottom: '0px' }}>
               <label style={styles.label}>Nature of Company</label>
               <div style={styles.inputWrapper}>
-                <Building2 size={18} style={styles.inputIcon} />
+                <Building2 size={16} style={styles.inputIcon} />
                 <input
                   type="text"
                   placeholder="e.g. Sales, Real Estate, Support"
@@ -331,10 +331,10 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
           </>
         )}
 
-        <div className="form-group">
+        <div className="form-group" style={{ marginBottom: '0px' }}>
           <label style={styles.label}>Number of Telecallers</label>
           <div style={styles.inputWrapper}>
-            <Users size={18} style={styles.inputIcon} />
+            <Users size={16} style={styles.inputIcon} />
             <input
               type="number"
               min="1"
@@ -348,9 +348,9 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
         </div>
 
         {/* Plan Selection Cards */}
-        <div style={{ marginBottom: '0.4rem' }}>
+        <div style={{ marginBottom: '0.2rem' }}>
           <label style={styles.label}>Select Subscription Plan</label>
-          <div className="plan-selection-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '6px' }}>
+          <div className="plan-selection-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
             {/* Card 1: Monthly */}
             <div 
               onClick={() => setPlanType('monthly')}
@@ -360,10 +360,10 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
                 backgroundColor: planType === 'monthly' ? 'rgba(99, 102, 241, 0.05)' : 'var(--bg-primary)',
               }}
             >
-              <div style={{ fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', color: planType === 'monthly' ? '#6366f1' : 'var(--text-secondary)', marginBottom: '4px' }}>Starter Plan</div>
-              <span style={{ fontSize: '1.25rem', fontWeight: '900', color: planType === 'monthly' ? '#6366f1' : 'var(--text-primary)' }}>₹59</span>
-              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', marginTop: '2px' }}>/ telecaller / month</span>
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>billed monthly</span>
+              <div style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', color: planType === 'monthly' ? '#6366f1' : 'var(--text-secondary)', marginBottom: '2px' }}>Starter Plan</div>
+              <span style={{ fontSize: '1.15rem', fontWeight: '900', color: planType === 'monthly' ? '#6366f1' : 'var(--text-primary)' }}>₹59</span>
+              <span style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)', marginTop: '0px' }}>/ telecaller / month</span>
+              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>billed monthly</span>
             </div>
 
             {/* Card 2: Annual */}
@@ -376,26 +376,26 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
               }}
             >
               <div style={styles.popularBadge}>Best Value</div>
-              <div style={{ fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', color: planType === 'annual' ? '#10b981' : 'var(--text-secondary)', marginBottom: '4px' }}>Growth Plan</div>
-              <span style={{ fontSize: '1.25rem', fontWeight: '900', color: planType === 'annual' ? '#10b981' : 'var(--text-primary)' }}>₹49</span>
-              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', marginTop: '2px' }}>/ telecaller / month</span>
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>billed annually</span>
+              <div style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', color: planType === 'annual' ? '#10b981' : 'var(--text-secondary)', marginBottom: '2px' }}>Growth Plan</div>
+              <span style={{ fontSize: '1.15rem', fontWeight: '900', color: planType === 'annual' ? '#10b981' : 'var(--text-primary)' }}>₹49</span>
+              <span style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)', marginTop: '0px' }}>/ telecaller / month</span>
+              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>billed annually</span>
             </div>
           </div>
         </div>
         {/* Call Recording Add-on selection */}
         <div style={{
-          marginTop: '12px',
-          marginBottom: '12px',
-          padding: '12px',
-          borderRadius: '8px',
+          marginTop: '6px',
+          marginBottom: '6px',
+          padding: '8px 10px',
+          borderRadius: '6px',
           border: '1px dashed var(--border-color)',
           backgroundColor: 'rgba(255,255,255,0.02)',
           display: 'flex',
           alignItems: 'flex-start',
-          gap: '10px',
+          gap: '8px',
           cursor: 'pointer'
-        }} onClick={() => setIncludeCallRecording(!includeCallRecording)}>
+         }} onClick={() => setIncludeCallRecording(!includeCallRecording)}>
           <input 
             type="checkbox" 
             checked={includeCallRecording}
@@ -403,22 +403,22 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
               e.stopPropagation();
               setIncludeCallRecording(e.target.checked);
             }}
-            style={{ marginTop: '3px', cursor: 'pointer', flexShrink: 0 }}
+            style={{ marginTop: '2px', cursor: 'pointer', flexShrink: 0 }}
           />
           <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>
               Include Call Recording Add-on
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '1px' }}>
               Record all telecaller calls automatically. Only {planType === 'annual' ? '₹399 / year' : '₹49 / month'}.
             </div>
           </div>
         </div>
 
-        <div className="form-group">
+        <div className="form-group" style={{ marginBottom: '0px' }}>
           <label style={styles.label}>Admin Email Address</label>
           <div style={styles.inputWrapper}>
-            <Mail size={18} style={styles.inputIcon} />
+            <Mail size={16} style={styles.inputIcon} />
             <input
               type="email"
               placeholder="admin@yourcompany.com"
@@ -432,10 +432,10 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
         </div>
 
         {!renewalMode && (
-          <div className="form-group">
+          <div className="form-group" style={{ marginBottom: '0px' }}>
             <label style={styles.label}>Admin Password</label>
             <div style={styles.inputWrapper}>
-              <Lock size={18} style={styles.inputIcon} />
+              <Lock size={16} style={styles.inputIcon} />
               <input
                 type="password"
                 placeholder="Enter admin password"
@@ -451,12 +451,12 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
         <button
           type="submit"
           className="btn btn-primary"
-          style={{ width: '100%', height: '46px', fontSize: '1.05rem', borderRadius: '10px', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          style={{ width: '100%', height: '38px', fontSize: '0.92rem', borderRadius: '8px', marginTop: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           disabled={loading}
         >
           {loading ? (
             <>
-              <RefreshCw size={18} className="animate-spin" />
+              <RefreshCw size={15} className="animate-spin" />
               Processing Payment...
             </>
           ) : (
@@ -469,12 +469,12 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
             type="button"
             onClick={handleFreeDemoRegister}
             className="btn btn-secondary"
-            style={{ width: '100%', height: '46px', fontSize: '1.05rem', borderRadius: '10px', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
+            style={{ width: '100%', height: '38px', fontSize: '0.92rem', borderRadius: '8px', marginTop: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
             disabled={loading}
           >
             {loading ? (
               <>
-                <RefreshCw size={18} className="animate-spin" />
+                <RefreshCw size={15} className="animate-spin" />
                 Registering Demo...
               </>
             ) : (
@@ -500,9 +500,9 @@ const styles = {
   backBtn: {
     background: 'var(--bg-primary)',
     border: '1px solid var(--border-color)',
-    borderRadius: '8px',
-    width: '36px',
-    height: '36px',
+    borderRadius: '6px',
+    width: '30px',
+    height: '30px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -510,9 +510,9 @@ const styles = {
     transition: 'all 0.2s',
   },
   label: {
-    fontSize: '0.85rem',
+    fontSize: '0.8rem',
     fontWeight: '600',
-    marginBottom: '4px',
+    marginBottom: '2px',
     color: 'var(--text-secondary)',
     display: 'block',
   },
@@ -524,18 +524,18 @@ const styles = {
   },
   inputIcon: {
     position: 'absolute',
-    left: '12px',
+    left: '10px',
     color: 'var(--text-secondary)',
   },
   input: {
-    paddingLeft: '2.5rem',
-    paddingRight: '0.75rem',
-    paddingTop: '0.45rem',
-    paddingBottom: '0.45rem',
-    fontSize: '0.92rem',
+    paddingLeft: '2.2rem',
+    paddingRight: '0.5rem',
+    paddingTop: '0.3rem',
+    paddingBottom: '0.3rem',
+    fontSize: '0.88rem',
     width: '100%',
-    height: '40px',
-    borderRadius: '8px',
+    height: '34px',
+    borderRadius: '6px',
     border: '1px solid var(--border-color)',
     backgroundColor: 'var(--bg-primary)',
     color: 'var(--text-primary)',
@@ -548,8 +548,8 @@ const styles = {
   },
   planCard: {
     border: '2px solid var(--border-color)',
-    borderRadius: '10px',
-    padding: '14px',
+    borderRadius: '8px',
+    padding: '8px 10px',
     cursor: 'pointer',
     display: 'flex',
     flexDirection: 'column',
@@ -560,14 +560,14 @@ const styles = {
   },
   popularBadge: {
     position: 'absolute',
-    top: '-8px',
-    right: '8px',
+    top: '-6px',
+    right: '6px',
     backgroundColor: '#10b981',
     color: '#fff',
-    fontSize: '0.6rem',
+    fontSize: '0.55rem',
     fontWeight: '800',
-    padding: '2px 6px',
-    borderRadius: '4px',
+    padding: '1px 5px',
+    borderRadius: '3px',
     textTransform: 'uppercase',
   },
   errorAlert: {
