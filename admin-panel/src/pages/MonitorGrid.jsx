@@ -4,7 +4,7 @@ import {
   LayoutGrid, Grid2X2, Grid3X3, Monitor,
   Phone, Clock, Coffee, Wifi, WifiOff,
   PhoneCall, Maximize2, RefreshCw, BarChart2,
-  Activity, X, Minimize2
+  Activity, X, Minimize2, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 const GRID_OPTIONS = [
@@ -196,8 +196,18 @@ const MonitorGrid = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [expandedCallerId, setExpandedCallerId] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const intervalRef = useRef(null);
   const containerRef = useRef(null);
+
+  // Clamp/reset page if it goes out of bounds when grid size or callers change
+  useEffect(() => {
+    const perPage = gridSize * gridSize;
+    const totalPages = Math.ceil(callers.length / perPage) || 1;
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [callers, gridSize, currentPage]);
 
   const fetchCallers = async () => {
     try {
@@ -248,7 +258,9 @@ const MonitorGrid = () => {
   };
 
   const perPage   = gridSize * gridSize;
-  const visible   = callers.slice(0, perPage);
+  const totalPages = Math.ceil(callers.length / perPage) || 1;
+  const startIndex = (currentPage - 1) * perPage;
+  const visible   = callers.slice(startIndex, startIndex + perPage);
   const colsStyle = `repeat(${gridSize}, 1fr)`;
 
   const online  = callers.filter(c => c.status === 'online').length;
@@ -458,11 +470,45 @@ const MonitorGrid = () => {
                 ))}
               </div>
 
-              {callers.length > perPage && (
-                <div style={styles.overflowNote}>
-                  Showing {perPage} of {callers.length} telecallers — increase grid size to see more
-                </div>
-              )}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: 20 }}>
+                {totalPages > 1 && (
+                  <div style={styles.paginationContainer}>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      style={{
+                        ...styles.pageBtn,
+                        ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
+                      }}
+                    >
+                      <ChevronLeft size={16} />
+                      Prev
+                    </button>
+
+                    <span style={styles.pageInfo}>
+                      Page {currentPage} of {totalPages}
+                    </span>
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      style={{
+                        ...styles.pageBtn,
+                        ...(currentPage === totalPages ? styles.pageBtnDisabled : {}),
+                      }}
+                    >
+                      Next
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+                
+                {callers.length > perPage && (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    Showing {visible.length} of {callers.length} telecallers — increase grid size to see more on one page
+                  </div>
+                )}
+              </div>
             </>
           )}
         </>
@@ -718,6 +764,40 @@ const styles = {
     background: 'var(--bg-secondary)',
     borderRadius: 10,
     border: '1px solid var(--border-color)',
+  },
+  paginationContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '1rem',
+    marginTop: '1rem',
+    padding: '10px 16px',
+    background: 'var(--bg-secondary)',
+    border: '1px solid var(--border-color)',
+    borderRadius: 14,
+  },
+  pageInfo: {
+    fontSize: '0.9rem',
+    fontWeight: '600',
+    color: 'var(--text-secondary)',
+  },
+  pageBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 16px',
+    borderRadius: 10,
+    border: '1px solid var(--border-color)',
+    background: 'var(--bg-primary)',
+    color: 'var(--text-primary)',
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    fontWeight: '600',
+    transition: 'all 0.2s',
+  },
+  pageBtnDisabled: {
+    opacity: 0.4,
+    cursor: 'not-allowed',
   },
 };
 

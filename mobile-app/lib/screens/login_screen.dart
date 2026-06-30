@@ -25,104 +25,41 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   // Sequenced Animation variables
   late Animation<double> _spinnerOpacity;
   late Animation<double> _bgTransition;
-  
   late Animation<double> _cardOpacity;
-  
-  late Animation<double> _field1Opacity;
-  late Animation<Offset> _field1Slide;
-  
-  late Animation<double> _field2Opacity;
-  late Animation<Offset> _field2Slide;
-  
-  late Animation<double> _buttonOpacity;
-  late Animation<Offset> _buttonSlide;
-  
-  late Animation<double> _footerOpacity;
 
   @override
   void initState() {
     super.initState();
     
-    // Total animation timeline runs for 4.0 seconds for a majestic choreographed look
+    // Total animation timeline runs for 2.0 seconds
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4000),
+      duration: const Duration(milliseconds: 2000),
     );
 
-    // 1. Initial splash representation (0.0s to 1.2s): Large logo, white background, circular loading spinner.
+    // 1. Initial splash representation (0.0s to 1.0s): Large logo, white background, circular loading spinner.
     
-    // 2. Transition phase (1.2s to 2.0s): Fades out spinner, compresses logo to end size, background shifts.
+    // 2. Transition phase (1.0s to 1.4s): Fades out spinner.
     _spinnerOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.30, 0.42, curve: Curves.easeOut),
+        curve: const Interval(0.50, 0.70, curve: Curves.easeOut),
       ),
     );
 
-
-
+    // Background transition from 1.0s to 1.5s
     _bgTransition = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.30, 0.50, curve: Curves.easeInOut),
+        curve: const Interval(0.50, 0.75, curve: Curves.easeInOut),
       ),
     );
 
-    // 3. Card background & subtitle text phase (2.0s to 2.4s)
+    // 3. Card, form elements, and footer fade in together from 1.4s to 2.0s
     _cardOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.50, 0.60, curve: Curves.easeOut),
-      ),
-    );
-
-    // 4. First Input Field: Company Registration Code (2.4s to 2.8s)
-    _field1Opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.60, 0.70, curve: Curves.easeOut),
-      ),
-    );
-    _field1Slide = Tween<Offset>(begin: const Offset(0.0, 0.25), end: Offset.zero).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.60, 0.70, curve: Curves.easeOutCubic),
-      ),
-    );
-
-    // 5. Second Input Field: Registered Mobile Number (2.8s to 3.2s)
-    _field2Opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.70, 0.80, curve: Curves.easeOut),
-      ),
-    );
-    _field2Slide = Tween<Offset>(begin: const Offset(0.0, 0.25), end: Offset.zero).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.70, 0.80, curve: Curves.easeOutCubic),
-      ),
-    );
-
-    // 6. Access Button: Access Dialer Workspace (3.2s to 3.6s)
-    _buttonOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.80, 0.90, curve: Curves.easeOut),
-      ),
-    );
-    _buttonSlide = Tween<Offset>(begin: const Offset(0.0, 0.25), end: Offset.zero).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.80, 0.90, curve: Curves.easeOutCubic),
-      ),
-    );
-
-    // 7. Branded Footer: Made with ❤️ by Eazzio Technologies Pvt Ltd (3.6s to 4.0s)
-    _footerOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.90, 1.00, curve: Curves.easeOut),
+        curve: const Interval(0.70, 1.00, curve: Curves.easeOut),
       ),
     );
 
@@ -202,13 +139,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         final layout = ResponsiveLayout(context);
         final activeBgColor = Color.lerp(Colors.white, bgColor, _bgTransition.value)!;
 
-        // Responsive start logo width (84% of viewport width clamped between 380px and 450px)
-        final double startLogoWidth = layout.scale(380.0 * 0.84, 450.0 * 0.84);
-        // Responsive end logo width (58% of viewport width clamped between 380px and 450px)
-        final double endLogoWidth = layout.scale(380.0 * 0.58, 450.0 * 0.58);
-
-        final double currentCurveVal = const Interval(0.30, 0.50, curve: Curves.easeInOutCubic).transform(_animationController.value);
-        final double currentLogoSize = startLogoWidth + (endLogoWidth - startLogoWidth) * currentCurveVal;
+        // Keep logo width constant, matching the splash screen logo width
+        final double currentLogoSize = layout.scale(380.0 * 0.84, 450.0 * 0.84);
 
         return Scaffold(
           backgroundColor: activeBgColor,
@@ -322,152 +254,126 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     ],
 
                                     // Field 1: Company Registration Code
-                                    if (_field1Opacity.value > 0.0) ...[
-                                      Opacity(
-                                        opacity: _field1Opacity.value,
-                                        child: FractionalTranslation(
-                                          translation: _field1Slide.value,
-                                          child: TextFormField(
-                                            controller: _companyRegController,
-                                            style: TextStyle(color: textColor),
-                                            keyboardType: TextInputType.text,
-                                            textCapitalization: TextCapitalization.characters,
-                                            decoration: InputDecoration(
-                                              labelText: 'Company Registration Code',
-                                              labelStyle: TextStyle(color: labelColor),
-                                              hintText: 'e.g. EAZ-123456',
-                                              hintStyle: const TextStyle(color: Color(0xFF4B5563)),
-                                              prefixIcon: Icon(Icons.business_sharp, color: labelColor),
-                                              filled: true,
-                                              fillColor: fieldFillColor,
-                                              border: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(12),
-                                                borderSide: BorderSide(
-                                                  color: isDark ? borderColor : const Color(0xFFCBD5E1),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              enabledBorder: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(12),
-                                                borderSide: BorderSide(
-                                                  color: isDark ? borderColor : const Color(0xFFCBD5E1),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              focusedBorder: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(12),
-                                                borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
-                                              ),
-                                            ),
-                                            validator: (value) {
-                                              if (value == null || value.trim().isEmpty) {
-                                                return 'Please enter Company Registration Code';
-                                              }
-                                              if (!value.trim().toUpperCase().startsWith('EAZ-')) {
-                                                return 'Must start with EAZ- Prefix';
-                                              }
-                                              return null;
-                                            },
+                                    TextFormField(
+                                      controller: _companyRegController,
+                                      style: TextStyle(color: textColor),
+                                      keyboardType: TextInputType.text,
+                                      textCapitalization: TextCapitalization.characters,
+                                      decoration: InputDecoration(
+                                        labelText: 'Company Registration Code',
+                                        labelStyle: TextStyle(color: labelColor),
+                                        hintText: 'e.g. EAZ-123456',
+                                        hintStyle: const TextStyle(color: Color(0xFF4B5563)),
+                                        prefixIcon: Icon(Icons.business_sharp, color: labelColor),
+                                        filled: true,
+                                        fillColor: fieldFillColor,
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: isDark ? borderColor : const Color(0xFFCBD5E1),
+                                            width: 1,
                                           ),
                                         ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: isDark ? borderColor : const Color(0xFFCBD5E1),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                                        ),
                                       ),
-                                    ],
+                                      validator: (value) {
+                                        if (value == null || value.trim().isEmpty) {
+                                          return 'Please enter Company Registration Code';
+                                        }
+                                        if (!value.trim().toUpperCase().startsWith('EAZ-')) {
+                                          return 'Must start with EAZ- Prefix';
+                                        }
+                                        return null;
+                                      },
+                                    ),
                                     
-                                    // Spacer before Field 2
-                                    if (_field2Opacity.value > 0.0) const SizedBox(height: 20),
+                                    const SizedBox(height: 20),
 
                                     // Field 2: Registered Mobile Number
-                                    if (_field2Opacity.value > 0.0) ...[
-                                      Opacity(
-                                        opacity: _field2Opacity.value,
-                                        child: FractionalTranslation(
-                                          translation: _field2Slide.value,
-                                          child: TextFormField(
-                                            controller: _emailController,
-                                            style: TextStyle(color: textColor),
-                                            keyboardType: TextInputType.phone,
-                                            decoration: InputDecoration(
-                                              labelText: 'Registered Mobile Number',
-                                              labelStyle: TextStyle(color: labelColor),
-                                              hintText: 'e.g. 9876543210',
-                                              hintStyle: const TextStyle(color: Color(0xFF4B5563)),
-                                              prefixIcon: Icon(Icons.phone, color: labelColor),
-                                              filled: true,
-                                              fillColor: fieldFillColor,
-                                              border: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(12),
-                                                borderSide: BorderSide(
-                                                  color: isDark ? borderColor : const Color(0xFFCBD5E1),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              enabledBorder: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(12),
-                                                borderSide: BorderSide(
-                                                  color: isDark ? borderColor : const Color(0xFFCBD5E1),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              focusedBorder: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(12),
-                                                borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
-                                              ),
-                                            ),
-                                            validator: (value) {
-                                              if (value == null || value.trim().isEmpty) {
-                                                return 'Please enter your registered mobile number';
-                                              }
-                                              if (value.trim().length < 8) {
-                                                return 'Please enter a valid mobile number';
-                                              }
-                                              return null;
-                                            },
+                                    TextFormField(
+                                      controller: _emailController,
+                                      style: TextStyle(color: textColor),
+                                      keyboardType: TextInputType.phone,
+                                      decoration: InputDecoration(
+                                        labelText: 'Registered Mobile Number',
+                                        labelStyle: TextStyle(color: labelColor),
+                                        hintText: 'e.g. 9876543210',
+                                        hintStyle: const TextStyle(color: Color(0xFF4B5563)),
+                                        prefixIcon: Icon(Icons.phone, color: labelColor),
+                                        filled: true,
+                                        fillColor: fieldFillColor,
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: isDark ? borderColor : const Color(0xFFCBD5E1),
+                                            width: 1,
                                           ),
                                         ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: isDark ? borderColor : const Color(0xFFCBD5E1),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                                        ),
                                       ),
-                                    ],
+                                      validator: (value) {
+                                        if (value == null || value.trim().isEmpty) {
+                                          return 'Please enter your registered mobile number';
+                                        }
+                                        if (value.trim().length < 8) {
+                                          return 'Please enter a valid mobile number';
+                                        }
+                                        return null;
+                                      },
+                                    ),
                                     
-                                    // Spacer before Access Button
-                                    if (_buttonOpacity.value > 0.0) SizedBox(height: layout.spacing),
+                                    SizedBox(height: layout.spacing),
 
                                     // Access Button: Access Dialer Workspace
-                                    if (_buttonOpacity.value > 0.0) ...[
-                                      Opacity(
-                                        opacity: _buttonOpacity.value,
-                                        child: FractionalTranslation(
-                                          translation: _buttonSlide.value,
-                                          child: ElevatedButton(
-                                            onPressed: _isLoading ? null : _handleLogin,
-                                            style: ElevatedButton.styleFrom(
-                                              padding: EdgeInsets.symmetric(vertical: layout.scale(12.0, 16.0)),
-                                              backgroundColor: const Color(0xFF6366F1),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(layout.scale(10.0, 12.0)),
-                                              ),
-                                              elevation: 4,
-                                              shadowColor: const Color(0x4D6366F1),
-                                            ),
-                                            child: _isLoading
-                                                ? const SizedBox(
-                                                    height: 20,
-                                                    width: 20,
-                                                    child: CircularProgressIndicator(
-                                                      color: Colors.white,
-                                                      strokeWidth: 2,
-                                                    ),
-                                                  )
-                                                : Text(
-                                                    'Access Dialer Workspace',
-                                                    style: TextStyle(
-                                                      fontSize: layout.fontSizeHeading,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                          ),
+                                    ElevatedButton(
+                                      onPressed: _isLoading ? null : _handleLogin,
+                                      style: ElevatedButton.styleFrom(
+                                        padding: EdgeInsets.symmetric(vertical: layout.scale(12.0, 16.0)),
+                                        backgroundColor: const Color(0xFF6366F1),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(layout.scale(10.0, 12.0)),
                                         ),
+                                        elevation: 4,
+                                        shadowColor: const Color(0x4D6366F1),
                                       ),
-                                    ],
+                                      child: _isLoading
+                                          ? const SizedBox(
+                                              height: 20,
+                                              width: 20,
+                                              child: CircularProgressIndicator(
+                                                color: Colors.white,
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                          : Text(
+                                              'Access Dialer Workspace',
+                                              style: TextStyle(
+                                                fontSize: layout.fontSizeHeading,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -477,10 +383,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       ],
 
                       // Branded Footer (Made with ❤️ by Eazzio Technologies Pvt Ltd)
-                      if (_footerOpacity.value > 0.0) ...[
+                      if (_cardOpacity.value > 0.0) ...[
                         SizedBox(height: layout.scale(24.0, 48.0)),
                         Opacity(
-                          opacity: _footerOpacity.value,
+                          opacity: _cardOpacity.value,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
