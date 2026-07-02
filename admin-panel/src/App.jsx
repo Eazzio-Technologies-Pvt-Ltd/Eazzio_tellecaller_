@@ -152,28 +152,13 @@ const ConstellationCanvas = () => {
 };
 
 // Premium Dual-Pane Layout Frame Redesigned to Centered Single Pane
-const AuthLayoutWrapper = ({ children, theme, toggleTheme }) => {
+const AuthLayoutWrapper = ({ children }) => {
   return (
     <div className="login-layout-container">
       {/* Decorative background shapes mimicking the screenshot */}
       <div className="bg-shape-left-bar"></div>
       <div className="bg-shape-bottom-circle"></div>
       <div className="bg-shape-right-curve"></div>
-      
-      {/* Theme Toggle Button */}
-      <button onClick={toggleTheme} className="login-theme-toggle" aria-label="Toggle Theme">
-        {theme === 'dark' ? (
-          <>
-            <span style={{ fontSize: '1rem', display: 'flex', alignItems: 'center' }}>☀️</span>
-            <span>Light Mode</span>
-          </>
-        ) : (
-          <>
-            <span style={{ fontSize: '1rem', display: 'flex', alignItems: 'center' }}>🌙</span>
-            <span>Dark Mode</span>
-          </>
-        )}
-      </button>
 
       <div className="login-centered-pane">
         {children}
@@ -412,8 +397,12 @@ const App = () => {
   const [forgotSuccess, setForgotSuccess] = useState('');
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+    if (!token || subscriptionExpired) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+  }, [theme, token, subscriptionExpired]);
 
   const toggleTheme = () => {
     setTheme(prev => {
@@ -908,7 +897,7 @@ const App = () => {
       <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme}>
         <div className={`login-glass-card-premium ${isRegistering ? 'auth-card-register' : showForgotPassword ? 'auth-card-forgot' : 'auth-card-login'}`}>
           {isRegistering ? (
-            <RegisterCompany onBack={() => setIsRegistering(false)} theme={theme} />
+            <RegisterCompany onBack={() => setIsRegistering(false)} theme="light" />
           ) : showForgotPassword ? (
             <>
               {/* Back to Login Button */}
