@@ -102,17 +102,18 @@ if (dbType === 'postgres') {
 async function query(text, params = []) {
   if (dbType === 'postgres') {
     const store = dbStorage.getStore();
-    if (store && store.companyRegNum) {
-      const schemaName = `company_${store.companyRegNum}`;
-      const client = await pgPool.connect();
-      try {
+    const client = await pgPool.connect();
+    try {
+      if (store && store.companyRegNum) {
+        const schemaName = `company_${store.companyRegNum}`;
         await client.query(`SET search_path TO "${schemaName}", "public"`);
-        return await client.query(text, params);
-      } finally {
-        client.release();
+      } else {
+        await client.query('SET search_path TO "public"');
       }
+      return await client.query(text, params);
+    } finally {
+      client.release();
     }
-    return await pgPool.query(text, params);
   } else {
     const dbConn = getActiveDb();
     // Translate $1, $2 -> ? for SQLite with parameter replication

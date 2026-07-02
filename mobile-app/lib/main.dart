@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:eazzio_telecaller/services/api_service.dart';
-import 'package:eazzio_telecaller/screens/login_screen.dart';
-import 'package:eazzio_telecaller/screens/dashboard_screen.dart';
 import 'package:eazzio_telecaller/screens/splash_screen.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);

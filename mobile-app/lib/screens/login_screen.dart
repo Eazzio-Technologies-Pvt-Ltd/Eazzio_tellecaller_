@@ -140,320 +140,313 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
         return Scaffold(
           backgroundColor: activeBgColor,
+          resizeToAvoidBottomInset: false,
           body: SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final double availableHeight = constraints.maxHeight;
 
-                // Make the logo size responsive based on height to prevent overflows
-                final double baseLogoSize = layout.scale(380.0 * 0.84, 450.0 * 0.84);
-                final double currentLogoSize = availableHeight < 650 
-                    ? availableHeight * 0.25 // Scales down logo on small viewports
+                // Make the logo size compact to prevent overflows on small screens
+                final double baseLogoSize = layout.scale(100.0, 140.0);
+                final double currentLogoSize = availableHeight < 600 
+                    ? availableHeight * 0.14
                     : baseLogoSize;
 
-                // Centered top margin during splash, slides up smoothly during transition
-                final double computedSplashTopMargin = (availableHeight - currentLogoSize - 60) / 2.3;
-                final double splashTopMargin = computedSplashTopMargin > 0 ? computedSplashTopMargin : 0.0;
-                final double finalTopMargin = layout.scale(16.0, 28.0);
-                
+                // Spacing and margins adjusted to be compact
+                final double splashTopMargin = layout.scale(24.0, 48.0);
+                final double finalTopMargin = layout.scale(10.0, 16.0);
                 final double currentTopMargin = splashTopMargin + (finalTopMargin - splashTopMargin) * _cardOpacity.value;
 
-                return SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: availableHeight,
-                    ),
-                    child: IntrinsicHeight(
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Top margin (animated)
-                            SizedBox(height: currentTopMargin),
+                return Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: layout.scale(16.0, 24.0),
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Top margin (animated)
+                        SizedBox(height: currentTopMargin),
 
-                            // Logo and spinner area
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: layout.scale(24.0, 32.0)),
-                              child: Column(
-                                children: [
-                                  Center(
-                                    child: SizedBox(
-                                      width: currentLogoSize,
-                                      height: currentLogoSize,
-                                      child: Image.asset(
-                                        isDark ? 'assets/logo.png' : 'assets/logo_light.png',
-                                        fit: BoxFit.contain,
-                                      ),
-                                    ),
-                                  ),
-                                  
-                                  // Spinner showing initially, fading out
-                                  if (_spinnerOpacity.value > 0.0) ...[
-                                    SizedBox(height: layout.scale(24.0, 36.0) * _spinnerOpacity.value),
-                                    Opacity(
-                                      opacity: _spinnerOpacity.value,
-                                      child: Center(
-                                        child: SizedBox(
-                                          width: layout.scale(24.0, 28.0),
-                                          height: layout.scale(24.0, 28.0),
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            valueColor: AlwaysStoppedAnimation<Color>(
-                                              Theme.of(context).primaryColor,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  
-                                  // Credentials subtitle under logo (fades in)
-                                  if (_cardOpacity.value > 0.0) ...[
-                                    Opacity(
-                                      opacity: _cardOpacity.value,
-                                      child: Column(
-                                        children: [
-                                          SizedBox(height: layout.scale(12.0, 16.0)),
-                                          Text(
-                                            'Enter your credentials to access your account',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontSize: layout.fontSizeBody,
-                                              color: labelColor,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
+                        // Logo and spinner area
+                        Center(
+                          child: SizedBox(
+                            width: currentLogoSize,
+                            height: currentLogoSize,
+                            child: Image.asset(
+                              isDark ? 'assets/logo.png' : 'assets/logo_light.png',
+                              fit: BoxFit.contain,
                             ),
-                            
-                            // Animated spacer that shrinks as card fades in
-                            SizedBox(height: layout.scale(20.0, 32.0) * (1.0 - _cardOpacity.value)),
-
-                            // Floating Form Card (separated from all edges: left, right, top, and down)
-                            if (_cardOpacity.value > 0.0) ...[
-                              Opacity(
-                                opacity: _cardOpacity.value,
-                                child: Container(
-                                  width: double.infinity,
-                                  margin: EdgeInsets.symmetric(
-                                    horizontal: layout.scale(20.0, 28.0),
-                                    vertical: layout.scale(12.0, 20.0),
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: cardColor,
-                                    borderRadius: BorderRadius.circular(24),
-                                    border: isDark
-                                        ? Border.all(color: const Color(0xFF222435), width: 1)
-                                        : null,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-                                        blurRadius: 16,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  padding: EdgeInsets.all(layout.scale(20.0, 28.0)),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Welcome Back 👋',
-                                        style: TextStyle(
-                                          fontSize: layout.fontSizeHeading + 6,
-                                          fontWeight: FontWeight.bold,
-                                          color: textColor,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        'Sign in to continue',
-                                        style: TextStyle(
-                                          fontSize: layout.fontSizeBody,
-                                          color: labelColor,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 28),
-                                      
-                                      // Error Display
-                                      if (_errorMessage != null) ...[
-                                        Container(
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0x26EF4444),
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(color: const Color(0x59EF4444)),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              const Icon(Icons.error_outline, color: Color(0xFFEF4444)),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Text(
-                                                  _errorMessage!,
-                                                  style: TextStyle(
-                                                    color: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 20),
-                                      ],
-
-                                      // Field 1: Company Registration Code
-                                      Text(
-                                        'Company Registration Code',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: textColor,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      TextFormField(
-                                        controller: _companyRegController,
-                                        style: TextStyle(color: textColor),
-                                        keyboardType: TextInputType.text,
-                                        textCapitalization: TextCapitalization.characters,
-                                        decoration: InputDecoration(
-                                          hintText: 'e.g. EAZ-123456',
-                                          hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-                                          prefixIcon: Icon(Icons.business_sharp, color: labelColor),
-                                          filled: true,
-                                          fillColor: fieldFillColor,
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(16),
-                                            borderSide: BorderSide.none,
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(16),
-                                            borderSide: BorderSide.none,
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(16),
-                                            borderSide: BorderSide(
-                                              color: Theme.of(context).primaryColor,
-                                              width: 1.5,
-                                            ),
-                                          ),
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                        ),
-                                        validator: (value) {
-                                          if (value == null || value.trim().isEmpty) {
-                                            return 'Please enter Company Registration Code';
-                                          }
-                                          if (!value.trim().toUpperCase().startsWith('EAZ-')) {
-                                            return 'Must start with EAZ- Prefix';
-                                          }
-                                          return null;
-                                        },
-                                      ),
-                                      
-                                      const SizedBox(height: 20),
-
-                                      // Field 2: Registered Mobile Number
-                                      Text(
-                                        'Registered Mobile Number',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: textColor,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      TextFormField(
-                                        controller: _emailController,
-                                        style: TextStyle(color: textColor),
-                                        keyboardType: TextInputType.phone,
-                                        decoration: InputDecoration(
-                                          hintText: 'e.g. 9876543210',
-                                          hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-                                          prefixIcon: Icon(Icons.phone, color: labelColor),
-                                          filled: true,
-                                          fillColor: fieldFillColor,
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(16),
-                                            borderSide: BorderSide.none,
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(16),
-                                            borderSide: BorderSide.none,
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(16),
-                                            borderSide: BorderSide(
-                                              color: Theme.of(context).primaryColor,
-                                              width: 1.5,
-                                            ),
-                                          ),
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                        ),
-                                        validator: (value) {
-                                          if (value == null || value.trim().isEmpty) {
-                                            return 'Please enter your registered mobile number';
-                                          }
-                                          if (value.trim().length < 8) {
-                                            return 'Please enter a valid mobile number';
-                                          }
-                                          return null;
-                                        },
-                                      ),
-                                      
-                                      SizedBox(height: layout.spacing),
-
-                                      // Access Button
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: ElevatedButton(
-                                          onPressed: _isLoading ? null : _handleLogin,
-                                          style: ElevatedButton.styleFrom(
-                                            padding: EdgeInsets.symmetric(vertical: layout.scale(14.0, 18.0)),
-                                            backgroundColor: Theme.of(context).primaryColor,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(16),
-                                            ),
-                                            elevation: 0,
-                                          ),
-                                          child: _isLoading
-                                              ? const SizedBox(
-                                                  height: 20,
-                                                  width: 20,
-                                                  child: CircularProgressIndicator(
-                                                    color: Colors.white,
-                                                    strokeWidth: 2,
-                                                  ),
-                                                )
-                                              : Text(
-                                                  'Access Dialer Workspace',
-                                                  style: TextStyle(
-                                                    fontSize: layout.fontSizeHeading,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                        ),
-                                      ),
-                                    ],
+                          ),
+                        ),
+                        
+                        // Spinner showing initially, fading out
+                        if (_spinnerOpacity.value > 0.0) ...[
+                          SizedBox(height: layout.scale(16.0, 24.0) * _spinnerOpacity.value),
+                          Opacity(
+                            opacity: _spinnerOpacity.value,
+                            child: Center(
+                              child: SizedBox(
+                                width: layout.scale(20.0, 24.0),
+                                height: layout.scale(20.0, 24.0),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.0,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Theme.of(context).primaryColor,
                                   ),
                                 ),
                               ),
-                              
-                              SizedBox(height: layout.scale(16.0, 32.0)),
+                            ),
+                          ),
+                        ],
+                        
+                        // Credentials subtitle under logo (fades in)
+                        if (_cardOpacity.value > 0.0) ...[
+                          Opacity(
+                            opacity: _cardOpacity.value,
+                            child: Column(
+                              children: [
+                                SizedBox(height: layout.scale(8.0, 12.0)),
+                                Text(
+                                  'Enter your credentials to access your account',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: layout.fontSizeBody - 1,
+                                    color: labelColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        
+                        // Animated spacer that shrinks as card fades in
+                        SizedBox(height: layout.scale(12.0, 20.0) * (1.0 - _cardOpacity.value)),
 
-                              // Branded Footer outside the card (centered)
-                              Opacity(
-                                opacity: _cardOpacity.value,
+                        // Floating Form Card (Expanded dynamically to fill remaining height)
+                        if (_cardOpacity.value > 0.0) ...[
+                          Expanded(
+                            child: Opacity(
+                              opacity: _cardOpacity.value,
+                              child: Container(
+                                margin: EdgeInsets.symmetric(
+                                  vertical: layout.scale(8.0, 12.0),
+                                ),
+                                decoration: BoxDecoration(
+                                  color: cardColor,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: isDark
+                                      ? Border.all(color: const Color(0xFF222435), width: 1)
+                                      : null,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                padding: EdgeInsets.all(layout.scale(16.0, 20.0)),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Welcome Back 👋',
+                                      style: TextStyle(
+                                        fontSize: layout.fontSizeHeading + 2,
+                                        fontWeight: FontWeight.bold,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Sign in to continue',
+                                      style: TextStyle(
+                                        fontSize: layout.fontSizeBody - 1,
+                                        color: labelColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    
+                                    // Error Display
+                                    if (_errorMessage != null) ...[
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0x26EF4444),
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: const Color(0x59EF4444)),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 18),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                _errorMessage!,
+                                                style: TextStyle(
+                                                  color: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                    ],
+
+                                    // Field 1: Company Registration Code
+                                    Text(
+                                      'Company Registration Code',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    TextFormField(
+                                      controller: _companyRegController,
+                                      style: TextStyle(color: textColor, fontSize: 14),
+                                      keyboardType: TextInputType.text,
+                                      textCapitalization: TextCapitalization.characters,
+                                      decoration: InputDecoration(
+                                        hintText: 'e.g. EAZ-123456',
+                                        hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
+                                        prefixIcon: Icon(Icons.business_sharp, color: labelColor, size: 20),
+                                        filled: true,
+                                        fillColor: fieldFillColor,
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: Theme.of(context).primaryColor,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.trim().isEmpty) {
+                                          return 'Please enter Company Registration Code';
+                                        }
+                                        if (!value.trim().toUpperCase().startsWith('EAZ-')) {
+                                          return 'Must start with EAZ- Prefix';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    
+                                    const SizedBox(height: 12),
+
+                                    // Field 2: Registered Mobile Number
+                                    Text(
+                                      'Registered Mobile Number',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    TextFormField(
+                                      controller: _emailController,
+                                      style: TextStyle(color: textColor, fontSize: 14),
+                                      keyboardType: TextInputType.phone,
+                                      decoration: InputDecoration(
+                                        hintText: 'e.g. 9876543210',
+                                        hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
+                                        prefixIcon: Icon(Icons.phone, color: labelColor, size: 20),
+                                        filled: true,
+                                        fillColor: fieldFillColor,
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: Theme.of(context).primaryColor,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.trim().isEmpty) {
+                                          return 'Please enter your registered mobile number';
+                                        }
+                                        if (value.trim().length < 8) {
+                                          return 'Please enter a valid mobile number';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    
+                                    const Spacer(),
+
+                                    // Access Button
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: _isLoading ? null : _handleLogin,
+                                        style: ElevatedButton.styleFrom(
+                                          padding: EdgeInsets.symmetric(vertical: layout.scale(10.0, 12.0)),
+                                          backgroundColor: Theme.of(context).primaryColor,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          elevation: 0,
+                                        ),
+                                        child: _isLoading
+                                            ? const SizedBox(
+                                                height: 18,
+                                                width: 18,
+                                                child: CircularProgressIndicator(
+                                                  color: Colors.white,
+                                                  strokeWidth: 2,
+                                                ),
+                                              )
+                                            : Text(
+                                                'Access Dialer Workspace',
+                                                style: TextStyle(
+                                                  fontSize: layout.fontSizeHeading - 1,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                        
+                        // Branded Footer outside the card (centered)
+                        if (_cardOpacity.value > 0.0) ...[
+                          Opacity(
+                            opacity: _cardOpacity.value,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: layout.scale(8.0, 12.0)),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -467,7 +460,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     Icon(
                                       Icons.favorite,
                                       color: Colors.red,
-                                      size: layout.scale(12.0, 14.0),
+                                      size: layout.scale(10.0, 12.0),
                                     ),
                                     Text(
                                       ' by Eazzio Technologies Pvt Ltd',
@@ -480,11 +473,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   ],
                                 ),
                               ),
-                              SizedBox(height: layout.scale(16.0, 32.0)),
-                            ],
-                          ],
-                        ),
-                      ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 );
