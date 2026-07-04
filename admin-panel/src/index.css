@@ -2585,4 +2585,153 @@ input::-ms-clear {
   display: none !important;
 }
 
+/* Media query targeting screens from 380px to 450px width range to make login page compact */
+@media screen and (min-width: 380px) and (max-width: 450px) {
+  /* Layout Wrapper */
+  .login-layout-container {
+    padding: 0.5rem 0.75rem !important;
+    justify-content: center !important;
+  }
+  
+  /* Hide background decoration shapes to avoid layout clutter */
+  .bg-shape-left-bar,
+  .bg-shape-bottom-circle,
+  .bg-shape-right-curve {
+    display: none !important;
+  }
+
+  /* Theme toggle positioning adjustments */
+  .login-theme-toggle {
+    top: 0.5rem !important;
+    right: 0.5rem !important;
+    padding: 4px 8px !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* Login card wrapper */
+  .login-glass-card-premium {
+    border-radius: 12px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  /* Form wrapper padding adjustments */
+  .auth-card-login,
+  .auth-card-forgot,
+  .auth-card-expired {
+    max-width: 100% !important;
+    padding: 1.25rem 1.5rem !important;
+  }
+  
+  .auth-card-register,
+  .auth-card-demo {
+    max-width: 100% !important;
+    padding: 1rem 1.25rem !important;
+  }
+
+  /* Logo adjustment */
+  .auth-logo-img {
+    height: 36px !important;
+  }
+
+  /* Main titles */
+  .auth-main-title {
+    font-size: 1.25rem !important;
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.15rem !important;
+  }
+  
+  .auth-main-subtitle {
+    font-size: 0.8rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  /* Header link alignments */
+  .auth-card-header {
+    margin-bottom: 0.5rem !important;
+  }
+
+  /* Divider line spacing */
+  .auth-card-divider-line {
+    margin: 0.5rem 0 !important;
+  }
+
+  /* Form group input heights and margins */
+  .login-glass-card-premium .form-group input, 
+  .login-glass-card-premium .form-group select,
+  .auth-input-field,
+  .auth-input-field-callyzer {
+    height: 38px !important;
+    font-size: 0.9rem !important;
+    border-radius: 6px !important;
+  }
+
+  .auth-input-container {
+    height: 38px !important;
+  }
+
+  .auth-input-icon {
+    left: 10px !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  /* Override general inputs spacing to prevent overflow */
+  .auth-input-group {
+    gap: 4px !important;
+  }
+
+  .auth-input-label-callyzer,
+  .login-glass-card-premium label {
+    font-size: 0.78rem !important;
+  }
+
+  /* Explicitly override the default padding of inputs inside the premium card */
+  .login-glass-card-premium .auth-input-field-callyzer:not(.password-input) {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+  .login-glass-card-premium .auth-input-field-callyzer.password-input {
+    padding-left: 12px !important;
+    padding-right: 32px !important;
+  }
+  .login-glass-card-premium .auth-input-field {
+    padding-left: 2.25rem !important;
+    padding-right: 12px !important;
+  }
+
+  /* Separator lines */
+  .auth-or-separator {
+    margin: 0.35rem 0 !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* Action buttons */
+  .btn-signin-callyzer,
+  .btn-gradient-auth {
+    height: 38px !important;
+    padding: 8px 16px !important;
+    font-size: 0.88rem !important;
+    border-radius: 6px !important;
+    line-height: normal !important;
+  }
+
+  .btn-google-callyzer {
+    padding: 6px 12px !important;
+    font-size: 0.78rem !important;
+    border-radius: 6px !important;
+  }
+
+  /* Hide large footer column links on narrow layout */
+  .auth-card-footer-columns {
+    display: none !important;
+  }
+
+  /* Copyright adjustments */
+  .auth-page-copyright {
+    margin-top: 0.75rem !important;
+    font-size: 0.7rem !important;
+  }
+}
+
+
 
