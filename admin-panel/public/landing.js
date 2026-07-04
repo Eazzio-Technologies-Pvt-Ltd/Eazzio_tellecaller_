@@ -9,6 +9,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Mobile Nav Toggle Functionality
+  const mobileNavToggle = document.querySelector('.mobile-nav-toggle');
+  const navMenu = document.querySelector('.nav-menu');
+  if (mobileNavToggle && navMenu) {
+    mobileNavToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navMenu.classList.toggle('active');
+      const isExpanded = navMenu.classList.contains('active');
+      mobileNavToggle.setAttribute('aria-expanded', isExpanded);
+      if (isExpanded) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (navMenu.classList.contains('active') && !navMenu.contains(e.target) && !mobileNavToggle.contains(e.target)) {
+        navMenu.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    });
+
+    const navLinks = navMenu.querySelectorAll('.nav-link, .btn-mobile-nav');
+    navLinks.forEach(link => {
+      link.addEventListener('click', () => {
+        navMenu.classList.remove('active');
+        document.body.style.overflow = '';
+      });
+    });
+  }
+
   // 3. FAQ Accordion
   const faqQuestions = document.querySelectorAll('.faq-question');
   

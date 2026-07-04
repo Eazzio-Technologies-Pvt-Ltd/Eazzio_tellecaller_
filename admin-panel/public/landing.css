@@ -270,6 +270,11 @@ button, input, select {
   color: var(--text-primary);
 }
 
+/* Mobile only action elements (hidden by default on desktop/tablet) */
+.mobile-only-action {
+  display: none !important;
+}
+
 /* ============================================================
    Hero Section — Full-bleed gradient
    ============================================================ */
@@ -1430,18 +1435,28 @@ button, input, select {
    Responsive — Small Mobile (320px–450px)
    ============================================================ */
 @media screen and (min-width: 320px) and (max-width: 450px) {
+  /* Global page-only mobile adjustments */
+  .mobile-only-action {
+    display: block !important;
+  }
+  
   .container {
-    padding: 0 4px !important;
+    padding: 0 12px !important;
     width: 100% !important;
     max-width: 100% !important;
+    box-sizing: border-box !important;
   }
+  
   .hero-section {
-    padding-top: 220px !important;
-    padding-bottom: 48px !important;
+    padding-top: 130px !important;
+    padding-bottom: 40px !important;
   }
+  
   .hero-grid {
-    margin-top: 40px !important;
+    margin-top: 20px !important;
+    gap: 32px !important;
   }
+  
   .header {
     position: fixed !important;
     top: 0 !important;
@@ -1452,108 +1467,229 @@ button, input, select {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25) !important;
   }
+  
   .logo-img {
-    height: 20px !important;
+    height: 24px !important;
   }
+  
   .logo-for-dark-mode {
     display: block !important;
   }
+  
   .logo-for-light-mode {
     display: none !important;
   }
-  .btn-login {
-    background-color: transparent !important;
-    color: #ffffff !important;
-    border: 1px solid rgba(255, 255, 255, 0.25) !important;
-    border-radius: 6px !important;
-  }
-  .btn-primary {
-    background-color: #2563eb !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 6px !important;
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2) !important;
-    font-weight: 600 !important;
-  }
+  
   .nav-container {
-    padding: 0 10px !important;
+    padding: 0 16px !important;
     height: 64px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
   }
+  
+  /* Hide standard header actions to avoid crowding */
   .nav-actions {
-    gap: 8px !important;
-  }
-  .btn {
-    padding: 6px 12px !important;
-    font-size: 0.72rem !important;
-  }
-  .mobile-nav-toggle {
     display: none !important;
   }
+  
+  /* Hamburger Nav Toggle styles */
+  .mobile-nav-toggle {
+    display: block !important;
+    background: none !important;
+    border: none !important;
+    color: #ffffff !important;
+    cursor: pointer !important;
+    padding: 6px !important;
+    z-index: 100000 !important;
+  }
+  
+  /* Slide out Navigation Menu */
+  .nav-menu {
+    position: fixed !important;
+    top: 0 !important;
+    right: -100% !important;
+    width: 280px !important;
+    height: 100vh !important;
+    background-color: #0c1524 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 90px 24px 40px 24px !important;
+    gap: 16px !important;
+    transition: right 0.3s ease-in-out !important;
+    z-index: 99998 !important;
+    box-shadow: -5px 0 25px rgba(0, 0, 0, 0.5) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+    margin: 0 !important;
+    list-style: none !important;
+  }
+  
+  .nav-menu.active {
+    right: 0 !important;
+  }
+  
+  .nav-menu li {
+    width: 100% !important;
+    display: block !important;
+  }
+  
+  .nav-menu li a {
+    font-size: 1.05rem !important;
+    color: #94a3b8 !important;
+    padding: 10px 0 !important;
+    display: block !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    width: 100% !important;
+    text-align: left !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+  }
+  
+  .nav-menu li a:hover {
+    color: #ffffff !important;
+  }
+
+  .btn {
+    padding: 8px 16px !important;
+    font-size: 0.8rem !important;
+  }
+  
   .section {
-    padding: 48px 0 !important;
+    padding: 40px 0 !important;
   }
+  
   .hero-title {
-    font-size: 1.55rem !important;
-    line-height: 1.3 !important;
+    font-size: 1.65rem !important;
+    line-height: 1.25 !important;
   }
+  
   .hero-subtitle {
-    font-size: 0.9rem !important;
+    font-size: 0.85rem !important;
+    line-height: 1.45 !important;
   }
+  
   .hero-checkmarks {
-    gap: 10px !important;
+    gap: 8px !important;
+    margin: 16px 0 !important;
   }
+  
   .hero-check-item {
-    font-size: 0.83rem !important;
+    font-size: 0.8rem !important;
   }
+  
   .hero-cta-wrapper {
     align-items: stretch !important;
+    width: 100% !important;
   }
+  
   .hero-cta-subtext {
-    font-size: 0.74rem !important;
+    font-size: 0.7rem !important;
     text-align: center !important;
   }
+  
   .clients-logo-track {
-    gap: 14px !important;
-    padding: 0 14px !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 16px 20px !important;
+    padding: 0 16px !important;
   }
+  
   .clients-logo-track span {
-    font-size: 0.9rem !important;
+    font-size: 0.95rem !important;
+    margin: 4px !important;
   }
+  
   .highlight-title, .features-title, .pricing-title, .faq-title, .cta-title {
-    font-size: 1.65rem !important;
+    font-size: 1.5rem !important;
+    line-height: 1.3 !important;
   }
+  
   .highlight-card {
     padding: 20px 16px !important;
   }
+  
   .pricing-card {
-    padding: 28px 18px !important;
+    padding: 24px 16px !important;
   }
+  
   .pricing-price {
-    font-size: 2rem !important;
+    font-size: 1.85rem !important;
   }
+  
   .faq-question {
-    padding: 16px 18px !important;
-    font-size: 0.9rem !important;
+    padding: 14px 16px !important;
+    font-size: 0.85rem !important;
   }
+  
   .faq-answer-inner {
-    padding: 14px 18px !important;
-    font-size: 0.86rem !important;
+    padding: 12px 16px !important;
+    font-size: 0.8rem !important;
   }
-  .footer-grid {
-    padding: 0 14px !important;
+  
+  /* App Download banner styling */
+  .app-banner-container {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
     gap: 24px !important;
   }
+  
+  .app-banner-content {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .app-banner-mockup {
+    display: none !important; /* Hide QR code on mobile screens */
+  }
+  
+  .app-banner-store-buttons-custom {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+    align-items: center !important;
+    margin-top: 20px !important;
+  }
+  
+  .app-banner-store-buttons-custom .store-btn-custom {
+    width: 100% !important;
+    max-width: 260px !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+  }
+  
+  .footer-grid {
+    padding: 0 16px !important;
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+  
+  .footer-brand {
+    text-align: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  
   .footer-bottom {
     flex-direction: column !important;
     text-align: center !important;
-    padding: 20px 14px 0 !important;
+    padding: 20px 16px 0 !important;
     gap: 10px !important;
   }
+  
   .cta-container {
-    padding: 0 14px !important;
+    padding: 0 16px !important;
   }
+  
   .cta-title {
-    font-size: 1.65rem !important;
+    font-size: 1.5rem !important;
   }
 }
 
@@ -1808,9 +1944,9 @@ html, body {
 }
 
 /* ============================================================
-   380px – 450px: Small phone nav button layout
+   320px – 450px: Small phone nav button layout
    ============================================================ */
-@media (min-width: 380px) and (max-width: 450px) {
+@media (min-width: 320px) and (max-width: 450px) {
   .nav-actions {
     display: flex !important;
     flex-direction: row !important;
@@ -1843,9 +1979,9 @@ html, body {
 }
 
 /* ============================================================
-   350px – 767px: Full Landing Page Mobile Layout
+   320px – 767px: Full Landing Page Mobile Layout
    ============================================================ */
-@media screen and (min-width: 350px) and (max-width: 767px) {
+@media screen and (min-width: 320px) and (max-width: 767px) {
 
   /* ── Body & overflow ───────────────────────────────────────── */
   html, body {
@@ -2033,5 +2169,33 @@ html, body {
   /* ── Clients logo scroll ───────────────────────────────────── */
   .clients-logo-track {
     padding: 0 16px !important;
+  }
+
+  /* Logo size responsive fix */
+  .logo-img {
+    height: 24px !important;
+  }
+
+  /* Mockup illustration responsive scale */
+  .hero-mockup {
+    padding: 12px !important;
+    transform: rotate(0deg) !important;
+    max-width: 100% !important;
+  }
+  .hero-mock-stats {
+    gap: 6px !important;
+  }
+  .hero-mock-stats > div {
+    padding: 6px !important;
+  }
+  .hero-mock-stats > div > div:first-child {
+    font-size: 0.52rem !important;
+  }
+  .hero-mock-stats > div > div:last-child {
+    font-size: 1.15rem !important;
+  }
+  .hero-mockup-chart {
+    padding: 10px !important;
+    height: 120px !important;
   }
 }

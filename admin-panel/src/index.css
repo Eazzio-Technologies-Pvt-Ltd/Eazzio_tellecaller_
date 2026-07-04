@@ -1326,6 +1326,42 @@ tr:hover td {
   font-weight: bold;
 }
 
+/* Global styles for OTP and new password inputs with left icons */
+.auth-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.auth-input-icon {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.auth-input-field {
+  width: 100%;
+  height: 48px;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding-left: 2.75rem !important; /* Ensure space for the left lock/mail icon */
+  padding-right: 16px;
+  font-size: 1.05rem;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.auth-input-field:focus {
+  border-color: #ffa000;
+  box-shadow: 0 0 0 3px rgba(255, 160, 0, 0.15);
+}
+
 .auth-input-field-callyzer {
   width: 100%;
   height: 48px;
@@ -1414,6 +1450,31 @@ tr:hover td {
 
 .btn-signin-callyzer:hover {
   background-color: #e68a00;
+}
+
+/* Premium gradient auth buttons */
+.btn-gradient-auth {
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 12px 28px !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: block !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2) !important;
+  height: 48px !important;
+  line-height: 24px !important;
+}
+
+.btn-gradient-auth:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%) !important;
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4) !important;
 }
 
 .auth-or-separator {
@@ -1620,12 +1681,20 @@ tr:hover td {
   }
   
   .auth-card-header {
-    flex-direction: column;
-    gap: 0.75rem;
-    align-items: center;
-    text-align: center;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 1rem !important;
+    width: 100% !important;
   }
   
+  .auth-signup-btn,
+  .btn-back-link {
+    width: auto !important;
+    display: inline-flex !important;
+    flex: 0 0 auto !important;
+  }
+
   .auth-card-logo {
     align-items: center;
   }
@@ -1747,7 +1816,8 @@ tr:hover td {
 }
 
 [data-theme="dark"] .login-glass-card-premium .form-group input, 
-[data-theme="dark"] .login-glass-card-premium .form-group select {
+[data-theme="dark"] .login-glass-card-premium .form-group select,
+[data-theme="dark"] .auth-input-field {
   background: #0f172a !important;
   border: 1px solid #334155 !important;
   color: #ffffff !important;
@@ -1848,10 +1918,10 @@ tr:hover td {
 }
 
 /* =================================================================
-   350px – 767px: Hamburger Sidebar + Content Arrangement
+   320px – 767px: Hamburger Sidebar + Content Arrangement
    Applies to phones and small tablets in portrait mode
    ================================================================= */
-@media screen and (min-width: 350px) and (max-width: 767px) {
+@media screen and (min-width: 320px) and (max-width: 767px) {
 
   /* ── Layout shell ──────────────────────────────────────────── */
   html, body, #root {
@@ -2186,12 +2256,124 @@ tr:hover td {
   .auth-card-expired,
   .auth-card-register,
   .auth-card-demo {
-    padding: 1rem !important;
+    padding: 1.25rem 1rem !important;
     width: 95% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
     margin: 0 auto !important;
   }
+  
+  .auth-card-header {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    gap: 8px !important;
+    margin-bottom: 0.75rem !important;
+  }
+  
+  .auth-signup-btn {
+    padding: 6px 12px !important;
+    font-size: 0.72rem !important;
+  }
+  
+  .btn-back-link {
+    font-size: 0.72rem !important;
+  }
+
+  .auth-main-title {
+    font-size: 1.35rem !important;
+    margin-top: 0.25rem !important;
+  }
+
+  .auth-main-subtitle {
+    font-size: 0.8rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  .auth-card-divider-line {
+    margin: 0.4rem 0 !important;
+  }
+
+  .auth-input-group {
+    margin-bottom: 0.75rem !important;
+  }
+
+  .auth-input-label-callyzer {
+    font-size: 0.75rem !important;
+    margin-bottom: 4px !important;
+  }
+
+  .auth-input-field-callyzer,
+  .auth-input-field {
+    height: 40px !important;
+    font-size: 0.85rem !important;
+    padding: 8px 12px !important;
+    padding-left: 2.65rem !important;
+  }
+
+  .auth-password-toggle {
+    height: 40px !important;
+  }
+
+  .btn-signin-callyzer,
+  .btn-gradient-auth {
+    height: 42px !important;
+    font-size: 0.9rem !important;
+    margin-top: 0.5rem !important;
+    line-height: 18px !important;
+  }
+
+  .auth-or-separator {
+    margin: 0.5rem 0 !important;
+    font-size: 0.75rem !important;
+  }
+
+  .btn-google-callyzer {
+    height: 40px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .btn-auth-secondary {
+    height: 38px !important;
+    font-size: 0.8rem !important;
+    padding: 6px 12px !important;
+  }
+  
+  /* Stack footer columns inside auth cards on mobile */
+  .auth-card-footer-columns {
+    grid-template-columns: 1fr !important;
+    text-align: center !important;
+    gap: 12px !important;
+    padding-top: 12px !important;
+    justify-items: center !important;
+  }
+  
+  .auth-footer-col-title {
+    font-size: 0.78rem !important;
+    text-align: center !important;
+    margin-bottom: 4px !important;
+  }
+  
+  .auth-footer-links-list {
+    flex-direction: row !important;
+    justify-content: center !important;
+    gap: 16px !important;
+    margin-top: 4px !important;
+  }
+  
+  .auth-social-icons-row {
+    justify-content: center !important;
+    margin-top: 4px !important;
+    gap: 8px !important;
+  }
+  
+  .auth-mail-contact-row {
+    justify-content: center !important;
+    margin-top: 4px !important;
+    font-size: 0.75rem !important;
+  }
+
   .plan-selection-grid {
     grid-template-columns: 1fr !important;
     gap: 10px !important;
@@ -2227,6 +2409,106 @@ tr:hover td {
     width: auto !important;
     flex: 1 !important;
     min-width: 0 !important;
+  }
+
+  /* Stat cards: stack vertically in small mobile view */
+  .grid-stats {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  /* Prevent Lucide icons from overlaying text inside inputs and select boxes globally */
+  svg + input,
+  svg + select,
+  svg + textarea,
+  .searchContainer svg + input,
+  .auth-input-container svg + input,
+  .auth-password-wrapper svg + input,
+  div[style*="position: relative"] svg + input,
+  div[style*="position: 'relative'"] svg + input {
+    padding-left: 2.65rem !important;
+  }
+
+  /* Form and search container tweaks to ensure inputs position icons correctly */
+  .auth-input-icon, 
+  .searchIconInside, 
+  .selectIcon,
+  div[style*="position: relative"] svg:first-child,
+  div[style*="position: 'relative'"] svg:first-child {
+    left: 10px !important;
+    z-index: 5 !important;
+  }
+
+  /* Compact Dashboard elements for mobile */
+  .main-content {
+    padding: 0.5rem !important;
+  }
+  
+  .glass-card {
+    padding: 0.75rem !important;
+    border-radius: 12px !important;
+  }
+
+  h1 {
+    font-size: 1.15rem !important;
+  }
+
+  h2 {
+    font-size: 0.95rem !important;
+  }
+
+  /* Compact Stats Cards on mobile */
+  .grid-stats {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    margin-bottom: 0.85rem !important;
+  }
+
+  .stat-card {
+    padding: 0.75rem !important;
+    gap: 0.75rem !important;
+  }
+
+  .stat-card > div:first-child {
+    width: 36px !important;
+    height: 36px !important;
+    flex-basis: 36px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .stat-card > div:first-child svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .stat-card > div:last-child {
+    gap: 2px !important;
+  }
+
+  .stat-card > div:last-child span:first-child {
+    font-size: 0.72rem !important;
+  }
+
+  .stat-card > div:last-child span:last-child {
+    font-size: 1.2rem !important;
+  }
+
+  /* Compact tables and directories */
+  table td, .table td, th, .table th, .table-row-hover td {
+    padding: 8px 10px !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* Compact quick actions dashboard buttons */
+  .glass-card div[style*="display: grid"][style*="gridTemplateColumns: '1fr 1fr'"],
+  .glass-card div[style*="display: 'grid'"][style*="gridTemplateColumns: '1fr 1fr'"] {
+    gap: 8px !important;
+  }
+
+  .glass-card button[style*="padding: '1rem'"],
+  .glass-card button[style*="padding: 1rem"] {
+    padding: 0.75rem !important;
   }
 }
 
@@ -2295,6 +2577,12 @@ tr:hover td {
 .login-glass-card-premium input {
   padding-left: 2.75rem !important;
   padding-right: 2.75rem !important;
+}
+
+/* Hide Microsoft Edge native password reveal button */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
 }
 
 
