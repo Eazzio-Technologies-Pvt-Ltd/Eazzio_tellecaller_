@@ -1,9 +1,20 @@
-const { Pool } = require('pg');
+const pg = require('pg');
+const { Pool } = pg;
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const { AsyncLocalStorage } = require('async_hooks');
 require('dotenv').config();
+
+// Override pg driver parsing for TIMESTAMP (OID 1114) to parse as UTC
+pg.types.setTypeParser(1114, function(stringValue) {
+  if (!stringValue) return null;
+  // If it doesn't contain time zone indicators, append Z to force UTC parsing
+  if (!stringValue.includes('T') && !stringValue.includes('Z') && !stringValue.includes('+')) {
+    return new Date(stringValue.replace(' ', 'T') + 'Z');
+  }
+  return new Date(stringValue);
+});
 
 const dbType = process.env.DB_TYPE || 'sqlite';
 let pgPool = null;

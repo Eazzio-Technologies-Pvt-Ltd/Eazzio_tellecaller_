@@ -15,55 +15,57 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _companyRegController = TextEditingController();
-  
+
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Animation controller
   late AnimationController _animationController;
-  
-  // Sequenced Animation variables
   late Animation<double> _spinnerOpacity;
   late Animation<double> _bgTransition;
   late Animation<double> _cardOpacity;
+  late Animation<double> _logoMove;
 
   @override
   void initState() {
     super.initState();
-    
-    // Total animation timeline runs for 2.0 seconds
+
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 2600),
     );
 
-    // 1. Initial splash representation (0.0s to 1.0s): Large logo, white background, circular loading spinner.
-    
-    // 2. Transition phase (1.0s to 1.4s): Fades out spinner.
+    // Spinner fades out (1.2s → 1.5s)
     _spinnerOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.50, 0.70, curve: Curves.easeOut),
+        curve: const Interval(0.46, 0.58, curve: Curves.easeOut),
       ),
     );
 
-    // Background transition from 1.0s to 1.5s
+    // Background fades from white → themed (1.4s → 1.9s)
     _bgTransition = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.50, 0.75, curve: Curves.easeInOut),
+        curve: const Interval(0.54, 0.73, curve: Curves.easeInOut),
       ),
     );
 
-    // 3. Card, form elements, and footer fade in together from 1.4s to 2.0s
+    // Logo moves slowly from center → top (1.5s → 2.1s)
+    _logoMove = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.58, 0.81, curve: Curves.easeInOutCubic),
+      ),
+    );
+
+    // Form card fades in after logo finishes (2.1s → 2.6s)
     _cardOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.70, 1.00, curve: Curves.easeOut),
+        curve: const Interval(0.81, 1.00, curve: Curves.easeOut),
       ),
     );
 
-    // Play transition on screen load
     _animationController.forward();
   }
 
@@ -84,7 +86,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     });
 
     try {
-      // Perform API authentication
       final result = await ApiService.login(
         _emailController.text.trim(),
         _companyRegController.text.trim(),
@@ -100,7 +101,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           return;
         }
 
-        // Start telemetry session immediately upon login
         TelemetryService().startSession();
 
         if (mounted) {
@@ -129,8 +129,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     final textColor = isDark ? Colors.white : const Color(0xFF111827);
     final labelColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final fieldFillColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF3F4F6);
-    final bgColor = isDark ? const Color(0xFF0A0B10) : const Color(0xFFF3F4F6); // Soft grey background
+    final bgColor = isDark ? const Color(0xFF0A0B10) : const Color(0xFFF3F4F6);
     final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
 
     return AnimatedBuilder(
       animation: _animationController,
@@ -146,44 +147,40 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               builder: (context, constraints) {
                 final double availableHeight = constraints.maxHeight;
 
-                // Make the logo size compact to prevent overflows on small screens
-                final double baseLogoSize = layout.scale(100.0, 140.0);
-                final double currentLogoSize = availableHeight < 600 
-                    ? availableHeight * 0.14
-                    : baseLogoSize;
+                // BIG logo — same size on splash AND after move to top
+                final double logoSize = (availableHeight * 0.44).clamp(180.0, 320.0);
 
-                // Spacing and margins adjusted to be compact
-                final double splashTopMargin = layout.scale(24.0, 48.0);
-                final double finalTopMargin = layout.scale(10.0, 16.0);
-                final double currentTopMargin = splashTopMargin + (finalTopMargin - splashTopMargin) * _cardOpacity.value;
+                // Splash: logo vertically centered. Login: logo at top with small margin.
+                final double finalTopMargin = layout.scale(6.0, 10.0);
+                final double splashTopMargin = ((availableHeight - logoSize) / 2.0 - layout.scale(24.0, 36.0)).clamp(finalTopMargin, availableHeight * 0.32);
+                // Interpolate from splash center position → top (logo size STAYS the same)
+                final double currentTopMargin = splashTopMargin + (finalTopMargin - splashTopMargin) * _logoMove.value;
 
                 return Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: layout.scale(16.0, 24.0),
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: layout.scale(14.0, 20.0)),
                   child: Form(
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Top margin (animated)
+                        // Animated spacer — centers logo on splash, shrinks after
                         SizedBox(height: currentTopMargin),
 
-                        // Logo and spinner area
+                        // Big logo — same size throughout, only position changes
                         Center(
                           child: SizedBox(
-                            width: currentLogoSize,
-                            height: currentLogoSize,
+                            width: logoSize,
+                            height: logoSize,
                             child: Image.asset(
                               isDark ? 'assets/logo.png' : 'assets/logo_light.png',
                               fit: BoxFit.contain,
                             ),
                           ),
                         ),
-                        
-                        // Spinner showing initially, fading out
+
+                        // Spinner (splash only, fades out)
                         if (_spinnerOpacity.value > 0.0) ...[
-                          SizedBox(height: layout.scale(16.0, 24.0) * _spinnerOpacity.value),
+                          SizedBox(height: layout.scale(12.0, 18.0) * _spinnerOpacity.value),
                           Opacity(
                             opacity: _spinnerOpacity.value,
                             child: Center(
@@ -200,80 +197,63 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             ),
                           ),
                         ],
-                        
-                        // Credentials subtitle under logo (fades in)
+
+                        // ── Form Card — Compact ──
                         if (_cardOpacity.value > 0.0) ...[
+                          SizedBox(height: layout.scale(4.0, 8.0)),
                           Opacity(
                             opacity: _cardOpacity.value,
-                            child: Column(
-                              children: [
-                                SizedBox(height: layout.scale(8.0, 12.0)),
-                                Text(
-                                  'Enter your credentials to access your account',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: layout.fontSizeBody - 1,
-                                    color: labelColor,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                        
-                        // Animated spacer that shrinks as card fades in
-                        SizedBox(height: layout.scale(12.0, 20.0) * (1.0 - _cardOpacity.value)),
-
-                        // Floating Form Card (Expanded dynamically to fill remaining height)
-                        if (_cardOpacity.value > 0.0) ...[
-                          Expanded(
-                            child: Opacity(
-                              opacity: _cardOpacity.value,
-                              child: Container(
-                                margin: EdgeInsets.symmetric(
-                                  vertical: layout.scale(8.0, 12.0),
-                                ),
+                            child: Container(
+                              margin: EdgeInsets.only(bottom: layout.scale(4.0, 8.0)),
                                 decoration: BoxDecoration(
                                   color: cardColor,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: isDark
-                                      ? Border.all(color: const Color(0xFF222435), width: 1)
-                                      : null,
+                                  borderRadius: BorderRadius.circular(layout.scale(16.0, 20.0)),
+                                  border: Border.all(
+                                    color: isDark ? borderColor : const Color(0xFF6366F1).withOpacity(0.3),
+                                    width: isDark ? 1 : 2,
+                                  ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
+                                      color: const Color(0xFF6366F1).withOpacity(isDark ? 0.03 : 0.06),
+                                      blurRadius: isDark ? 4 : 8,
+                                      offset: isDark ? const Offset(0, 2) : const Offset(0, 3),
                                     ),
                                   ],
                                 ),
-                                padding: EdgeInsets.all(layout.scale(16.0, 20.0)),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: layout.scale(18.0, 22.0),
+                                  vertical: layout.scale(18.0, 22.0),
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
+                                    // ── Header ──
                                     Text(
                                       'Welcome Back 👋',
                                       style: TextStyle(
-                                        fontSize: layout.fontSizeHeading + 2,
+                                        fontSize: layout.scale(20.0, 24.0),
                                         fontWeight: FontWeight.bold,
                                         color: textColor,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
+                                    SizedBox(height: layout.scale(4.0, 6.0)),
                                     Text(
                                       'Sign in to continue',
                                       style: TextStyle(
-                                        fontSize: layout.fontSizeBody - 1,
+                                        fontSize: layout.scale(13.0, 15.0),
                                         color: labelColor,
                                       ),
                                     ),
-                                    const SizedBox(height: 16),
-                                    
-                                    // Error Display
+
+                                    // Error Banner
                                     if (_errorMessage != null) ...[
+                                      SizedBox(height: layout.scale(10.0, 14.0)),
                                       Container(
-                                        padding: const EdgeInsets.all(10),
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: layout.scale(10.0, 12.0),
+                                          vertical: layout.scale(8.0, 10.0),
+                                        ),
                                         decoration: BoxDecoration(
                                           color: const Color(0x26EF4444),
                                           borderRadius: BorderRadius.circular(10),
@@ -281,14 +261,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         ),
                                         child: Row(
                                           children: [
-                                            const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 18),
-                                            const SizedBox(width: 8),
+                                            Icon(Icons.error_outline, color: const Color(0xFFEF4444), size: layout.scale(15.0, 18.0)),
+                                            SizedBox(width: layout.scale(8.0, 10.0)),
                                             Expanded(
                                               child: Text(
                                                 _errorMessage!,
                                                 style: TextStyle(
                                                   color: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
-                                                  fontSize: 12,
+                                                  fontSize: layout.scale(11.0, 13.0),
                                                   fontWeight: FontWeight.w500,
                                                 ),
                                               ),
@@ -296,46 +276,42 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                           ],
                                         ),
                                       ),
-                                      const SizedBox(height: 12),
                                     ],
 
-                                    // Field 1: Company Registration Code
-                                    Text(
-                                      'Company Registration Code',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: textColor,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
+                                    // Spacer pushes fields down to distribute evenly
+                                    SizedBox(height: layout.scale(12.0, 16.0)),
+
+                                    // ── Field 1: Company Registration Code ──
                                     TextFormField(
                                       controller: _companyRegController,
-                                      style: TextStyle(color: textColor, fontSize: 14),
+                                      style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
                                       keyboardType: TextInputType.text,
                                       textCapitalization: TextCapitalization.characters,
                                       decoration: InputDecoration(
+                                        labelText: 'Company Registration Code',
+                                        labelStyle: TextStyle(color: labelColor, fontSize: layout.scale(13.0, 15.0)),
                                         hintText: 'e.g. EAZ-123456',
-                                        hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
-                                        prefixIcon: Icon(Icons.business_sharp, color: labelColor, size: 20),
+                                        hintStyle: TextStyle(color: const Color(0xFF9CA3AF), fontSize: layout.scale(11.0, 13.0)),
+                                        prefixIcon: Icon(Icons.business_sharp, color: labelColor, size: layout.scale(20.0, 24.0)),
                                         filled: true,
                                         fillColor: fieldFillColor,
+                                        isDense: false,
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: layout.scale(14.0, 16.0),
+                                          vertical: layout.scale(16.0, 18.0),
+                                        ),
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide.none,
+                                          borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
                                         ),
                                         enabledBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide.none,
+                                          borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
                                         ),
                                         focusedBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(
-                                            color: Theme.of(context).primaryColor,
-                                            width: 1.5,
-                                          ),
+                                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
                                         ),
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                       ),
                                       validator: (value) {
                                         if (value == null || value.trim().isEmpty) {
@@ -347,45 +323,40 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         return null;
                                       },
                                     ),
-                                    
-                                    const SizedBox(height: 12),
 
-                                    // Field 2: Registered Mobile Number
-                                    Text(
-                                      'Registered Mobile Number',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: textColor,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
+                                    // Spacing between registration and mobile number fields
+                                    SizedBox(height: layout.scale(12.0, 16.0)),
+
+                                    // ── Field 2: Registered Mobile Number ──
                                     TextFormField(
                                       controller: _emailController,
-                                      style: TextStyle(color: textColor, fontSize: 14),
+                                      style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
                                       keyboardType: TextInputType.phone,
                                       decoration: InputDecoration(
+                                        labelText: 'Registered Mobile Number',
+                                        labelStyle: TextStyle(color: labelColor, fontSize: layout.scale(13.0, 15.0)),
                                         hintText: 'e.g. 9876543210',
-                                        hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
-                                        prefixIcon: Icon(Icons.phone, color: labelColor, size: 20),
+                                        hintStyle: TextStyle(color: const Color(0xFF9CA3AF), fontSize: layout.scale(11.0, 13.0)),
+                                        prefixIcon: Icon(Icons.phone, color: labelColor, size: layout.scale(20.0, 24.0)),
                                         filled: true,
                                         fillColor: fieldFillColor,
+                                        isDense: false,
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: layout.scale(14.0, 16.0),
+                                          vertical: layout.scale(16.0, 18.0),
+                                        ),
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide.none,
+                                          borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
                                         ),
                                         enabledBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide.none,
+                                          borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
                                         ),
                                         focusedBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(
-                                            color: Theme.of(context).primaryColor,
-                                            width: 1.5,
-                                          ),
+                                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
                                         ),
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                       ),
                                       validator: (value) {
                                         if (value == null || value.trim().isEmpty) {
@@ -397,16 +368,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         return null;
                                       },
                                     ),
-                                    
-                                    const Spacer(),
 
-                                    // Access Button
+                                    // Spacer before button
+                                    SizedBox(height: layout.scale(16.0, 20.0)),
+
+                                    // ── Access Button ──
                                     SizedBox(
                                       width: double.infinity,
                                       child: ElevatedButton(
                                         onPressed: _isLoading ? null : _handleLogin,
                                         style: ElevatedButton.styleFrom(
-                                          padding: EdgeInsets.symmetric(vertical: layout.scale(10.0, 12.0)),
+                                          padding: EdgeInsets.symmetric(vertical: layout.scale(16.0, 18.0)),
                                           backgroundColor: Theme.of(context).primaryColor,
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(12),
@@ -414,10 +386,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                           elevation: 0,
                                         ),
                                         child: _isLoading
-                                            ? const SizedBox(
-                                                height: 18,
-                                                width: 18,
-                                                child: CircularProgressIndicator(
+                                            ? SizedBox(
+                                                height: layout.scale(18.0, 20.0),
+                                                width: layout.scale(18.0, 20.0),
+                                                child: const CircularProgressIndicator(
                                                   color: Colors.white,
                                                   strokeWidth: 2,
                                                 ),
@@ -425,26 +397,29 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                             : Text(
                                                 'Access Dialer Workspace',
                                                 style: TextStyle(
-                                                  fontSize: layout.fontSizeHeading - 1,
+                                                  fontSize: layout.scale(14.0, 17.0),
                                                   fontWeight: FontWeight.bold,
                                                   color: Colors.white,
                                                 ),
                                               ),
                                       ),
                                     ),
+
                                   ],
                                 ),
                               ),
                             ),
-                          ),
+                          const Spacer(),
+                        ] else ...[
+                          const Spacer(),
                         ],
-                        
-                        // Branded Footer outside the card (centered)
+
+                        // Footer — bigger text
                         if (_cardOpacity.value > 0.0) ...[
                           Opacity(
                             opacity: _cardOpacity.value,
                             child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: layout.scale(8.0, 12.0)),
+                              padding: EdgeInsets.symmetric(vertical: layout.scale(6.0, 10.0)),
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Row(
@@ -452,21 +427,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   children: [
                                     Text(
                                       'Made with ',
-                                      style: TextStyle(
-                                        color: labelColor,
-                                        fontSize: layout.fontSizeCaption,
-                                      ),
+                                      style: TextStyle(color: labelColor, fontSize: layout.scale(11.0, 13.0)),
                                     ),
-                                    Icon(
-                                      Icons.favorite,
-                                      color: Colors.red,
-                                      size: layout.scale(10.0, 12.0),
-                                    ),
+                                    Icon(Icons.favorite, color: Colors.red, size: layout.scale(12.0, 14.0)),
                                     Text(
                                       ' by Eazzio Technologies Pvt Ltd',
                                       style: TextStyle(
                                         color: labelColor,
-                                        fontSize: layout.fontSizeCaption,
+                                        fontSize: layout.scale(11.0, 13.0),
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),

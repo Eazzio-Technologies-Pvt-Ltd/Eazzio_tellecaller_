@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import API_BASE_URL from '../config/api';
 import { 
   PhoneCall, 
@@ -25,7 +25,8 @@ import {
   Calendar,
   CalendarDays,
   Contact2,
-  LayoutGrid
+  LayoutGrid,
+  X
 } from 'lucide-react';
 
 const decodeToken = (token) => {
@@ -134,6 +135,20 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [toasts, setToasts] = useState([]);
+  const seenNotificationIdsRef = useRef(new Set());
+  const isFirstLoadNotificationsRef = useRef(true);
+
+  const triggerToast = (message, type) => {
+    const id = Date.now() + Math.random().toString(36).substring(2, 9);
+    setToasts(prev => [...prev, { id, message, type }]);
+    
+    // Automatically remove after 6 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 6000);
+  };
+
   const [activeRecordingUrl, setActiveRecordingUrl] = useState(null);
   
   // Settings values (load from localStorage or use defaults)
@@ -292,6 +307,39 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
 
       setData(analyticsData);
       setRecentLogs(logsData.slice(0, 5)); // Only show the 5 most recent calls
+
+      // Real-time Toast alerts for status transitions
+      if (notificationsData && notificationsData.length > 0) {
+        if (isFirstLoadNotificationsRef.current) {
+          notificationsData.forEach(n => {
+            seenNotificationIdsRef.current.add(n.id);
+            // If the notification was created within the last 15 seconds, trigger a toast popup
+            const notifyDate = parseDbDate(n.created_at);
+            const diffMs = new Date() - notifyDate;
+            if (diffMs > 0 && diffMs < 15000) {
+              const msgLower = n.message.toLowerCase();
+              if (msgLower.includes('online') || msgLower.includes('offline')) {
+                const toastType = msgLower.includes('online') ? 'success' : 'warning';
+                triggerToast(n.message, toastType);
+              }
+            }
+          });
+          isFirstLoadNotificationsRef.current = false;
+        } else {
+          const newNotifications = notificationsData.filter(n => !seenNotificationIdsRef.current.has(n.id));
+          if (newNotifications.length > 0) {
+            newNotifications.forEach(n => {
+              seenNotificationIdsRef.current.add(n.id);
+              const msgLower = n.message.toLowerCase();
+              if (msgLower.includes('online') || msgLower.includes('offline')) {
+                const toastType = msgLower.includes('online') ? 'success' : 'warning';
+                triggerToast(n.message, toastType);
+              }
+            });
+          }
+        }
+      }
+
       setNotifications(notificationsData);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -328,6 +376,48 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
       alert(`Error deleting company: ${err.message}`);
     }
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    // Connect to Server-Sent Events stream for real-time notifications
+    const streamUrl = `${API_BASE_URL}/api/notifications/stream?token=${encodeURIComponent(token)}`;
+    const eventSource = new EventSource(streamUrl);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const newNotification = JSON.parse(event.data);
+        if (newNotification && newNotification.id) {
+          // Check if we have already seen this notification
+          if (!seenNotificationIdsRef.current.has(newNotification.id)) {
+            seenNotificationIdsRef.current.add(newNotification.id);
+            
+            // Add to the top of notifications list
+            setNotifications(prev => [newNotification, ...prev]);
+
+            // Trigger beautiful real-time toast popup for online/offline events
+            const msgLower = newNotification.message.toLowerCase();
+            if (msgLower.includes('online') || msgLower.includes('offline')) {
+              const toastType = msgLower.includes('online') ? 'success' : 'warning';
+              triggerToast(newNotification.message, toastType);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error parsing SSE event data:', err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.warn('SSE stream encountered error, closing and will retry on next poll:', err);
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
@@ -601,6 +691,25 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Toast Notification Container */}
+        <div className="toast-container">
+          {toasts.map(toast => (
+            <div key={toast.id} className={`toast-item toast-${toast.type}`}>
+              <div className="toast-content">
+                <div className={`toast-dot toast-dot-${toast.type}`} />
+                <span className="toast-text">{toast.message}</span>
+              </div>
+              <button 
+                className="toast-close-btn" 
+                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                title="Close notification"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -1725,6 +1834,25 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
       )}
         </>
       )}
+
+      {/* Toast Notification Container */}
+      <div className="toast-container">
+        {toasts.map(toast => (
+          <div key={toast.id} className={`toast-item toast-${toast.type}`}>
+            <div className="toast-content">
+              <div className={`toast-dot toast-dot-${toast.type}`} />
+              <span className="toast-text">{toast.message}</span>
+            </div>
+            <button 
+              className="toast-close-btn" 
+              onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+              title="Close notification"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

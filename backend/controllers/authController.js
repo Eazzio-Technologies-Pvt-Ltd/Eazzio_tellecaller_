@@ -133,11 +133,12 @@ exports.login = async (req, res) => {
       // Update status to online in company database
       await db.query('UPDATE users SET status = $1, last_active_at = CURRENT_TIMESTAMP WHERE id = $2', ['online', user.id]);
 
-      // Create notification in company database
+      // Create notification in company database and trigger real-time SSE stream
       try {
-        await db.query(
-          'INSERT INTO admin_notifications (message) VALUES ($1)',
-          [`Telecaller ${user.name} went online`]
+        const notificationController = require('./notificationController');
+        await notificationController.createNotification(
+          `Telecaller ${user.name} went online`,
+          companyRegNum
         );
       } catch (err) {
         console.error('Error logging online notification:', err);
@@ -524,9 +525,10 @@ exports.updateStatus = async (req, res) => {
     if (userRole === 'telecaller' && currentStatus !== status) {
       if (status === 'online' || status === 'offline') {
         try {
-          await db.query(
-            'INSERT INTO admin_notifications (message) VALUES ($1)',
-            [`Telecaller ${userName} went ${status}`]
+          const notificationController = require('./notificationController');
+          await notificationController.createNotification(
+            `Telecaller ${userName} went ${status}`,
+            req.user.companyRegNum
           );
         } catch (err) {
           console.error('Error logging status transition notification:', err);

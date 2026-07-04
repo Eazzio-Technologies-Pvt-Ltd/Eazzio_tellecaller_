@@ -5,6 +5,7 @@ const authMiddleware = require('../middleware/auth');
 
 // All routes here are restricted to admin role
 router.get('/', authMiddleware('admin'), notificationController.listNotifications);
+router.get('/stream', authMiddleware('admin'), notificationController.streamNotifications);
 router.delete('/', authMiddleware('admin'), notificationController.clearAllNotifications);
 router.delete('/:id', authMiddleware('admin'), notificationController.deleteNotification);
 

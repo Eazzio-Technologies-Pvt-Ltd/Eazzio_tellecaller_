@@ -21,7 +21,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_eazzio_te
 // Tenant DB Selection Middleware
 app.use((req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+  if (!token && req.query && req.query.token) {
+    token = req.query.token;
+  }
   
   let companyRegNum = null;
   if (token) {
@@ -96,10 +99,11 @@ async function checkOfflineTelecallers() {
           ['offline', row.id]
         );
         
-        // Insert notification
-        await db.query(
-          'INSERT INTO admin_notifications (message) VALUES ($1)',
-          [`Telecaller ${row.name} went offline (connection lost)`]
+        // Insert notification and trigger real-time SSE stream
+        const notificationController = require('./controllers/notificationController');
+        await notificationController.createNotification(
+          `Telecaller ${row.name} went offline (connection lost)`,
+          regNum
         );
       }
     };

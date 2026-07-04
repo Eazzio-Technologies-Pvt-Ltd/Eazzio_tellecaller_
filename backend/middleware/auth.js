@@ -11,7 +11,12 @@ module.exports = (roles = []) => {
 
   return async (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // "Bearer <token>"
+    let token = authHeader && authHeader.split(' ')[1]; // "Bearer <token>"
+    
+    // Support EventSource/SSE by checking query params token
+    if (!token && req.query && req.query.token) {
+      token = req.query.token;
+    }
 
     if (!token) {
       return res.status(401).json({ error: 'Access denied. No token provided.' });
