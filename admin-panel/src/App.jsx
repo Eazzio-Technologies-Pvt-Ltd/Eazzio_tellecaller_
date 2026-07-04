@@ -730,7 +730,7 @@ const App = () => {
             {/* Centered Logo */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.4rem' }}>
               <img
-                src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'}
+                src="/logo-dark.png"
                 alt="Eazzio Telecaller"
                 className="auth-logo-img"
                 style={{ height: '42px', maxWidth: '180px', objectFit: 'contain' }}
@@ -1133,7 +1133,7 @@ const App = () => {
               {/* Centered Logo above Sign In */}
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.4rem' }}>
                 <img 
-                  src={theme === 'dark' ? '/logo-light.png' : '/logo-dark.png'} 
+                  src="/logo-dark.png" 
                   alt="Eazzio Telecaller" 
                   className="auth-logo-img" 
                   style={{ height: '42px', maxWidth: '180px', objectFit: 'contain' }}
