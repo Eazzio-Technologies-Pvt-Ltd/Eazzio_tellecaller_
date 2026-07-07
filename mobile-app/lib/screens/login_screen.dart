@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:eazzio_telecaller/services/api_service.dart';
 import 'package:eazzio_telecaller/services/telemetry_service.dart';
 import 'package:eazzio_telecaller/screens/dashboard_screen.dart';
+import 'package:eazzio_telecaller/screens/company_admin_dashboard_screen.dart';
 import 'package:eazzio_telecaller/services/layout_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -15,8 +17,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _companyRegController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isAdminMode = false;
+  bool _obscurePassword = true;
   String? _errorMessage;
 
   late AnimationController _animationController;
@@ -73,6 +78,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   void dispose() {
     _emailController.dispose();
     _companyRegController.dispose();
+    _passwordController.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -86,28 +92,56 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     });
 
     try {
-      final result = await ApiService.login(
-        _emailController.text.trim(),
-        _companyRegController.text.trim(),
-      );
+      final result = _isAdminMode
+          ? await ApiService.login(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+            )
+          : await ApiService.login(
+              email: _emailController.text.trim(),
+              companyRegNum: _companyRegController.text.trim(),
+            );
 
       if (result['success'] == true) {
-        if (result['user']['role'] != 'telecaller') {
-          setState(() {
-            _errorMessage = "Access Denied: Only telecallers can access this mobile app.";
-            _isLoading = false;
-          });
-          await ApiService.logout();
-          return;
+        final role = result['user']['role'];
+        if (_isAdminMode) {
+          if (role != 'admin' && role != 'superadmin') {
+            setState(() {
+              _errorMessage = "Access Denied: Only administrators can access this section.";
+              _isLoading = false;
+            });
+            await ApiService.logout();
+            return;
+          }
+        } else {
+          if (role != 'telecaller') {
+            setState(() {
+              _errorMessage = "Access Denied: Only telecallers can access this mobile app.";
+              _isLoading = false;
+            });
+            await ApiService.logout();
+            return;
+          }
         }
 
-        TelemetryService().startSession();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_role', role);
 
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const DashboardScreen()),
-          );
+        if (role == 'telecaller') {
+          TelemetryService().startSession();
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const DashboardScreen()),
+            );
+          }
+        } else {
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const CompanyAdminDashboardScreen()),
+            );
+          }
         }
       } else {
         setState(() {
@@ -246,6 +280,73 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                       ),
                                     ),
 
+                                    // Spacing before toggle
+                                    SizedBox(height: layout.scale(12.0, 16.0)),
+
+                                    // Tab toggle between Telecaller and Company Admin
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: fieldFillColor,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  _isAdminMode = false;
+                                                  _errorMessage = null;
+                                                });
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                                decoration: BoxDecoration(
+                                                  color: !_isAdminMode ? Theme.of(context).primaryColor : Colors.transparent,
+                                                  borderRadius: BorderRadius.circular(10),
+                                                ),
+                                                alignment: Alignment.center,
+                                                child: Text(
+                                                  'Telecaller',
+                                                  style: TextStyle(
+                                                    color: !_isAdminMode ? Colors.white : labelColor,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: layout.scale(12.0, 14.0),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  _isAdminMode = true;
+                                                  _errorMessage = null;
+                                                });
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                                decoration: BoxDecoration(
+                                                  color: _isAdminMode ? Theme.of(context).primaryColor : Colors.transparent,
+                                                  borderRadius: BorderRadius.circular(10),
+                                                ),
+                                                alignment: Alignment.center,
+                                                child: Text(
+                                                  'Company Admin',
+                                                  style: TextStyle(
+                                                    color: _isAdminMode ? Colors.white : labelColor,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: layout.scale(12.0, 14.0),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
                                     // Error Banner
                                     if (_errorMessage != null) ...[
                                       SizedBox(height: layout.scale(10.0, 14.0)),
@@ -278,96 +379,194 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                       ),
                                     ],
 
-                                    // Spacer pushes fields down to distribute evenly
+                                    // Spacer
                                     SizedBox(height: layout.scale(12.0, 16.0)),
 
-                                    // ── Field 1: Company Registration Code ──
-                                    TextFormField(
-                                      controller: _companyRegController,
-                                      style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
-                                      keyboardType: TextInputType.text,
-                                      textCapitalization: TextCapitalization.characters,
-                                      decoration: InputDecoration(
-                                        labelText: 'Company Registration Code',
-                                        labelStyle: TextStyle(color: labelColor, fontSize: layout.scale(13.0, 15.0)),
-                                        hintText: 'e.g. EAZ-123456',
-                                        hintStyle: TextStyle(color: const Color(0xFF9CA3AF), fontSize: layout.scale(11.0, 13.0)),
-                                        prefixIcon: Icon(Icons.business_sharp, color: labelColor, size: layout.scale(20.0, 24.0)),
-                                        filled: true,
-                                        fillColor: fieldFillColor,
-                                        isDense: false,
-                                        contentPadding: EdgeInsets.symmetric(
-                                          horizontal: layout.scale(14.0, 16.0),
-                                          vertical: layout.scale(16.0, 18.0),
+                                    if (!_isAdminMode) ...[
+                                      // ── Field 1: Company Registration Code ──
+                                      TextFormField(
+                                        controller: _companyRegController,
+                                        style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
+                                        keyboardType: TextInputType.text,
+                                        textCapitalization: TextCapitalization.characters,
+                                        decoration: InputDecoration(
+                                          labelText: 'Company Registration Code',
+                                          labelStyle: TextStyle(color: labelColor, fontSize: layout.scale(13.0, 15.0)),
+                                          hintText: 'e.g. EAZ-123456',
+                                          hintStyle: TextStyle(color: const Color(0xFF9CA3AF), fontSize: layout.scale(11.0, 13.0)),
+                                          prefixIcon: Icon(Icons.business_sharp, color: labelColor, size: layout.scale(20.0, 24.0)),
+                                          filled: true,
+                                          fillColor: fieldFillColor,
+                                          isDense: false,
+                                          contentPadding: EdgeInsets.symmetric(
+                                            horizontal: layout.scale(14.0, 16.0),
+                                            vertical: layout.scale(16.0, 18.0),
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
+                                          ),
                                         ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
-                                        ),
+                                        validator: (value) {
+                                          if (value == null || value.trim().isEmpty) {
+                                            return 'Please enter Company Registration Code';
+                                          }
+                                          if (!value.trim().toUpperCase().startsWith('EAZ-')) {
+                                            return 'Must start with EAZ- Prefix';
+                                          }
+                                          return null;
+                                        },
                                       ),
-                                      validator: (value) {
-                                        if (value == null || value.trim().isEmpty) {
-                                          return 'Please enter Company Registration Code';
-                                        }
-                                        if (!value.trim().toUpperCase().startsWith('EAZ-')) {
-                                          return 'Must start with EAZ- Prefix';
-                                        }
-                                        return null;
-                                      },
-                                    ),
 
-                                    // Spacing between registration and mobile number fields
-                                    SizedBox(height: layout.scale(12.0, 16.0)),
+                                      // Spacing between registration and mobile number fields
+                                      SizedBox(height: layout.scale(12.0, 16.0)),
 
-                                    // ── Field 2: Registered Mobile Number ──
-                                    TextFormField(
-                                      controller: _emailController,
-                                      style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
-                                      keyboardType: TextInputType.phone,
-                                      decoration: InputDecoration(
-                                        labelText: 'Registered Mobile Number',
-                                        labelStyle: TextStyle(color: labelColor, fontSize: layout.scale(13.0, 15.0)),
-                                        hintText: 'e.g. 9876543210',
-                                        hintStyle: TextStyle(color: const Color(0xFF9CA3AF), fontSize: layout.scale(11.0, 13.0)),
-                                        prefixIcon: Icon(Icons.phone, color: labelColor, size: layout.scale(20.0, 24.0)),
-                                        filled: true,
-                                        fillColor: fieldFillColor,
-                                        isDense: false,
-                                        contentPadding: EdgeInsets.symmetric(
-                                          horizontal: layout.scale(14.0, 16.0),
-                                          vertical: layout.scale(16.0, 18.0),
+                                      // ── Field 2: Registered Mobile Number ──
+                                      TextFormField(
+                                        controller: _emailController,
+                                        style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
+                                        key: const ValueKey('phone_field'),
+                                        keyboardType: TextInputType.phone,
+                                        decoration: InputDecoration(
+                                          labelText: 'Registered Mobile Number',
+                                          labelStyle: TextStyle(color: labelColor, fontSize: layout.scale(13.0, 15.0)),
+                                          hintText: 'e.g. 9876543210',
+                                          hintStyle: TextStyle(color: const Color(0xFF9CA3AF), fontSize: layout.scale(11.0, 13.0)),
+                                          prefixIcon: Icon(Icons.phone, color: labelColor, size: layout.scale(20.0, 24.0)),
+                                          filled: true,
+                                          fillColor: fieldFillColor,
+                                          isDense: false,
+                                          contentPadding: EdgeInsets.symmetric(
+                                            horizontal: layout.scale(14.0, 16.0),
+                                            vertical: layout.scale(16.0, 18.0),
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
+                                          ),
                                         ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
-                                        ),
+                                        validator: (value) {
+                                          if (value == null || value.trim().isEmpty) {
+                                            return 'Please enter your registered mobile number';
+                                          }
+                                          if (value.trim().length < 8) {
+                                            return 'Please enter a valid mobile number';
+                                          }
+                                          return null;
+                                        },
                                       ),
-                                      validator: (value) {
-                                        if (value == null || value.trim().isEmpty) {
-                                          return 'Please enter your registered mobile number';
-                                        }
-                                        if (value.trim().length < 8) {
-                                          return 'Please enter a valid mobile number';
-                                        }
-                                        return null;
-                                      },
-                                    ),
+                                    ] else ...[
+                                      // ── Field 1: Admin Email ──
+                                      TextFormField(
+                                        controller: _emailController,
+                                        style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
+                                        key: const ValueKey('email_field'),
+                                        keyboardType: TextInputType.emailAddress,
+                                        decoration: InputDecoration(
+                                          labelText: 'Admin Email',
+                                          labelStyle: TextStyle(color: labelColor, fontSize: layout.scale(13.0, 15.0)),
+                                          hintText: 'e.g. admin@company.com',
+                                          hintStyle: TextStyle(color: const Color(0xFF9CA3AF), fontSize: layout.scale(11.0, 13.0)),
+                                          prefixIcon: Icon(Icons.email, color: labelColor, size: layout.scale(20.0, 24.0)),
+                                          filled: true,
+                                          fillColor: fieldFillColor,
+                                          isDense: false,
+                                          contentPadding: EdgeInsets.symmetric(
+                                            horizontal: layout.scale(14.0, 16.0),
+                                            vertical: layout.scale(16.0, 18.0),
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
+                                          ),
+                                        ),
+                                        validator: (value) {
+                                          if (value == null || value.trim().isEmpty) {
+                                            return 'Please enter registered email';
+                                          }
+                                          if (!value.contains('@')) {
+                                            return 'Please enter a valid email address';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+
+                                      // Spacing between email and password
+                                      SizedBox(height: layout.scale(12.0, 16.0)),
+
+                                      // ── Field 2: Admin Password ──
+                                      TextFormField(
+                                        controller: _passwordController,
+                                        style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
+                                        obscureText: _obscurePassword,
+                                        decoration: InputDecoration(
+                                          labelText: 'Password',
+                                          labelStyle: TextStyle(color: labelColor, fontSize: layout.scale(13.0, 15.0)),
+                                          prefixIcon: Icon(Icons.lock, color: labelColor, size: layout.scale(20.0, 24.0)),
+                                          suffixIcon: IconButton(
+                                            icon: Icon(
+                                              _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                              color: labelColor,
+                                              size: layout.scale(20.0, 24.0),
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                _obscurePassword = !_obscurePassword;
+                                              });
+                                            },
+                                          ),
+                                          filled: true,
+                                          fillColor: fieldFillColor,
+                                          isDense: false,
+                                          contentPadding: EdgeInsets.symmetric(
+                                            horizontal: layout.scale(14.0, 16.0),
+                                            vertical: layout.scale(16.0, 18.0),
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
+                                          ),
+                                        ),
+                                        validator: (value) {
+                                          if (value == null || value.trim().isEmpty) {
+                                            return 'Please enter your password';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ],
 
                                     // Spacer before button
                                     SizedBox(height: layout.scale(16.0, 20.0)),
@@ -395,7 +594,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                                 ),
                                               )
                                             : Text(
-                                                'Access Dialer Workspace',
+                                                _isAdminMode ? 'Access Admin Dashboard' : 'Access Dialer Workspace',
                                                 style: TextStyle(
                                                   fontSize: layout.scale(14.0, 17.0),
                                                   fontWeight: FontWeight.bold,
@@ -404,7 +603,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                               ),
                                       ),
                                     ),
-
                                   ],
                                 ),
                               ),

@@ -69,6 +69,7 @@ flutter:
   assets:
     - assets/logo.png
     - assets/logo_light.png
+    - assets/logo_transparent.png
     - assets/.env
 
 flutter_launcher_icons:

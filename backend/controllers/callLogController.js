@@ -400,10 +400,32 @@ exports.getAnalytics = async (req, res) => {
       WHERE u.role = 'telecaller'
     `, [activeDate]);
 
+    const overviewRow = overview.rows[0] || {};
+    const formattedOverview = {
+      total_contacts: parseInt(overviewRow.total_contacts, 10) || 0,
+      connected_calls: parseInt(overviewRow.connected_calls, 10) || 0,
+      non_connected_calls: parseInt(overviewRow.non_connected_calls, 10) || 0,
+      received_calls: parseInt(overviewRow.received_calls, 10) || 0,
+      missed_calls: parseInt(overviewRow.missed_calls, 10) || 0,
+      total_talk_time: parseInt(overviewRow.total_talk_time, 10) || 0,
+    };
+
+    const formattedCallers = (callers.rows || []).map(tc => ({
+      ...tc,
+      working_time: parseInt(tc.working_time, 10) || 0,
+      calling_time: parseInt(tc.calling_time, 10) || 0,
+      idle_time: parseInt(tc.idle_time, 10) || 0,
+      break_time: parseInt(tc.break_time, 10) || 0,
+      connected_count: parseInt(tc.connected_count, 10) || 0,
+      non_connected_count: parseInt(tc.non_connected_count, 10) || 0,
+      received_count: parseInt(tc.received_count, 10) || 0,
+      missed_count: parseInt(tc.missed_count, 10) || 0,
+    }));
+
     res.json({
-      overview: overview.rows[0],
+      overview: formattedOverview,
       campaigns: campaigns.rows,
-      callers: callers.rows,
+      callers: formattedCallers,
       callTrend: callTrend.rows,
     });
 

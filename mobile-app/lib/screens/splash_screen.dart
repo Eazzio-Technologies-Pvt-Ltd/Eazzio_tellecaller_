@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:eazzio_telecaller/services/api_service.dart';
 import 'package:eazzio_telecaller/screens/login_screen.dart';
 import 'package:eazzio_telecaller/screens/dashboard_screen.dart';
+import 'package:eazzio_telecaller/screens/company_admin_dashboard_screen.dart';
 import 'package:eazzio_telecaller/services/layout_service.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -17,12 +19,21 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     if (ApiService.isAuthenticated) {
-      Timer(const Duration(milliseconds: 1000), () {
+      Timer(const Duration(milliseconds: 1000), () async {
+        final prefs = await SharedPreferences.getInstance();
+        final role = prefs.getString('user_role') ?? 'telecaller';
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const DashboardScreen()),
-          );
+          if (role == 'admin' || role == 'superadmin') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const CompanyAdminDashboardScreen()),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const DashboardScreen()),
+            );
+          }
         }
       });
     } else {

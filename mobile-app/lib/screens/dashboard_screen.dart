@@ -194,8 +194,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         color: cardColor,
         borderRadius: BorderRadius.circular(layout.cardRadius),
         border: Border.all(
-          color: isDark ? const Color(0xFF222435) : const Color(0xFFEEF2FF),
-          width: 1,
+          color: const Color(0xFF3B82F6).withOpacity(0.50),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
@@ -567,7 +567,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF0A0B10) : const Color(0xFFF5F6FC);
     final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFEEF2FF);
     final textColor = isDark ? Colors.white : const Color(0xFF111827);
     final mutedColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF94A3B8);
 
@@ -724,7 +723,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         SizedBox(height: layout.spacing),
 
-                        // Call Outcomes Card
+                        // Call Outcomes Layout
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -738,93 +737,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                             SizedBox(height: layout.scale(8.0, 10.0)),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: cardColor,
-                                borderRadius: BorderRadius.circular(layout.cardRadius),
-                                border: Border.all(
-                                  color: isDark ? borderColor : const Color(0xFFEEF2FF),
-                                  width: 1,
+                            Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildCallCounter(
+                                        label: 'Connected',
+                                        count: _telemetry.connectedCalls,
+                                        baseColor: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                                        badgeBgColor: isDark ? const Color(0x1A34D399) : const Color(0xFFE6F4EA),
+                                        icon: Icons.phone_callback_rounded,
+                                        context: context,
+                                        isDark: isDark,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: _buildCallCounter(
+                                        label: 'Non-Connected',
+                                        count: _telemetry.nonConnectedCalls,
+                                        baseColor: isDark ? const Color(0xFFFB923C) : const Color(0xFFD97706),
+                                        badgeBgColor: isDark ? const Color(0x1AFB923C) : const Color(0xFFFEF3C7),
+                                        icon: Icons.phone_paused_rounded,
+                                        context: context,
+                                        isDark: isDark,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.02),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  IntrinsicHeight(
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: _buildCallCounter(
-                                            label: 'Connected',
-                                            count: _telemetry.connectedCalls,
-                                            baseColor: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
-                                            badgeBgColor: isDark ? const Color(0x1A34D399) : const Color(0xFFE6F4EA),
-                                            icon: Icons.phone_callback_rounded,
-                                            context: context,
-                                          ),
-                                        ),
-                                        VerticalDivider(
-                                          color: isDark ? borderColor : const Color(0xFFEEF2FF),
-                                          width: 1,
-                                          thickness: 1,
-                                        ),
-                                        Expanded(
-                                          child: _buildCallCounter(
-                                            label: 'Non-Connected',
-                                            count: _telemetry.nonConnectedCalls,
-                                            baseColor: isDark ? const Color(0xFFFB923C) : const Color(0xFFD97706),
-                                            badgeBgColor: isDark ? const Color(0x1AFB923C) : const Color(0xFFFEF3C7),
-                                            icon: Icons.phone_paused_rounded,
-                                            context: context,
-                                          ),
-                                        ),
-                                      ],
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildCallCounter(
+                                        label: 'Received',
+                                        count: _telemetry.receivedCalls,
+                                        baseColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                                        badgeBgColor: isDark ? const Color(0x1A38BDF8) : const Color(0xFFE0F2FE),
+                                        icon: Icons.call_received_rounded,
+                                        context: context,
+                                        isDark: isDark,
+                                      ),
                                     ),
-                                  ),
-                                  Divider(
-                                    color: isDark ? borderColor : const Color(0xFFEEF2FF),
-                                    height: 1,
-                                    thickness: 1,
-                                  ),
-                                  IntrinsicHeight(
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: _buildCallCounter(
-                                            label: 'Received',
-                                            count: _telemetry.receivedCalls,
-                                            baseColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
-                                            badgeBgColor: isDark ? const Color(0x1A38BDF8) : const Color(0xFFE0F2FE),
-                                            icon: Icons.call_received_rounded,
-                                            context: context,
-                                          ),
-                                        ),
-                                        VerticalDivider(
-                                          color: isDark ? borderColor : const Color(0xFFEEF2FF),
-                                          width: 1,
-                                          thickness: 1,
-                                        ),
-                                        Expanded(
-                                          child: _buildCallCounter(
-                                            label: 'Missed',
-                                            count: _telemetry.missedCalls,
-                                            baseColor: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
-                                            badgeBgColor: isDark ? const Color(0x1AF87171) : const Color(0xFFFEE2E2),
-                                            icon: Icons.call_missed_rounded,
-                                            context: context,
-                                          ),
-                                        ),
-                                      ],
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: _buildCallCounter(
+                                        label: 'Missed',
+                                        count: _telemetry.missedCalls,
+                                        baseColor: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
+                                        badgeBgColor: isDark ? const Color(0x1AF87171) : const Color(0xFFFEE2E2),
+                                        icon: Icons.call_missed_rounded,
+                                        context: context,
+                                        isDark: isDark,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -908,7 +878,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFEEF2FF);
 
     return Container(
-      padding: EdgeInsets.all(layout.scale(12.0, 16.0)),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(layout.cardRadius),
@@ -924,81 +893,105 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                    fontSize: layout.fontSizeHeading - 2,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(layout.cardRadius),
+        child: Stack(
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 5,
+                color: valueColor,
               ),
-              const SizedBox(width: 4),
-              Container(
-                padding: EdgeInsets.all(layout.scale(4.0, 6.0)),
-                decoration: BoxDecoration(
-                  color: valueColor.withOpacity(0.08),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: valueColor, size: layout.scale(14.0, 16.0)),
+            ),
+            Padding(
+              padding: EdgeInsets.only(
+                left: layout.scale(12.0, 16.0) + 5,
+                right: layout.scale(12.0, 16.0),
+                top: layout.scale(12.0, 16.0),
+                bottom: layout.scale(12.0, 16.0),
               ),
-            ],
-          ),
-          SizedBox(height: layout.scale(8.0, 12.0)),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: RichText(
-              text: TextSpan(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextSpan(
-                    text: value,
-                    style: TextStyle(
-                      color: valueColor,
-                      fontSize: layout.scale(20.0, 24.0),
-                      fontWeight: FontWeight.bold,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            fontSize: layout.fontSizeHeading - 2,
+                            fontWeight: FontWeight.bold,
+                          ),
+                         ),
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: EdgeInsets.all(layout.scale(4.0, 6.0)),
+                        decoration: BoxDecoration(
+                          color: valueColor.withOpacity(0.08),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(icon, color: valueColor, size: layout.scale(14.0, 16.0)),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: layout.scale(8.0, 12.0)),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: value,
+                            style: TextStyle(
+                              color: valueColor,
+                              fontSize: layout.scale(20.0, 24.0),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextSpan(
+                            text: ' / ',
+                            style: TextStyle(
+                              color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                              fontSize: layout.scale(12.0, 14.0),
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                          TextSpan(
+                            text: target,
+                            style: TextStyle(
+                              color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                              fontSize: layout.scale(12.0, 14.0),
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  TextSpan(
-                    text: ' / ',
-                    style: TextStyle(
-                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                      fontSize: layout.scale(12.0, 14.0),
-                      fontWeight: FontWeight.normal,
-                    ),
-                  ),
-                  TextSpan(
-                    text: target,
-                    style: TextStyle(
-                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                      fontSize: layout.scale(12.0, 14.0),
-                      fontWeight: FontWeight.normal,
+                  SizedBox(height: layout.scale(8.0, 12.0)),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: progress.clamp(0.0, 1.0),
+                      minHeight: 2,
+                      backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFEEF2FF),
+                      valueColor: AlwaysStoppedAnimation<Color>(valueColor),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-          SizedBox(height: layout.scale(8.0, 12.0)),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: progress.clamp(0.0, 1.0),
-              minHeight: 2,
-              backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFEEF2FF),
-              valueColor: AlwaysStoppedAnimation<Color>(valueColor),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1010,13 +1003,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required Color badgeBgColor,
     required IconData icon,
     required BuildContext context,
+    required bool isDark,
   }) {
     final layout = ResponsiveLayout(context);
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
 
-    return Padding(
+    return Container(
       padding: EdgeInsets.symmetric(
-        vertical: layout.scale(14.0, 20.0),
-        horizontal: layout.scale(4.0, 8.0),
+        vertical: layout.scale(10.0, 14.0),
+        horizontal: layout.scale(8.0, 12.0),
+      ),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(layout.cardRadius),
+        border: Border.all(
+          color: baseColor.withOpacity(0.50),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.01),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1035,6 +1045,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               fit: BoxFit.scaleDown,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     icon,
