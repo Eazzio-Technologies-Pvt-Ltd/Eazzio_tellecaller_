@@ -162,11 +162,11 @@ exports.login = async (req, res) => {
         }
       }
 
-      // Generate token with companyRegNum
+      // Generate token with companyRegNum (non-expiring for permanent login)
       const token = jwt.sign(
         { id: user.id, name: user.name, email: user.email, role: user.role, companyRegNum },
         JWT_SECRET,
-        { expiresIn: '1d' }
+        { expiresIn: '3650d' }
       );
 
       // Save token to database for single device session verification
@@ -206,7 +206,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { id: user.id, name: user.name, email: user.email, role: 'admin', companyRegNum: null },
         JWT_SECRET,
-        { expiresIn: '1d' }
+        { expiresIn: '3650d' }
       );
 
       return res.json({
@@ -237,11 +237,11 @@ exports.login = async (req, res) => {
       return res.status(400).json({ error: 'Invalid email or password.' });
     }
 
-    // Generate token with companyRegNum
+    // Generate token with companyRegNum (non-expiring for permanent login)
     const token = jwt.sign(
       { id: 1, name: company.name + ' Admin', email: company.admin_email, role: 'admin', companyRegNum: company.reg_num },
       JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: '3650d' }
     );
 
     return res.json({
@@ -376,11 +376,11 @@ exports.registerDemoCompany = async (req, res) => {
     // Provision the isolated database schema
     await db.initializeCompanySchema(regNum, companyName, email, adminPasswordHash, defaultPassword);
 
-    // Generate JWT token for auto-login
+    // Generate JWT token for auto-login (non-expiring for permanent login)
     const token = jwt.sign(
       { id: 1, name: companyName + ' Admin', email: email, role: 'admin', companyRegNum: regNum },
       JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: '3650d' }
     );
 
     res.status(201).json({

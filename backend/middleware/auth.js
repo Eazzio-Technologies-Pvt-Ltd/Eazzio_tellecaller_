@@ -12,7 +12,7 @@ module.exports = (roles = []) => {
   return async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     let token = authHeader && authHeader.split(' ')[1]; // "Bearer <token>"
-    
+
     // Support EventSource/SSE by checking query params token
     if (!token && req.query && req.query.token) {
       token = req.query.token;
@@ -58,7 +58,7 @@ module.exports = (roles = []) => {
           const compCheck = await db.queryMain('SELECT name, admin_email, admin_password_hash, admin_plain_password, subscription_end FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
           if (compCheck.rows.length > 0) {
             const company = compCheck.rows[0];
-            
+
             // Auto-heal missing sqlite files/tables on demand
             await db.ensureCompanySchema(
               req.user.companyRegNum,
@@ -70,10 +70,10 @@ module.exports = (roles = []) => {
 
             // Subscription check
             const path = req.originalUrl || '';
-            const isRenewalOrMe = path.includes('/renew-subscription-with-payment') || 
-                                  path.includes('/razorpay-order') || 
-                                  path.includes('/me') ||
-                                  path.includes('/login');
+            const isRenewalOrMe = path.includes('/renew-subscription-with-payment') ||
+              path.includes('/razorpay-order') ||
+              path.includes('/me') ||
+              path.includes('/login');
 
             if (!isRenewalOrMe && company.subscription_end) {
               const now = new Date();
@@ -83,9 +83,9 @@ module.exports = (roles = []) => {
               }
               const expiry = new Date(expiryStr);
               if (expiry < now) {
-                return res.status(403).json({ 
+                return res.status(403).json({
                   error: 'subscription_expired',
-                  message: 'Your company\'s Eazzio subscription has expired. Please renew your subscription to access this resource.' 
+                  message: 'Your company\'s Eazzio subscription has expired. Please renew your subscription to access this resource.'
                 });
               }
             }

@@ -19,7 +19,24 @@ class ApiService {
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
-    print('[ApiService] Using server: $_baseUrl');
+    
+    try {
+      final envContent = await rootBundle.loadString('assets/.env');
+      final lines = envContent.split('\n');
+      for (var line in lines) {
+        if (line.trim().startsWith('API_URL=')) {
+          final url = line.substring(line.indexOf('=') + 1).trim();
+          if (url.isNotEmpty) {
+            _baseUrl = url;
+            print('[ApiService] Loaded baseUrl from assets/.env: $_baseUrl');
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      print('[ApiService] Could not load assets/.env or failed to parse: $e. Using default: $_baseUrl');
+    }
+    print('[ApiService] Active server URL: $_baseUrl');
   }
 
   static String? get token => _token;
