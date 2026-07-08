@@ -184,8 +184,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 final double availableHeight = constraints.maxHeight;
 
                 // Dynamically scale logo size down from splash to login mode to fit all screen sizes compactly
-                final double splashLogoSize = (availableHeight * 0.46).clamp(220.0, 340.0);
-                final double loginLogoSize = (availableHeight * 0.26).clamp(135.0, 180.0);
+                final double splashLogoSize = (availableHeight * 0.48).clamp(240.0, 360.0);
+                final double loginLogoSize = (availableHeight * 0.32).clamp(160.0, 220.0);
                 final double logoSize = splashLogoSize + (loginLogoSize - splashLogoSize) * _logoMove.value;
 
                 // Splash: logo vertically centered. Login: logo at top with small margin.
