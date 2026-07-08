@@ -159,6 +159,356 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
   }
 
+  Future<void> _showForgotPasswordDialog() async {
+    final emailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isDialogLoading = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+        final textColor = isDark ? Colors.white : const Color(0xFF111827);
+        final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+        final fieldFillColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF3F4F6);
+        final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: cardColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                'Reset Admin Password',
+                style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 20),
+              ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Enter your registered admin email address. We will send you a 6-digit OTP code to verify your identity.',
+                      style: TextStyle(color: subtextColor, fontSize: 13, height: 1.4),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      style: TextStyle(color: textColor, fontSize: 14),
+                      decoration: InputDecoration(
+                        labelText: 'Admin Email',
+                        labelStyle: TextStyle(color: subtextColor, fontSize: 13),
+                        prefixIcon: Icon(Icons.email_outlined, color: subtextColor, size: 20),
+                        filled: true,
+                        fillColor: fieldFillColor,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        if (!value.contains('@')) {
+                          return 'Please enter a valid email';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDialogLoading ? null : () => Navigator.pop(context),
+                  child: Text('Cancel', style: TextStyle(color: subtextColor)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: isDialogLoading
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          
+                          setDialogState(() {
+                            isDialogLoading = true;
+                          });
+
+                          final email = emailController.text.trim();
+                          final res = await ApiService.forgotPassword(email);
+
+                          if (res['success'] == true) {
+                            if (context.mounted) {
+                              Navigator.pop(context); // Close email dialog
+                              _showResetPasswordDialog(email); // Open reset password dialog
+                            }
+                          } else {
+                            setDialogState(() {
+                              isDialogLoading = false;
+                            });
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(res['error'] ?? 'Failed to send OTP.'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: isDialogLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Send OTP', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showResetPasswordDialog(String email) async {
+    final otpController = TextEditingController();
+    final passwordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isDialogLoading = false;
+    bool obscurePassword = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+        final textColor = isDark ? Colors.white : const Color(0xFF111827);
+        final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+        final fieldFillColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF3F4F6);
+        final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: cardColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                'Enter OTP & New Password',
+                style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 20),
+              ),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'A 6-digit OTP code has been sent to $email. Enter the code and set your new password.',
+                        style: TextStyle(color: subtextColor, fontSize: 13, height: 1.4),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // OTP Field
+                      TextFormField(
+                        controller: otpController,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        style: TextStyle(color: textColor, fontSize: 14),
+                        decoration: InputDecoration(
+                          labelText: '6-Digit OTP Code',
+                          labelStyle: TextStyle(color: subtextColor, fontSize: 13),
+                          prefixIcon: Icon(Icons.security_outlined, color: subtextColor, size: 20),
+                          filled: true,
+                          fillColor: fieldFillColor,
+                          counterText: '',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().length != 6) {
+                            return 'Please enter 6-digit OTP code';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // New Password Field
+                      TextFormField(
+                        controller: passwordController,
+                        obscureText: obscurePassword,
+                        style: TextStyle(color: textColor, fontSize: 14),
+                        decoration: InputDecoration(
+                          labelText: 'New Password',
+                          labelStyle: TextStyle(color: subtextColor, fontSize: 13),
+                          prefixIcon: Icon(Icons.lock_outline, color: subtextColor, size: 20),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscurePassword ? Icons.visibility_off : Icons.visibility,
+                              color: subtextColor,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              setDialogState(() {
+                                obscurePassword = !obscurePassword;
+                              });
+                            },
+                          ),
+                          filled: true,
+                          fillColor: fieldFillColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Confirm Password Field
+                      TextFormField(
+                        controller: confirmPasswordController,
+                        obscureText: obscurePassword,
+                        style: TextStyle(color: textColor, fontSize: 14),
+                        decoration: InputDecoration(
+                          labelText: 'Confirm New Password',
+                          labelStyle: TextStyle(color: subtextColor, fontSize: 13),
+                          prefixIcon: Icon(Icons.lock_outline, color: subtextColor, size: 20),
+                          filled: true,
+                          fillColor: fieldFillColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value != passwordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDialogLoading ? null : () => Navigator.pop(context),
+                  child: Text('Cancel', style: TextStyle(color: subtextColor)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: isDialogLoading
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          
+                          setDialogState(() {
+                            isDialogLoading = true;
+                          });
+
+                          final res = await ApiService.resetPassword(
+                            email: email,
+                            otp: otpController.text.trim(),
+                            newPassword: passwordController.text.trim(),
+                          );
+
+                          if (res['success'] == true) {
+                            if (context.mounted) {
+                              Navigator.pop(context); // Close reset dialog
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(res['message'] ?? 'Password reset successfully.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } else {
+                            setDialogState(() {
+                              isDialogLoading = false;
+                            });
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(res['error'] ?? 'Failed to reset password.'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: isDialogLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Reset Password', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -569,6 +919,26 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                           }
                                           return null;
                                         },
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton(
+                                          onPressed: _showForgotPasswordDialog,
+                                          style: TextButton.styleFrom(
+                                            padding: EdgeInsets.zero,
+                                            minimumSize: Size.zero,
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          ),
+                                          child: Text(
+                                            'Forgot Password?',
+                                            style: TextStyle(
+                                              fontSize: layout.scale(12.0, 13.0),
+                                              fontWeight: FontWeight.bold,
+                                              color: Theme.of(context).primaryColor,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ],
 

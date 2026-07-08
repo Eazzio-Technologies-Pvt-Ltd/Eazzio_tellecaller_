@@ -469,4 +469,52 @@ class ApiService {
     }
     return {};
   }
+
+  // Send Forgot Password OTP
+  static Future<Map<String, dynamic>> forgotPassword(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/auth/forgot-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      ).timeout(const Duration(seconds: 7));
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message'] ?? 'Verification code sent.'};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Failed to send verification code.'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Cannot connect to server: $e'};
+    }
+  }
+
+  // Reset Password using OTP
+  static Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/auth/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'otp': otp,
+          'newPassword': newPassword,
+        }),
+      ).timeout(const Duration(seconds: 7));
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message'] ?? 'Password reset successful.'};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Failed to reset password.'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Cannot connect to server: $e'};
+    }
+  }
 }
