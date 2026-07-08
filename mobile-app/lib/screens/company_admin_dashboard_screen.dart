@@ -1836,12 +1836,6 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Image.asset(
-                    'assets/logo_transparent.png',
-                    height: 44,
-                    fit: BoxFit.contain,
-                  ),
-                  const SizedBox(height: 12),
                   Text(_billing['name'] ?? 'Admin Workspace', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
                 ],
               ),
