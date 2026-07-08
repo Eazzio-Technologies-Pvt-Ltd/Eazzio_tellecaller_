@@ -1137,9 +1137,11 @@ const App = () => {
                   <ArrowLeft size={14} />
                   Back to Website
                 </button>
-                <button className="auth-signup-btn" type="button" onClick={() => setIsRegistering(true)}>
-                  SIGN UP <span style={{ marginLeft: '4px' }}>→</span>
-                </button>
+                {loginType !== 'superadmin' && (
+                  <button className="auth-signup-btn" type="button" onClick={() => setIsRegistering(true)}>
+                    SIGN UP <span style={{ marginLeft: '4px' }}>→</span>
+                  </button>
+                )}
               </div>
 
               {/* Centered Logo above Sign In */}
@@ -1153,7 +1155,7 @@ const App = () => {
               </div>
 
               <h2 className="auth-main-title" style={{ marginTop: '0.5rem' }}>
-                {loginType === 'superadmin' ? 'Admin Login' : 'Employ Login'}
+                {loginType === 'superadmin' ? 'Superadmin' : 'Employ Login'}
               </h2>
               <p className="auth-main-subtitle">
                 {loginType === 'superadmin' ? 'to access administration panel' : 'to access your account'}
@@ -1285,7 +1287,7 @@ const App = () => {
                       }} 
                       className="auth-footer-link-item"
                     >
-                      Admin Login
+                      Superadmin
                     </a>
                   </div>
                 </div>
