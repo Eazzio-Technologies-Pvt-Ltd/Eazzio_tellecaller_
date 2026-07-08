@@ -531,12 +531,12 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             padding: '1.5rem',
             border: '1px solid var(--border-color)'
           }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div className="stat-icon-wrapper" style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Building2 size={22} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Registered Companies</span>
-              <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#7c3aed' }}>{safeData.totalCompanies || 0}</span>
+            <div className="stat-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <span className="stat-label" style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Registered Companies</span>
+              <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: '800', color: '#7c3aed' }}>{safeData.totalCompanies || 0}</span>
             </div>
           </div>
 
@@ -549,12 +549,12 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             padding: '1.5rem',
             border: '1px solid var(--border-color)'
           }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div className="stat-icon-wrapper" style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Users size={22} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Total Platform Telecallers</span>
-              <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#10b981' }}>{safeData.totalTelecallers || 0}</span>
+            <div className="stat-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <span className="stat-label" style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Total Platform Telecallers</span>
+              <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: '800', color: '#10b981' }}>{safeData.totalTelecallers || 0}</span>
             </div>
           </div>
 
@@ -567,12 +567,12 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             padding: '1.5rem',
             border: '1px solid var(--border-color)'
           }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(13, 148, 136, 0.12)', color: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div className="stat-icon-wrapper" style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(13, 148, 136, 0.12)', color: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <IndianRupee size={22} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Est. Monthly Revenue</span>
-              <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0d9488' }}>₹{totalMonthlyRevenue.toLocaleString('en-IN')}</span>
+            <div className="stat-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <span className="stat-label" style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Est. Monthly Revenue</span>
+              <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0d9488' }}>₹{totalMonthlyRevenue.toLocaleString('en-IN')}</span>
             </div>
           </div>
 
@@ -747,7 +747,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
           )}
         </div>
         <div style={styles.headerActions} className="dashboard-header-actions">
-          <div style={styles.searchWrapper}>
+          <div className="dashboard-search-wrapper" style={styles.searchWrapper}>
             <Search size={16} color="var(--text-muted)" style={styles.searchIcon} />
             <input 
               type="text" 
@@ -757,7 +757,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             />
           </div>
           {activeUser && activeUser.companyRegNum !== null && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <div className="dashboard-date-filter-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }} className="dashboard-date-filter-group">
                 {/* Segmented control for Mode selection */}
                 <div style={{ 
@@ -826,7 +826,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
                 </div>
 
                 {/* Date Input */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', position: 'relative' }}>
+                <div className="dashboard-date-input-container" style={{ display: 'flex', flexDirection: 'column', gap: '2px', position: 'relative' }}>
                   <input 
                     type={dateMode === 'day' ? 'date' : 'month'}
                     value={selectedDate}
@@ -1056,12 +1056,12 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
           padding: '1.5rem',
           border: '1px solid var(--border-color)'
         }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div className="stat-icon-wrapper" style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <TrendingUp size={22} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Total Leads</span>
-            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#7c3aed' }}>{overview.total_contacts || 0}</span>
+          <div className="stat-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span className="stat-label" style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Total Leads</span>
+            <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: '800', color: '#7c3aed' }}>{overview.total_contacts || 0}</span>
           </div>
         </div>
 
@@ -1074,12 +1074,12 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
           padding: '1.5rem',
           border: '1px solid var(--border-color)'
         }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(37, 99, 235, 0.12)', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div className="stat-icon-wrapper" style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(37, 99, 235, 0.12)', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Phone size={22} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Talk Time</span>
-            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#2563eb' }}>{formatDuration(overview.total_talk_time)}</span>
+          <div className="stat-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span className="stat-label" style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Talk Time</span>
+            <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: '800', color: '#2563eb' }}>{formatDuration(overview.total_talk_time)}</span>
           </div>
         </div>
 
@@ -1092,12 +1092,12 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
           padding: '1.5rem',
           border: '1px solid var(--border-color)'
         }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div className="stat-icon-wrapper" style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <PhoneOutgoing size={22} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Connected (Out)</span>
-            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#10b981' }}>{overview.connected_calls || 0}</span>
+          <div className="stat-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span className="stat-label" style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Connected (Out)</span>
+            <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: '800', color: '#10b981' }}>{overview.connected_calls || 0}</span>
           </div>
         </div>
 
@@ -1110,12 +1110,12 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
           padding: '1.5rem',
           border: '1px solid var(--border-color)'
         }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div className="stat-icon-wrapper" style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <PhoneOff size={22} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Non-Connected</span>
-            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#f59e0b' }}>{overview.non_connected_calls || 0}</span>
+          <div className="stat-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span className="stat-label" style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Non-Connected</span>
+            <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: '800', color: '#f59e0b' }}>{overview.non_connected_calls || 0}</span>
           </div>
         </div>
 
@@ -1128,12 +1128,12 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
           padding: '1.5rem',
           border: '1px solid var(--border-color)'
         }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(13, 148, 136, 0.12)', color: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div className="stat-icon-wrapper" style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(13, 148, 136, 0.12)', color: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <PhoneIncoming size={22} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Received (In)</span>
-            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0d9488' }}>{overview.received_calls || 0}</span>
+          <div className="stat-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span className="stat-label" style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Received (In)</span>
+            <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0d9488' }}>{overview.received_calls || 0}</span>
           </div>
         </div>
 
@@ -1146,12 +1146,12 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
           padding: '1.5rem',
           border: '1px solid var(--border-color)'
         }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div className="stat-icon-wrapper" style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <PhoneMissed size={22} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Missed (In)</span>
-            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: '#ef4444' }}>{overview.missed_calls || 0}</span>
+          <div className="stat-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span className="stat-label" style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Missed (In)</span>
+            <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: '800', color: '#ef4444' }}>{overview.missed_calls || 0}</span>
           </div>
         </div>
       </div>

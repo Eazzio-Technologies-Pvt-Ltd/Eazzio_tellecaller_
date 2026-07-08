@@ -2782,6 +2782,117 @@ input::-ms-clear {
     text-align: center !important;
     width: 100% !important;
   }
+
+  /* Dashboard layout overrides for 350px - 450px width range */
+  .dashboard-header-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    align-items: center !important;
+  }
+
+  .dashboard-search-wrapper {
+    width: 100% !important;
+    margin-right: 0 !important;
+    margin-bottom: 2px !important;
+  }
+
+  .dashboard-search-input {
+    width: 100% !important;
+    font-size: 0.85rem !important;
+    height: 40px !important;
+  }
+
+  .dashboard-date-filter-wrapper {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    margin-right: 0 !important;
+  }
+
+  .dashboard-date-filter-group {
+    display: flex !important;
+    width: 100% !important;
+    gap: 8px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+  }
+
+  /* Segmented control for mode selection (Day / Month) */
+  .dashboard-date-filter-group > div:first-child {
+    flex-shrink: 0 !important;
+    height: 38px !important;
+  }
+
+  /* Date Input container inside group */
+  .dashboard-date-input-container {
+    flex: 1 !important;
+    width: auto !important;
+  }
+
+  .dashboard-date-select {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 38px !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* Telecaller selector dropdown: share space next to icon buttons */
+  .dashboard-telecaller-select {
+    height: 38px !important;
+    font-size: 0.85rem !important;
+    min-width: 0 !important;
+    flex: 1 !important;
+    width: auto !important;
+  }
+
+  /* Action buttons: Bell, Gear */
+  .dashboard-action-icon-btn {
+    width: 38px !important;
+    height: 38px !important;
+    flex: 0 0 38px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+  }
+
+  /* Statistics Cards: make them shorter (compact) */
+  .glass-card.stat-card {
+    padding: 0.75rem 1rem !important;
+    gap: 0.65rem !important;
+    margin-bottom: 0px !important;
+  }
+
+  .stat-icon-wrapper {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+  }
+
+  .stat-icon-wrapper svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .stat-info {
+    gap: 1px !important;
+  }
+
+  .stat-label {
+    font-size: 0.72rem !important;
+    margin-bottom: 0px !important;
+  }
+
+  .stat-value {
+    font-size: 1.35rem !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+  }
 }
 
 /* Real-time Toast Notification Styles */
