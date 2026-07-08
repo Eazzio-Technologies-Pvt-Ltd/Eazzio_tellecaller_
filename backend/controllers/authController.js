@@ -551,6 +551,54 @@ exports.getMe = async (req, res) => {
     const regNum = req.user.companyRegNum;
     let result;
     
+    // Case 1: Company Admin (details stored in companies table in master database)
+    if (regNum && req.user.role === 'admin') {
+      const compRes = await db.queryMain('SELECT id, name, admin_email, reg_num, edit_count, subscription_end, plan_type, no_of_telecallers, call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1', [regNum]);
+      if (compRes.rows.length === 0) {
+        return res.status(404).json({ error: 'Company admin not found.' });
+      }
+      const company = compRes.rows[0];
+      const user = {
+        id: company.id,
+        name: company.name + ' Admin',
+        email: company.admin_email,
+        role: 'admin',
+        status: 'online',
+        companyRegNum: company.reg_num,
+        editCount: company.edit_count || 0,
+        subscriptionEnd: company.subscription_end || null,
+        planType: company.plan_type || 'monthly',
+        noOfTelecallers: company.no_of_telecallers || 0,
+        callRecordingEndDate: company.call_recording_end_date || null,
+        callRecordingEnabled: false
+      };
+      
+      if (company.call_recording_enabled === 1 && user.callRecordingEndDate) {
+        const now = new Date();
+        let expiryStr = user.callRecordingEndDate.toString();
+        if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+          expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+        }
+        const expiry = new Date(expiryStr);
+        if (expiry >= now) {
+          user.callRecordingEnabled = true;
+        }
+      }
+      return res.json(user);
+    }
+
+    // Case 2: Superadmin (details stored in users table in master database)
+    if (req.user.role === 'admin' && !regNum) {
+      result = await db.queryMain('SELECT id, name, email, role, status FROM users WHERE id = $1', [req.user.id]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Superadmin not found.' });
+      }
+      const user = result.rows[0];
+      user.companyRegNum = null;
+      return res.json(user);
+    }
+
+    // Case 3: Telecaller (details stored in users table in company isolated schema)
     await db.dbStorage.run({ companyRegNum: regNum }, async () => {
       result = await db.query('SELECT id, name, email, role, status FROM users WHERE id = $1', [req.user.id]);
     });
@@ -560,37 +608,6 @@ exports.getMe = async (req, res) => {
     }
     const user = result.rows[0];
     user.companyRegNum = regNum !== undefined ? regNum : null;
-
-    if (regNum) {
-      const compRes = await db.queryMain('SELECT edit_count, subscription_end, plan_type, no_of_telecallers, call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1', [regNum]);
-      if (compRes.rows.length > 0) {
-        user.editCount = compRes.rows[0].edit_count || 0;
-        user.subscriptionEnd = compRes.rows[0].subscription_end || null;
-        user.planType = compRes.rows[0].plan_type || 'monthly';
-        user.noOfTelecallers = compRes.rows[0].no_of_telecallers || 0;
-        user.callRecordingEndDate = compRes.rows[0].call_recording_end_date || null;
-        
-        user.callRecordingEnabled = false;
-        if (compRes.rows[0].call_recording_enabled === 1 && user.callRecordingEndDate) {
-          const now = new Date();
-          let expiryStr = user.callRecordingEndDate.toString();
-          if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
-            expiryStr = expiryStr.replace(' ', 'T') + 'Z';
-          }
-          const expiry = new Date(expiryStr);
-          if (expiry >= now) {
-            user.callRecordingEnabled = true;
-          }
-        }
-      } else {
-        user.editCount = 0;
-        user.subscriptionEnd = null;
-        user.planType = 'monthly';
-        user.noOfTelecallers = 0;
-        user.callRecordingEnabled = false;
-        user.callRecordingEndDate = null;
-      }
-    }
 
     res.json(user);
   } catch (error) {

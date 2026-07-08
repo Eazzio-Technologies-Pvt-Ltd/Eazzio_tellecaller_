@@ -16,6 +16,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _companyRegController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -77,6 +78,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   void dispose() {
     _emailController.dispose();
+    _phoneController.dispose();
     _companyRegController.dispose();
     _passwordController.dispose();
     _animationController.dispose();
@@ -98,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               password: _passwordController.text,
             )
           : await ApiService.login(
-              email: _emailController.text.trim(),
+              email: _phoneController.text.trim(),
               companyRegNum: _companyRegController.text.trim(),
             );
 
@@ -264,7 +266,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   children: [
                                     // ── Header ──
                                     Text(
-                                      'Welcome Back 👋',
+                                      'Welcome Back',
                                       style: TextStyle(
                                         fontSize: layout.scale(20.0, 24.0),
                                         fontWeight: FontWeight.bold,
@@ -431,7 +433,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                                       // ── Field 2: Registered Mobile Number ──
                                       TextFormField(
-                                        controller: _emailController,
+                                        controller: _phoneController,
                                         style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
                                         key: const ValueKey('phone_field'),
                                         keyboardType: TextInputType.phone,

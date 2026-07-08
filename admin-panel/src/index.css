@@ -2867,6 +2867,26 @@ input::-ms-clear {
   to { box-shadow: 0 0 12px var(--color-primary); }
 }
 
+/* Premium card pulse and glow transition effect */
+@keyframes cardGlowPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+  }
+  50% {
+    transform: scale(1.03) rotate(0.5deg);
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.6), 0 0 80px rgba(167, 139, 250, 0.4);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+  }
+}
+
+.card-pulse-effect {
+  animation: cardGlowPulse 0.8s ease-in-out;
+}
+
 
 
 

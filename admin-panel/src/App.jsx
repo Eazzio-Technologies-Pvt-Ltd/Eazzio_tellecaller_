@@ -384,6 +384,18 @@ const App = () => {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
+  const [triggerEffect, setTriggerEffect] = useState(false);
+
+  const handleAdminLoginClick = () => {
+    setTriggerEffect(true);
+    setLoginType('superadmin');
+    setEmail('');
+    setPassword('');
+    setLoginError('');
+    setTimeout(() => {
+      setTriggerEffect(false);
+    }, 800);
+  };
 
   // Forgot Password States
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -895,7 +907,7 @@ const App = () => {
 
     return (
       <AuthLayoutWrapper theme={theme} toggleTheme={toggleTheme}>
-        <div className={`login-glass-card-premium ${isRegistering ? 'auth-card-register' : showForgotPassword ? 'auth-card-forgot' : 'auth-card-login'}`}>
+        <div className={`login-glass-card-premium ${triggerEffect ? 'card-pulse-effect' : ''} ${isRegistering ? 'auth-card-register' : showForgotPassword ? 'auth-card-forgot' : 'auth-card-login'}`}>
           {isRegistering ? (
             <RegisterCompany onBack={() => setIsRegistering(false)} theme="light" />
           ) : showForgotPassword ? (
@@ -1140,8 +1152,12 @@ const App = () => {
                 />
               </div>
 
-              <h2 className="auth-main-title" style={{ marginTop: '0.5rem' }}>Sign In</h2>
-              <p className="auth-main-subtitle">to access your account</p>
+              <h2 className="auth-main-title" style={{ marginTop: '0.5rem' }}>
+                {loginType === 'superadmin' ? 'Admin Login' : 'Employ Login'}
+              </h2>
+              <p className="auth-main-subtitle">
+                {loginType === 'superadmin' ? 'to access administration panel' : 'to access your account'}
+              </p>
 
               <div className="auth-card-divider-line"></div>
 
@@ -1229,45 +1245,27 @@ const App = () => {
                 </button>
               </form>
 
-              {loginType === 'company' && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '100%', margin: '0.25rem auto 0 auto' }}>
-                  <div style={{ width: '100%', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLoginType('superadmin');
-                        setEmail('');
-                        setPassword('');
-                        setLoginError('');
-                      }}
-                      className="btn-auth-secondary"
-                    >
-                      <ShieldCheck size={16} />
-                      Partner Login
-                    </button>
+                {loginType === 'superadmin' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '100%', maxWidth: '440px', margin: '0.25rem auto 0 auto' }}>
+                    <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTriggerEffect(true);
+                          setLoginType('company');
+                          setEmail('');
+                          setPassword('');
+                          setLoginError('');
+                          setTimeout(() => setTriggerEffect(false), 800);
+                        }}
+                        className="btn-auth-secondary"
+                      >
+                        <ArrowLeft size={16} />
+                        Back to Employ Login
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-
-              {loginType === 'superadmin' && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '100%', maxWidth: '440px', margin: '0.25rem auto 0 auto' }}>
-                  <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLoginType('company');
-                        setEmail('');
-                        setPassword('');
-                        setLoginError('');
-                      }}
-                      className="btn-auth-secondary"
-                    >
-                      <ArrowLeft size={16} />
-                      Company Login
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
 
               <div className="auth-card-divider-line"></div>
 
@@ -1279,6 +1277,16 @@ const App = () => {
                     <a href="/" className="auth-footer-link-item">Home</a>
                     <a href="/#features" className="auth-footer-link-item">Features</a>
                     <a href="/#pricing" className="auth-footer-link-item">Pricing</a>
+                    <a 
+                      href="#" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleAdminLoginClick();
+                      }} 
+                      className="auth-footer-link-item"
+                    >
+                      Admin Login
+                    </a>
                   </div>
                 </div>
                 <div>
