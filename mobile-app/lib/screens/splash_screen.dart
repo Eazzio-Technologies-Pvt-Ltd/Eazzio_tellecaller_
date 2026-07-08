@@ -56,7 +56,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     final layout = ResponsiveLayout(context);
-    final double logoWidth = layout.scale(380.0 * 0.84, 450.0 * 0.84);
+    final double logoWidth = layout.scale(380.0 * 0.96, 450.0 * 0.96);
 
     return Scaffold(
       backgroundColor: Colors.white,
