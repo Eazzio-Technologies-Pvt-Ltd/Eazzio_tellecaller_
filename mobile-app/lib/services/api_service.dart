@@ -19,22 +19,6 @@ class ApiService {
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
-    
-    // Dynamically load local IP from assets/.env if running locally
-    try {
-      final envString = await rootBundle.loadString('assets/.env');
-      final lines = envString.split('\n');
-      for (var line in lines) {
-        if (line.startsWith('API_URL=')) {
-          final url = line.replaceFirst('API_URL=', '').trim();
-          if (url.isNotEmpty) {
-            _baseUrl = url;
-          }
-        }
-      }
-    } catch (_) {
-      // Fallback to default Render production URL
-    }
     print('[ApiService] Using server: $_baseUrl');
   }
 
