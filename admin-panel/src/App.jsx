@@ -299,6 +299,16 @@ const DemoValidityBanner = ({ subscriptionEnd, onClose }) => {
 const App = () => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth >= 350 && window.innerWidth <= 450);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth >= 350 && window.innerWidth <= 450);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [theme, setTheme] = useState('light');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -306,7 +316,7 @@ const App = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [subscriptionExpired, setSubscriptionExpired] = useState(false);
   const [loginType, setLoginType] = useState('company'); // 'company' or 'superadmin'
-  const [showLogin, setShowLogin] = useState(false);
+  const [showLogin, setShowLogin] = useState(true);
   const [showDemoPage, setShowDemoPage] = useState(false);
   const [demoName, setDemoName] = useState('');
   const [demoEmail, setDemoEmail] = useState('');
@@ -439,7 +449,7 @@ const App = () => {
         return res.json();
       })
       .then(userData => {
-        if (userData.role !== 'admin') {
+        if (userData.role !== 'admin' && userData.role !== 'superadmin') {
           throw new Error('Unauthorized role access.');
         }
         setUser(userData);
@@ -490,7 +500,7 @@ const App = () => {
         throw new Error(data.error || 'Login failed.');
       }
 
-      if (data.user.role !== 'admin') {
+      if (data.user.role !== 'admin' && data.user.role !== 'superadmin') {
         throw new Error('Access denied. Telecallers must use the mobile application.');
       }
 
@@ -1125,7 +1135,18 @@ const App = () => {
           ) : (
             <>
               {/* Card Header: Back to Website on left, SIGN UP on right */}
-              <div className="auth-card-header" style={{ justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <div 
+                className="auth-card-header" 
+                style={{ 
+                  display: 'flex',
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  width: '100%',
+                  marginBottom: '1rem',
+                  gap: '8px'
+                }}
+              >
                 <button
                   type="button"
                   className="btn-back-link"
@@ -1133,12 +1154,34 @@ const App = () => {
                     window.history.pushState({}, '', '/');
                     setShowLogin(false);
                   }}
+                  style={{
+                    width: 'auto',
+                    margin: 0,
+                    padding: '6px 0',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    flex: '0 0 auto'
+                  }}
                 >
                   <ArrowLeft size={14} />
                   Back to Website
                 </button>
                 {loginType !== 'superadmin' && (
-                  <button className="auth-signup-btn" type="button" onClick={() => setIsRegistering(true)}>
+                  <button 
+                    className="auth-signup-btn" 
+                    type="button" 
+                    onClick={() => setIsRegistering(true)}
+                    style={{
+                      width: 'auto',
+                      padding: '4px 10px',
+                      fontSize: '0.72rem',
+                      height: 'auto',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      flex: '0 0 auto',
+                      marginLeft: 'auto'
+                    }}
+                  >
                     SIGN UP <span style={{ marginLeft: '4px' }}>→</span>
                   </button>
                 )}
@@ -1155,7 +1198,7 @@ const App = () => {
               </div>
 
               <h2 className="auth-main-title" style={{ marginTop: '0.5rem' }}>
-                {loginType === 'superadmin' ? 'Superadmin' : 'Employ Login'}
+                {loginType === 'superadmin' ? 'Admin' : 'Company Login'}
               </h2>
               <p className="auth-main-subtitle">
                 {loginType === 'superadmin' ? 'to access administration panel' : 'to access your account'}
@@ -1245,29 +1288,58 @@ const App = () => {
                   </svg>
                   <span>Sign In with Google</span>
                 </button>
-              </form>
 
-                {loginType === 'superadmin' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '100%', maxWidth: '440px', margin: '0.25rem auto 0 auto' }}>
-                    <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTriggerEffect(true);
-                          setLoginType('company');
-                          setEmail('');
-                          setPassword('');
-                          setLoginError('');
-                          setTimeout(() => setTriggerEffect(false), 800);
-                        }}
-                        className="btn-auth-secondary"
-                      >
-                        <ArrowLeft size={16} />
-                        Back to Employ Login
-                      </button>
-                    </div>
+                {isMobile && (
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem', textAlign: 'center', width: '100%' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                      {loginType === 'superadmin' ? (
+                        <>
+                          Are you a company?{' '}
+                          <a 
+                            href="#" 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setTriggerEffect(true);
+                              setLoginType('company');
+                              setEmail('');
+                              setPassword('');
+                              setLoginError('');
+                              setTimeout(() => setTriggerEffect(false), 800);
+                            }} 
+                            style={{
+                              color: '#f59e0b',
+                              fontWeight: '600',
+                              textDecoration: 'underline',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Company Login
+                          </a>
+                        </>
+                      ) : (
+                        <>
+                          Are you a system administrator?{' '}
+                          <a 
+                            href="#" 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleAdminLoginClick();
+                            }} 
+                            style={{
+                              color: '#f59e0b',
+                              fontWeight: '600',
+                              textDecoration: 'underline',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Admin Login
+                          </a>
+                        </>
+                      )}
+                    </span>
                   </div>
                 )}
+              </form>
 
               <div className="auth-card-divider-line"></div>
 
@@ -1287,7 +1359,7 @@ const App = () => {
                       }} 
                       className="auth-footer-link-item"
                     >
-                      Superadmin
+                      Admin
                     </a>
                   </div>
                 </div>

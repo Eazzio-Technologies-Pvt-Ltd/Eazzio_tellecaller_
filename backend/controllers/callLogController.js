@@ -43,12 +43,8 @@ exports.createCallLog = async (req, res) => {
         const endDate = compCheck.rows[0].call_recording_end_date;
         if (endDate) {
           const now = new Date();
-          let expiryStr = endDate.toString();
-          if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
-            expiryStr = expiryStr.replace(' ', 'T') + 'Z';
-          }
-          const expiry = new Date(expiryStr);
-          if (expiry >= now) {
+          const expiry = db.parseSafeDate(endDate);
+          if (expiry && expiry >= now) {
             hasRecording = true;
           }
         }

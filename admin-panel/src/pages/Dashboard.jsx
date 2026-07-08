@@ -281,7 +281,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
       if (selectedTelecaller) {
         paramsArray.push(`telecallerId=${selectedTelecaller}`);
       }
-      if (selectedDate && activeUser && activeUser.role !== 'superadmin') {
+      if (selectedDate && activeUser && activeUser.companyRegNum !== null) {
         paramsArray.push(`date=${selectedDate}`);
       }
       const queryParams = paramsArray.length > 0 ? `?${paramsArray.join('&')}` : '';
@@ -756,7 +756,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
               className="dashboard-search-input"
             />
           </div>
-          {activeUser && activeUser.role !== 'superadmin' && (
+          {activeUser && activeUser.companyRegNum !== null && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }} className="dashboard-date-filter-group">
                 {/* Segmented control for Mode selection */}

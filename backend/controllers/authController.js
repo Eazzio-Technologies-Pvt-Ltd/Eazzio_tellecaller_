@@ -107,12 +107,8 @@ exports.login = async (req, res) => {
       const company = compCheck.rows[0];
       if (company.subscription_end) {
         const now = new Date();
-        let expiryStr = company.subscription_end.toString();
-        if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
-          expiryStr = expiryStr.replace(' ', 'T') + 'Z';
-        }
-        const expiry = new Date(expiryStr);
-        if (expiry < now) {
+        const expiry = db.parseSafeDate(company.subscription_end);
+        if (expiry && expiry < now) {
           return res.status(403).json({ 
             error: 'Your company\'s Eazzio subscription has expired. Please contact your company administrator to renew the plan.' 
           });
@@ -299,10 +295,16 @@ exports.registerCompany = async (req, res) => {
 
     const numCallers = parseInt(noOfTelecallers) || 0;
 
+    const now = new Date();
+    const subscriptionStart = now.toISOString();
+    const end = new Date(now);
+    end.setDate(end.getDate() + 30);
+    const subscriptionEnd = end.toISOString();
+
     // 4. Insert company into master db companies table
     await db.queryMain(
-      'INSERT INTO companies (name, nature, no_of_telecallers, reg_num, admin_email, admin_password_hash, admin_plain_password, price_per_telecaller) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-      [name, nature, numCallers, regNum, email, adminPasswordHash, password, 59]
+      'INSERT INTO companies (name, nature, no_of_telecallers, reg_num, admin_email, admin_password_hash, admin_plain_password, price_per_telecaller, plan_type, subscription_start, subscription_end) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+      [name, nature, numCallers, regNum, email, adminPasswordHash, password, 59, 'monthly', subscriptionStart, subscriptionEnd]
     );
 
     // 5. Provision the isolated database schema for the company
@@ -463,12 +465,8 @@ exports.getSuperadminStats = async (req, res) => {
       // Add call recording add-on charge if active
       if (comp.call_recording_enabled === 1 && comp.call_recording_end_date) {
         const now = new Date();
-        let expiryStr = comp.call_recording_end_date.toString();
-        if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
-          expiryStr = expiryStr.replace(' ', 'T') + 'Z';
-        }
-        const expiry = new Date(expiryStr);
-        if (expiry >= now) {
+        const expiry = db.parseSafeDate(comp.call_recording_end_date);
+        if (expiry && expiry >= now) {
           totalCharge += plan === 'annual' ? 399 : 49;
         }
       }
@@ -575,12 +573,8 @@ exports.getMe = async (req, res) => {
       
       if (company.call_recording_enabled === 1 && user.callRecordingEndDate) {
         const now = new Date();
-        let expiryStr = user.callRecordingEndDate.toString();
-        if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
-          expiryStr = expiryStr.replace(' ', 'T') + 'Z';
-        }
-        const expiry = new Date(expiryStr);
-        if (expiry >= now) {
+        const expiry = db.parseSafeDate(user.callRecordingEndDate);
+        if (expiry && expiry >= now) {
           user.callRecordingEnabled = true;
         }
       }
@@ -1506,12 +1500,8 @@ exports.toggleCallRecording = async (req, res) => {
       }
       
       const now = new Date();
-      let expiryStr = endDate.toString();
-      if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
-        expiryStr = expiryStr.replace(' ', 'T') + 'Z';
-      }
-      const expiry = new Date(expiryStr);
-      if (expiry < now) {
+      const expiry = db.parseSafeDate(endDate);
+      if (expiry && expiry < now) {
         return res.status(403).json({ error: 'Your Call Recording subscription has expired. Please visit the Billing page to renew.' });
       }
     }
@@ -1641,12 +1631,8 @@ exports.enableCallRecordingWithPayment = async (req, res) => {
     const now = new Date();
     let startDate = now;
     if (company.call_recording_end_date) {
-      let currentExpiryStr = company.call_recording_end_date.toString();
-      if (!currentExpiryStr.includes('Z') && !currentExpiryStr.includes('T')) {
-        currentExpiryStr = currentExpiryStr.replace(' ', 'T') + 'Z';
-      }
-      const currentExpiry = new Date(currentExpiryStr);
-      if (currentExpiry > now) {
+      const currentExpiry = db.parseSafeDate(company.call_recording_end_date);
+      if (currentExpiry && currentExpiry > now) {
         startDate = currentExpiry;
       }
     }

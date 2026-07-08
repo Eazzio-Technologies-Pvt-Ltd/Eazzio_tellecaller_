@@ -48,8 +48,14 @@ module.exports = (roles = []) => {
       }
 
       // Check user role if roles array is defined
-      if (roles.length > 0 && !roles.includes(req.user.role)) {
-        return res.status(403).json({ error: 'Access forbidden. Insufficient permissions.' });
+      if (roles.length > 0) {
+        const allowedRoles = [...roles];
+        if (roles.includes('admin') && !allowedRoles.includes('superadmin')) {
+          allowedRoles.push('superadmin');
+        }
+        if (!allowedRoles.includes(req.user.role)) {
+          return res.status(403).json({ error: 'Access forbidden. Insufficient permissions.' });
+        }
       }
 
       // If user is associated with a company, check schema health and subscription expiry
@@ -77,12 +83,8 @@ module.exports = (roles = []) => {
 
             if (!isRenewalOrMe && company.subscription_end) {
               const now = new Date();
-              let expiryStr = company.subscription_end.toString();
-              if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
-                expiryStr = expiryStr.replace(' ', 'T') + 'Z';
-              }
-              const expiry = new Date(expiryStr);
-              if (expiry < now) {
+              const expiry = db.parseSafeDate(company.subscription_end);
+              if (expiry && expiry < now) {
                 return res.status(403).json({
                   error: 'subscription_expired',
                   message: 'Your company\'s Eazzio subscription has expired. Please renew your subscription to access this resource.'

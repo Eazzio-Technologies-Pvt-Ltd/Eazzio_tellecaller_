@@ -1248,6 +1248,10 @@ tr:hover td {
   color: #ffffff;
 }
 
+.auth-mobile-toggle-link {
+  display: none !important;
+}
+
 /* Borderless "Back to Website" text-link button */
 .btn-back-link {
   background: none;
@@ -2730,6 +2734,34 @@ input::-ms-clear {
   .auth-page-copyright {
     margin-top: 0.75rem !important;
     font-size: 0.7rem !important;
+  }
+
+  .auth-card-header {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem !important;
+  }
+  .btn-back-link {
+    width: auto !important;
+    margin: 0 !important;
+  }
+  .auth-signup-btn {
+    width: auto !important;
+    margin-left: auto !important;
+    padding: 4px 10px !important;
+    font-size: 0.72rem !important;
+    height: auto !important;
+    flex-shrink: 0 !important;
+  }
+  .auth-mobile-toggle-link {
+    display: flex !important;
+    justify-content: center !important;
+    margin-top: 0.75rem !important;
+    text-align: center !important;
+    width: 100% !important;
   }
 }
 

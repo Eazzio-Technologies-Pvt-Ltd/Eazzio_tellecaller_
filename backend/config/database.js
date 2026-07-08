@@ -214,12 +214,12 @@ async function initializeSchema() {
       admin_plain_password VARCHAR(255) NOT NULL,
       price_per_telecaller INTEGER DEFAULT 59,
       plan_type VARCHAR(20) DEFAULT 'monthly',
-      subscription_start ${timestampType},
-      subscription_end ${timestampType},
+      subscription_start ${isPg ? 'TIMESTAMP DEFAULT NULL' : 'DATETIME DEFAULT NULL'},
+      subscription_end ${isPg ? 'TIMESTAMP DEFAULT NULL' : 'DATETIME DEFAULT NULL'},
       edit_count INTEGER DEFAULT 0,
       mac_address VARCHAR(255),
       call_recording_enabled INTEGER DEFAULT 0,
-      call_recording_end_date ${timestampType},
+      call_recording_end_date ${isPg ? 'TIMESTAMP DEFAULT NULL' : 'DATETIME DEFAULT NULL'},
       created_at ${timestampType}
     )`,
 
@@ -789,6 +789,19 @@ function closeCompanyConnection(regNum) {
   }
 }
 
+function parseSafeDate(dateInput) {
+  if (!dateInput) return null;
+  if (dateInput instanceof Date) return dateInput;
+  let dateStr = dateInput.toString();
+  if (!dateStr.includes('Z') && !dateStr.includes('T')) {
+    if (dateStr.includes(' ') && dateStr.includes('-')) {
+      dateStr = dateStr.replace(' ', 'T') + 'Z';
+    }
+  }
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 module.exports = {
   query,
   queryMain,
@@ -801,4 +814,5 @@ module.exports = {
   dbStorage,
   dbType,
   pgPool,
+  parseSafeDate,
 };
