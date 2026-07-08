@@ -66,6 +66,7 @@ class _CallingScreenState extends State<CallingScreen> {
     final statusPhone = await Permission.phone.status;
     final statusMic = await Permission.microphone.status;
     final statusAlert = await Permission.systemAlertWindow.status;
+    final statusContacts = await Permission.contacts.status;
     
     const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
     bool hasCallLogPerm = false;
@@ -75,13 +76,14 @@ class _CallingScreenState extends State<CallingScreen> {
       print('Error checking native call log permission: $e');
     }
 
-    if (statusPhone.isGranted && statusMic.isGranted && statusAlert.isGranted && hasCallLogPerm) {
+    if (statusPhone.isGranted && statusMic.isGranted && statusAlert.isGranted && statusContacts.isGranted && hasCallLogPerm) {
       _initializeCallListener();
     } else {
       final results = await [
         Permission.phone,
         Permission.microphone,
         Permission.systemAlertWindow,
+        Permission.contacts,
       ].request();
 
       if (!hasCallLogPerm) {
@@ -98,11 +100,12 @@ class _CallingScreenState extends State<CallingScreen> {
       if (results[Permission.phone]?.isGranted == true &&
           results[Permission.microphone]?.isGranted == true &&
           results[Permission.systemAlertWindow]?.isGranted == true &&
+          results[Permission.contacts]?.isGranted == true &&
           hasCallLogPerm) {
         _initializeCallListener();
       } else {
         setState(() {
-          _error = "Phone State, Microphone, Draw Over Other Apps, and Call Log permissions are required to use the Dialer Workspace. Please enable them in app settings.";
+          _error = "Phone State, Microphone, Contacts, Draw Over Other Apps, and Call Log permissions are required to use the Dialer Workspace. Please enable them in app settings.";
         });
       }
     }
