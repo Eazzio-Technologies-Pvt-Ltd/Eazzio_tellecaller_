@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -21,6 +21,17 @@ import Logo from './Logo';
 const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, isOpen, onClose, showDemoBanner }) => {
   const isSuperadmin = user && (user.companyRegNum === null || user.email === 'tellecaller111@eazzio.com');
   const isDemoUser = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
+
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsCompact(window.innerWidth <= 450 || window.innerHeight <= 680);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const rawMenuItems = isSuperadmin
     ? [
@@ -46,15 +57,23 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
   return (
     <aside style={{
       ...styles.sidebar,
-      ...(isDemoUser && showDemoBanner ? { top: '38px', height: 'calc(100vh - 38px)' } : {})
+      ...(isDemoUser && showDemoBanner ? { top: '38px', height: 'calc(100vh - 38px)' } : {}),
+      ...(isCompact ? { padding: '1rem 0.75rem' } : {})
     }} className={isOpen ? 'open' : ''}>
       {/* Brand Header */}
-      <div style={styles.brand}>
+      <div style={{
+        ...styles.brand,
+        ...(isCompact ? { marginBottom: '1.25rem' } : {})
+      }}>
         <Logo theme="dark" mode="sidebar" />
       </div>
 
       {/* Navigation Menu */}
-      <nav style={styles.nav}>
+      <nav style={{
+        ...styles.nav,
+        gap: isCompact ? '4px' : '8px',
+        overflowY: 'auto',
+      }} className="sidebar-nav">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -68,6 +87,11 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
               style={{
                 ...styles.navItem,
                 ...(isActive ? styles.navItemActive : {}),
+                ...(isCompact ? {
+                  padding: '0.55rem 0.75rem',
+                  fontSize: '0.82rem',
+                  borderRadius: '8px',
+                } : {}),
               }}
               onMouseEnter={(e) => {
                 if (!isActive) {
@@ -82,8 +106,8 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
                 }
               }}
             >
-              <Icon size={20} color={isActive ? '#ffffff' : '#94a3b8'} />
-              <span style={{ marginLeft: '12px', flex: 1 }}>{item.label}</span>
+              <Icon size={isCompact ? 16 : 20} color={isActive ? '#ffffff' : '#94a3b8'} />
+              <span style={{ marginLeft: isCompact ? '8px' : '12px', flex: 1 }}>{item.label}</span>
               {isActive && (
                 <div style={{
                   width: '6px',
@@ -99,17 +123,30 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
       </nav>
 
       {/* Theme Toggler */}
-      <div style={styles.themeToggleContainer}>
-        <button onClick={toggleTheme} style={styles.themeToggleBtn}>
+      <div style={{
+        ...styles.themeToggleContainer,
+        ...(isCompact ? { paddingTop: '0.6rem', marginBottom: '0.6rem' } : {})
+      }}>
+        <button 
+          onClick={toggleTheme} 
+          style={{
+            ...styles.themeToggleBtn,
+            ...(isCompact ? {
+              padding: '0.55rem 0.75rem',
+              fontSize: '0.82rem',
+              borderRadius: '8px',
+            } : {})
+          }}
+        >
           {theme === 'dark' ? (
             <>
-              <Sun size={18} color="#fbbf24" />
-              <span style={{ marginLeft: '8px' }}>Light Mode</span>
+              <Sun size={isCompact ? 16 : 18} color="#fbbf24" />
+              <span style={{ marginLeft: isCompact ? '6px' : '8px' }}>Light Mode</span>
             </>
           ) : (
             <>
-              <Moon size={18} color="#6366f1" />
-              <span style={{ marginLeft: '8px' }}>Dark Mode</span>
+              <Moon size={isCompact ? 16 : 18} color="#6366f1" />
+              <span style={{ marginLeft: isCompact ? '6px' : '8px' }}>Dark Mode</span>
             </>
           )}
         </button>
@@ -117,24 +154,39 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
 
       {/* User profile footer */}
       {user && (
-        <div style={styles.profileFooter}>
-          <div style={styles.avatar}>
+        <div style={{
+          ...styles.profileFooter,
+          ...(isCompact ? { paddingTop: '0.6rem', gap: '8px' } : {})
+        }}>
+          <div style={{
+            ...styles.avatar,
+            ...(isCompact ? { width: '32px', height: '32px', fontSize: '0.85rem' } : {})
+          }}>
             {user.name ? user.name.charAt(0).toUpperCase() : 'A'}
           </div>
           <div style={styles.profileInfo}>
-            <div style={styles.profileName}>{user.name}</div>
-            <div style={styles.profileRole} title={isSuperadmin ? 'Super Administrator' : `Company Registration Code: ${user.companyRegNum}`}>
+            <div style={{
+              ...styles.profileName,
+              ...(isCompact ? { fontSize: '0.82rem' } : {})
+            }}>{user.name}</div>
+            <div style={{
+              ...styles.profileRole,
+              ...(isCompact ? { fontSize: '0.7rem' } : {})
+            }} title={isSuperadmin ? 'Super Administrator' : `Company Registration Code: ${user.companyRegNum}`}>
               {isSuperadmin ? 'Super Admin' : `Code: ${user.companyRegNum}`}
             </div>
           </div>
           <button 
             onClick={onLogout} 
-            style={styles.logoutBtn} 
+            style={{
+              ...styles.logoutBtn,
+              ...(isCompact ? { padding: '6px' } : {})
+            }} 
             title="Logout"
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
-            <LogOut size={18} color="#94a3b8" />
+            <LogOut size={isCompact ? 16 : 18} color="#94a3b8" />
           </button>
         </div>
       )}

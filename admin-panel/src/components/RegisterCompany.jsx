@@ -398,6 +398,7 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
          }} onClick={() => setIncludeCallRecording(!includeCallRecording)}>
           <input 
             type="checkbox" 
+            className="auth-checkbox"
             checked={includeCallRecording}
             onChange={(e) => {
               e.stopPropagation();

@@ -2583,6 +2583,25 @@ tr:hover td {
   padding-right: 2.75rem !important;
 }
 
+/* Exclude and style checkboxes specifically to prevent them from inheriting text input styles */
+.login-glass-card-premium input[type="checkbox"],
+.login-glass-card-premium .auth-checkbox {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  padding: 0 !important;
+  margin: 4px 0 0 0 !important;
+  background: transparent !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 4px !important;
+  appearance: checkbox !important;
+  -webkit-appearance: checkbox !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  flex-shrink: 0 !important;
+}
+
 /* Hide Microsoft Edge native password reveal button */
 input::-ms-reveal,
 input::-ms-clear {

@@ -1151,8 +1151,15 @@ const App = () => {
                   type="button"
                   className="btn-back-link"
                   onClick={() => {
-                    window.history.pushState({}, '', '/');
-                    setShowLogin(false);
+                    if (loginType === 'superadmin') {
+                      setLoginType('company');
+                      setEmail('');
+                      setPassword('');
+                      setLoginError('');
+                    } else {
+                      window.history.pushState({}, '', '/');
+                      setShowLogin(false);
+                    }
                   }}
                   style={{
                     width: 'auto',
@@ -1164,7 +1171,7 @@ const App = () => {
                   }}
                 >
                   <ArrowLeft size={14} />
-                  Back to Website
+                  {loginType === 'superadmin' ? 'Go to Company Login' : 'Back to Website'}
                 </button>
                 {loginType !== 'superadmin' && (
                   <button 

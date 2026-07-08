@@ -1,6 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 const Logo = ({ theme = 'dark', mode = 'sidebar' }) => {
+  const [isTargetViewport, setIsTargetViewport] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      setIsTargetViewport(width >= 350 && width <= 450);
+    };
+
+    handleResize(); // run on initial mount
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const isSidebar = mode === 'sidebar';
   
   // Sidebar: 220px width, Login: 540px width
@@ -9,7 +22,8 @@ const Logo = ({ theme = 'dark', mode = 'sidebar' }) => {
   // Aspect ratio is 396/46 = ~8.6, height set proportionally
   const height = isSidebar ? 25 : 68;
   
-  const logoSrc = '/logo-light.png';
+  // Display dark logo in light theme specifically for 350-450px viewport range
+  const logoSrc = (isTargetViewport && theme === 'light') ? '/logo-dark.png' : '/logo-light.png';
 
   return (
     <img 
@@ -29,3 +43,4 @@ const Logo = ({ theme = 'dark', mode = 'sidebar' }) => {
 };
 
 export default Logo;
+
