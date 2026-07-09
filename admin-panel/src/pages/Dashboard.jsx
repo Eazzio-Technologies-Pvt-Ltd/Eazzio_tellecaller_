@@ -20,7 +20,6 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   PhoneMissed,
-  Search,
   Building2,
   Calendar,
   CalendarDays,
@@ -747,15 +746,6 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
           )}
         </div>
         <div style={styles.headerActions} className="dashboard-header-actions">
-          <div className="dashboard-search-wrapper" style={styles.searchWrapper}>
-            <Search size={16} color="var(--text-muted)" style={styles.searchIcon} />
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              style={styles.searchInput}
-              className="dashboard-search-input"
-            />
-          </div>
           {activeUser && activeUser.companyRegNum !== null && (
             <div className="dashboard-date-filter-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }} className="dashboard-date-filter-group">

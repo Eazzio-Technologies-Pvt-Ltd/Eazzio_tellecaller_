@@ -445,12 +445,18 @@ const App = () => {
       })
       .then(res => {
         if (!res.ok) {
-          throw new Error('Token validation failed');
+          // Only log out if it is an explicit authentication error (401 Unauthorized, 403 Forbidden, 404 Not Found)
+          // This keeps user logged in during backend restarts or network drops
+          if (res.status === 401 || res.status === 403 || res.status === 404) {
+            handleLogout();
+          }
+          throw new Error(`Token validation failed with status: ${res.status}`);
         }
         return res.json();
       })
       .then(userData => {
         if (userData.role !== 'admin' && userData.role !== 'superadmin') {
+          handleLogout();
           throw new Error('Unauthorized role access.');
         }
         setUser(userData);
@@ -470,8 +476,7 @@ const App = () => {
         }
       })
       .catch(err => {
-        console.error(err);
-        handleLogout();
+        console.error('Session validation error:', err);
       });
     }
   }, [token]);
