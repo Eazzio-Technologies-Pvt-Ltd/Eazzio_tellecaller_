@@ -5,6 +5,8 @@ import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:eazzio_telecaller/screens/login_screen.dart';
+import 'package:eazzio_telecaller/services/telemetry_service.dart';
+
 
 class ApiService {
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -26,6 +28,7 @@ class ApiService {
 
   // Force Logout session on session expiry or multi-device login
   static Future<void> forceLogout() async {
+    TelemetryService().resetSession();
     _token = null;
     _lastStatus = null;
     final prefs = await SharedPreferences.getInstance();
@@ -90,6 +93,7 @@ class ApiService {
         await updateStatus('offline');
       }
     }
+    TelemetryService().resetSession();
     _token = null;
     _lastStatus = null;
     final prefs = await SharedPreferences.getInstance();

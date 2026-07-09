@@ -146,6 +146,34 @@ exports.syncTelemetry = async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
 
   try {
+    // Update user's last active timestamp because they just synced telemetry.
+    // If they were marked offline (due to background check inactivity), mark them back online.
+    const userCheck = await db.query('SELECT status, name FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length > 0) {
+      const user = userCheck.rows[0];
+      if (user.status === 'offline') {
+        await db.query(
+          'UPDATE users SET status = $1, last_active_at = CURRENT_TIMESTAMP WHERE id = $2',
+          ['online', userId]
+        );
+        // Log online notification
+        try {
+          const notificationController = require('./notificationController');
+          await notificationController.createNotification(
+            `Telecaller ${user.name} went online`,
+            req.user.companyRegNum
+          );
+        } catch (err) {
+          console.error('Error logging status transition notification in telemetry sync:', err);
+        }
+      } else {
+        await db.query(
+          'UPDATE users SET last_active_at = CURRENT_TIMESTAMP WHERE id = $1',
+          [userId]
+        );
+      }
+    }
+
     const sessionCheck = await db.query(
       'SELECT * FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
       [userId, today]

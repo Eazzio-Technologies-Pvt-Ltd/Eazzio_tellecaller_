@@ -473,7 +473,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             onPressed: () async {
               Navigator.pop(context);
-              _telemetry.stopSession();
+              _telemetry.resetSession();
               await ApiService.logout();
               if (mounted) {
                 Navigator.pushReplacement(
@@ -547,7 +547,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              _telemetry.stopSession();
+              _telemetry.resetSession();
               await ApiService.logout();
               if (mounted) {
                 Navigator.pushReplacement(

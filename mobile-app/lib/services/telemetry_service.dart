@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/widgets.dart';
 import 'package:eazzio_telecaller/services/api_service.dart';
 
 enum TelemetryState {
@@ -7,14 +8,17 @@ enum TelemetryState {
   onBreak
 }
 
-class TelemetryService {
+class TelemetryService with WidgetsBindingObserver {
   static final TelemetryService _instance = TelemetryService._internal();
   factory TelemetryService() => _instance;
-  TelemetryService._internal();
+  TelemetryService._internal() {
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   Timer? _timer;
   TelemetryState _currentState = TelemetryState.idle;
   bool shiftCompleteShown = false;
+  bool _isAppPaused = false;
 
   // Session counters in seconds
   int _workingTime = 0;
@@ -36,6 +40,35 @@ class TelemetryService {
   bool get isActive => _timer != null;
   TelemetryState get currentState => _currentState;
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _handleAppBackground();
+    } else if (state == AppLifecycleState.resumed) {
+      _handleAppForeground();
+    }
+  }
+
+  void _handleAppBackground() {
+    if (_currentState != TelemetryState.calling && isActive) {
+      _isAppPaused = true;
+      ApiService.updateStatus('offline');
+      _syncWithServer();
+    }
+  }
+
+  void _handleAppForeground() {
+    if (_isAppPaused && isActive) {
+      _isAppPaused = false;
+      if (_currentState == TelemetryState.onBreak) {
+        ApiService.updateStatus('break');
+      } else {
+        ApiService.updateStatus('online');
+      }
+      initializeSessionFromServer();
+    }
+  }
+
   // Start the daily telemetry session
   void startSession() {
     if (_timer != null) return;
@@ -43,11 +76,14 @@ class TelemetryService {
     // Set status online
     ApiService.updateStatus('online');
     _currentState = TelemetryState.idle;
+    _isAppPaused = false;
 
     // Fetch initial daily stats from server
     initializeSessionFromServer();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_isAppPaused) return;
+
       if (_currentState != TelemetryState.onBreak) {
         _workingTime++;
       }
@@ -132,6 +168,7 @@ class TelemetryService {
   void stopSession() {
     _timer?.cancel();
     _timer = null;
+    _isAppPaused = false;
     _syncWithServer();
     ApiService.updateStatus('offline');
   }
