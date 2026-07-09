@@ -40,7 +40,8 @@ function sanitizeValue(columnName, value) {
   const dateColumns = [
     'last_called_at', 'follow_up_date', 'created_at', 'called_at', 
     'last_active_at', 'last_updated_at', 'subscription_start', 
-    'subscription_end', 'call_recording_end_date', 'resolved_at'
+    'subscription_end', 'call_recording_end_date', 'resolved_at',
+    'follow_up_started_at', 'expires_at'
   ];
   
   if (dateColumns.includes(columnName)) {
@@ -166,6 +167,10 @@ async function startMigration() {
   for (const table of masterTables) {
     await migrateTable(table, 'public');
   }
+
+  // Re-run schema initialization now that all companies are in the Postgres database
+  console.log("[Migration] Re-running schema initialization to update all company schemas...");
+  await db.initializeSchema();
   
   // 3. Migrate Tenant databases
   const databasesDir = path.join(__dirname, 'databases');

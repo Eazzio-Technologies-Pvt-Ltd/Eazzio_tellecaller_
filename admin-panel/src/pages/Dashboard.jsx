@@ -723,7 +723,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
   const totalCalls = connectedCount + nonConnectedCount + receivedCount + missedCount;
   const successfulCalls = connectedCount + receivedCount;
   const connectionRate = totalCalls > 0 ? Math.round((successfulCalls / totalCalls) * 100) : 0;
-  const hasNoWorkThisMonth = dateMode === 'month' && totalCalls === 0 && (!overview.total_talk_time || parseInt(overview.total_talk_time) === 0);
+  const hasNoWorkThisMonth = false; // dateMode === 'month' && totalCalls === 0 && (!overview.total_talk_time || parseInt(overview.total_talk_time) === 0);
 
   // Sort telecallers by talktime to build the leaderboard
   const topCallers = [...callers].sort((a, b) => b.calling_time - a.calling_time);
@@ -1380,7 +1380,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
 
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
             {totalCalls === 0 ? (
-              <div style={styles.noData}>No calls recorded today. Start a campaign to view logs.</div>
+              <div style={styles.noData}>No calls recorded {dateMode === 'month' ? 'this month' : 'today'}. Start a campaign to view logs.</div>
             ) : (
               (() => {
                 const hourlyData = getHourlyCounts(recentLogs);
@@ -1560,7 +1560,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
                 <span style={{ fontSize: '1rem', fontWeight: '700', letterSpacing: '0.5px' }}>Top Performers</span>
               </div>
               <span style={{ fontSize: '0.7rem', fontWeight: '700', backgroundColor: 'rgba(255, 255, 255, 0.2)', padding: '3px 8px', borderRadius: '99px', color: '#FFFFFF', letterSpacing: '0.5px' }}>
-                TODAY
+                {dateMode === 'month' ? 'THIS MONTH' : 'TODAY'}
               </span>
             </div>
             
@@ -1687,7 +1687,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
         
         {recentLogs.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-            No calls logged today.
+            No calls logged {dateMode === 'month' ? 'this month' : 'today'}.
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>

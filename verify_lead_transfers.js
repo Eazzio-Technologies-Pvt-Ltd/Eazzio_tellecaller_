@@ -22,20 +22,26 @@ async function runVerification() {
     console.log(`✅ Mock campaign created with ID: ${campaignId}`);
 
     // Create test user (telecaller)
-    const userRes = await db.query(
-      "INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)",
-      ['Test Telecaller', 'verifier_caller@eazzio.com', 'dummy_hash', 'telecaller']
-    );
-    const userResult = await db.query("SELECT id FROM users WHERE email = $1", ['verifier_caller@eazzio.com']);
+    let userResult = await db.query("SELECT id FROM users WHERE email = $1", ['verifier_caller@eazzio.com']);
+    if (userResult.rows.length === 0) {
+      await db.query(
+        "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)",
+        ['Test Telecaller', 'verifier_caller@eazzio.com', 'dummy_hash', 'telecaller']
+      );
+      userResult = await db.query("SELECT id FROM users WHERE email = $1", ['verifier_caller@eazzio.com']);
+    }
     const telecallerId = userResult.rows[0].id;
     console.log(`✅ Mock telecaller verified with ID: ${telecallerId}`);
 
     // Create secondary test user (transfer destination)
-    await db.query(
-      "INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)",
-      ['Destination Telecaller', 'dest_caller@eazzio.com', 'dummy_hash', 'telecaller']
-    );
-    const destResult = await db.query("SELECT id FROM users WHERE email = $1", ['dest_caller@eazzio.com']);
+    let destResult = await db.query("SELECT id FROM users WHERE email = $1", ['dest_caller@eazzio.com']);
+    if (destResult.rows.length === 0) {
+      await db.query(
+        "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)",
+        ['Destination Telecaller', 'dest_caller@eazzio.com', 'dummy_hash', 'telecaller']
+      );
+      destResult = await db.query("SELECT id FROM users WHERE email = $1", ['dest_caller@eazzio.com']);
+    }
     const destTelecallerId = destResult.rows[0].id;
     console.log(`✅ Destination telecaller verified with ID: ${destTelecallerId}`);
 
