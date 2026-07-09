@@ -5,15 +5,29 @@ function getTrackingDate(dateInput) {
     return dateInput;
   }
   const d = dateInput ? new Date(dateInput) : new Date();
-  const hours = d.getHours();
-  let target = d;
-  if (hours < 12) {
-    target = new Date(d.getTime() - 24 * 60 * 60 * 1000);
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(d);
+  const partMap = {};
+  parts.forEach(p => partMap[p.type] = p.value);
+  const year = parseInt(partMap.year, 10);
+  const month = parseInt(partMap.month, 10);
+  const day = parseInt(partMap.day, 10);
+  const hour = parseInt(partMap.hour, 10);
+  let istDate = new Date(Date.UTC(year, month - 1, day, hour));
+  if (hour < 12) {
+    istDate.setUTCDate(istDate.getUTCDate() - 1);
   }
-  const year = target.getFullYear();
-  const month = String(target.getMonth() + 1).padStart(2, '0');
-  const day = String(target.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const targetYear = istDate.getUTCFullYear();
+  const targetMonth = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+  const targetDay = String(istDate.getUTCDate()).padStart(2, '0');
+  return `${targetYear}-${targetMonth}-${targetDay}`;
 }
 
 // Create call log & upload call recording
@@ -203,19 +217,33 @@ exports.syncTelemetry = async (req, res) => {
           [userId, today, workingTime || 0, idleTime || 0, breakTime || 0, callingTime || 0]
         );
       } catch (insertErr) {
+        const checkAgain = await db.query(
+          'SELECT * FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
+          [userId, today]
+        );
+        const current = checkAgain.rows[0] || {};
+        const newWorking = Math.max(parseInt(current.total_working_time || 0, 10), parseInt(workingTime || 0, 10));
+        const newIdle = Math.max(parseInt(current.total_idle_time || 0, 10), parseInt(idleTime || 0, 10));
+        const newBreak = Math.max(parseInt(current.total_break_time || 0, 10), parseInt(breakTime || 0, 10));
+        const newCalling = Math.max(parseInt(current.total_calling_time || 0, 10), parseInt(callingTime || 0, 10));
         await db.query(
           `UPDATE telecaller_sessions 
            SET total_working_time = $1, total_idle_time = $2, total_break_time = $3, total_calling_time = $4, last_updated_at = CURRENT_TIMESTAMP
            WHERE telecaller_id = $5 AND date = $6`,
-          [workingTime || 0, idleTime || 0, breakTime || 0, callingTime || 0, userId, today]
+          [newWorking, newIdle, newBreak, newCalling, userId, today]
         );
       }
     } else {
+      const current = sessionCheck.rows[0];
+      const newWorking = Math.max(parseInt(current.total_working_time || 0, 10), parseInt(workingTime || 0, 10));
+      const newIdle = Math.max(parseInt(current.total_idle_time || 0, 10), parseInt(idleTime || 0, 10));
+      const newBreak = Math.max(parseInt(current.total_break_time || 0, 10), parseInt(breakTime || 0, 10));
+      const newCalling = Math.max(parseInt(current.total_calling_time || 0, 10), parseInt(callingTime || 0, 10));
       await db.query(
         `UPDATE telecaller_sessions 
          SET total_working_time = $1, total_idle_time = $2, total_break_time = $3, total_calling_time = $4, last_updated_at = CURRENT_TIMESTAMP
          WHERE telecaller_id = $5 AND date = $6`,
-        [workingTime || 0, idleTime || 0, breakTime || 0, callingTime || 0, userId, today]
+        [newWorking, newIdle, newBreak, newCalling, userId, today]
       );
     }
 
@@ -264,9 +292,9 @@ exports.getCallLogs = async (req, res) => {
       const isMonth = date.length === 7;
       let dateCast;
       if (isMonth) {
-        dateCast = isPg ? `TO_CHAR(cl.called_at - INTERVAL '12 hours', 'YYYY-MM') = $${params.length}` : `strftime('%Y-%m', cl.called_at, '-12 hours') = $${params.length}`;
+        dateCast = isPg ? `TO_CHAR(cl.called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM') = $${params.length}` : `strftime('%Y-%m', cl.called_at, '-6 hours', '-30 minutes') = $${params.length}`;
       } else {
-        dateCast = isPg ? `(cl.called_at - INTERVAL '12 hours')::date = $${params.length}` : `date(cl.called_at, '-12 hours') = $${params.length}`;
+        dateCast = isPg ? `(cl.called_at - INTERVAL '6 hours 30 minutes')::date = $${params.length}` : `date(cl.called_at, '-6 hours', '-30 minutes') = $${params.length}`;
       }
       conditions.push(dateCast);
     }
@@ -296,14 +324,14 @@ exports.getAnalytics = async (req, res) => {
     let callTrend;
 
     const isPg = db.dbType === 'postgres';
-    const dateGrouping = isPg ? "TO_CHAR(called_at - INTERVAL '12 hours', 'YYYY-MM-DD')" : "date(called_at, '-12 hours')";
+    const dateGrouping = isPg ? "TO_CHAR(called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM-DD')" : "date(called_at, '-6 hours', '-30 minutes')";
 
     const isMonth = date && date.length === 7;
 
     if (parsedId) {
       const callFilter = date ? (isMonth 
-        ? (isPg ? "AND TO_CHAR(called_at - INTERVAL '12 hours', 'YYYY-MM') = $2" : "AND strftime('%Y-%m', called_at, '-12 hours') = $2")
-        : (isPg ? "AND (called_at - INTERVAL '12 hours')::date = $2" : "AND date(called_at, '-12 hours') = $2")
+        ? (isPg ? "AND TO_CHAR(called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM') = $2" : "AND strftime('%Y-%m', called_at, '-6 hours', '-30 minutes') = $2")
+        : (isPg ? "AND (called_at - INTERVAL '6 hours 30 minutes')::date = $2" : "AND date(called_at, '-6 hours', '-30 minutes') = $2")
       ) : '';
 
       let overviewQuery = `
@@ -340,12 +368,12 @@ exports.getAnalytics = async (req, res) => {
       `, [parsedId]);
     } else {
       const callFilterGlobal = date ? (isMonth 
-        ? (isPg ? "AND TO_CHAR(called_at - INTERVAL '12 hours', 'YYYY-MM') = $1" : "AND strftime('%Y-%m', called_at, '-12 hours') = $1")
-        : (isPg ? "AND (called_at - INTERVAL '12 hours')::date = $1" : "AND date(called_at, '-12 hours') = $1")
+        ? (isPg ? "AND TO_CHAR(called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM') = $1" : "AND strftime('%Y-%m', called_at, '-6 hours', '-30 minutes') = $1")
+        : (isPg ? "AND (called_at - INTERVAL '6 hours 30 minutes')::date = $1" : "AND date(called_at, '-6 hours', '-30 minutes') = $1")
       ) : '';
       const sumFilterGlobal = date ? (isMonth
-        ? (isPg ? "WHERE TO_CHAR(called_at - INTERVAL '12 hours', 'YYYY-MM') = $1" : "WHERE strftime('%Y-%m', called_at, '-12 hours') = $1")
-        : (isPg ? "WHERE (called_at - INTERVAL '12 hours')::date = $1" : "WHERE date(called_at, '-12 hours') = $1")
+        ? (isPg ? "WHERE TO_CHAR(called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM') = $1" : "WHERE strftime('%Y-%m', called_at, '-6 hours', '-30 minutes') = $1")
+        : (isPg ? "WHERE (called_at - INTERVAL '6 hours 30 minutes')::date = $1" : "WHERE date(called_at, '-6 hours', '-30 minutes') = $1")
       ) : '';
 
       let overviewQuery = `
@@ -404,7 +432,7 @@ exports.getAnalytics = async (req, res) => {
           COUNT(CASE WHEN call_status = 'received' THEN 1 END) as received_count,
           COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed_count
         FROM call_logs
-        WHERE ${isPg ? "TO_CHAR(called_at - INTERVAL '12 hours', 'YYYY-MM')" : "strftime('%Y-%m', called_at, '-12 hours')"} = $1
+        WHERE ${isPg ? "TO_CHAR(called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM')" : "strftime('%Y-%m', called_at, '-6 hours', '-30 minutes')"} = $1
         GROUP BY telecaller_id
       `;
     } else {
@@ -427,7 +455,7 @@ exports.getAnalytics = async (req, res) => {
           COUNT(CASE WHEN call_status = 'received' THEN 1 END) as received_count,
           COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed_count
         FROM call_logs
-        WHERE ${isPg ? "(called_at - INTERVAL '12 hours')::date" : "date(called_at, '-12 hours')"} = $1
+        WHERE ${isPg ? "(called_at - INTERVAL '6 hours 30 minutes')::date" : "date(called_at, '-6 hours', '-30 minutes')"} = $1
         GROUP BY telecaller_id
       `;
     }
@@ -510,7 +538,7 @@ exports.getTodayTelemetry = async (req, res) => {
     }
 
     const isPg = db.dbType === 'postgres';
-    const dateFilter = isPg ? "(called_at - INTERVAL '12 hours')::date = $1" : "date(called_at, '-12 hours') = $1";
+    const dateFilter = isPg ? "(called_at - INTERVAL '6 hours 30 minutes')::date = $1" : "date(called_at, '-6 hours', '-30 minutes') = $1";
     const callsCheck = await db.query(
       `SELECT 
          COUNT(CASE WHEN call_status = 'connected' THEN 1 END) as connected,

@@ -85,18 +85,17 @@ class ApiService {
 
   // Logout Session
   static Future<void> logout() async {
-    // Notify server caller is offline before clearing token
-    if (isAuthenticated) {
-      final prefs = await SharedPreferences.getInstance();
-      final role = prefs.getString('user_role') ?? 'telecaller';
-      if (role == 'telecaller') {
+    final prefs = await SharedPreferences.getInstance();
+    final role = prefs.getString('user_role') ?? 'telecaller';
+    if (role == 'telecaller') {
+      await TelemetryService().resetSession();
+    } else {
+      if (isAuthenticated) {
         await updateStatus('offline');
       }
     }
-    TelemetryService().resetSession();
     _token = null;
     _lastStatus = null;
-    final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('user_name');
     await prefs.remove('user_email');

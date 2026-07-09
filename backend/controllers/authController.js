@@ -8,15 +8,29 @@ function getTrackingDate(dateInput) {
     return dateInput;
   }
   const d = dateInput ? new Date(dateInput) : new Date();
-  const hours = d.getHours();
-  let target = d;
-  if (hours < 12) {
-    target = new Date(d.getTime() - 24 * 60 * 60 * 1000);
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(d);
+  const partMap = {};
+  parts.forEach(p => partMap[p.type] = p.value);
+  const year = parseInt(partMap.year, 10);
+  const month = parseInt(partMap.month, 10);
+  const day = parseInt(partMap.day, 10);
+  const hour = parseInt(partMap.hour, 10);
+  let istDate = new Date(Date.UTC(year, month - 1, day, hour));
+  if (hour < 12) {
+    istDate.setUTCDate(istDate.getUTCDate() - 1);
   }
-  const year = target.getFullYear();
-  const month = String(target.getMonth() + 1).padStart(2, '0');
-  const day = String(target.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const targetYear = istDate.getUTCFullYear();
+  const targetMonth = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+  const targetDay = String(istDate.getUTCDate()).padStart(2, '0');
+  return `${targetYear}-${targetMonth}-${targetDay}`;
 }
 
 require('dotenv').config();

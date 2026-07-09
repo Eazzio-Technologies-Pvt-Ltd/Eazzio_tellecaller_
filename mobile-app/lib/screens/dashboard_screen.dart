@@ -473,7 +473,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             onPressed: () async {
               Navigator.pop(context);
-              _telemetry.resetSession();
               await ApiService.logout();
               if (mounted) {
                 Navigator.pushReplacement(
@@ -554,7 +553,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: CircularProgressIndicator(color: Color(0xFF6366F1)),
                 ),
               );
-              await _telemetry.resetSession();
               await ApiService.logout();
               if (mounted) {
                 Navigator.pop(context); // close loader

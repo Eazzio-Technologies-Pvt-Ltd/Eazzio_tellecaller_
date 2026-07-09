@@ -177,7 +177,6 @@ class _CallingScreenState extends State<CallingScreen> {
             ),
             onPressed: () async {
               Navigator.pop(context);
-              _telemetry.stopSession();
               await ApiService.logout();
               if (mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
