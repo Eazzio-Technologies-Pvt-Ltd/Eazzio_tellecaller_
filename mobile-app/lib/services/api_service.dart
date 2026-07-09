@@ -517,4 +517,78 @@ class ApiService {
       return {'success': false, 'error': 'Cannot connect to server: $e'};
     }
   }
+
+  // Fetch overdue follow-up leads for admin
+  static Future<List<dynamic>> fetchOverdueFollowUps() async {
+    if (!isAuthenticated) return [];
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/contacts/overdue-follow-ups'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 7));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await forceLogout();
+      }
+    } catch (e) {
+      print('Error fetching overdue follow-ups: $e');
+    }
+    return [];
+  }
+
+  // Reassign single contact
+  static Future<bool> reassignContact(int contactId, int? telecallerId) async {
+    if (!isAuthenticated) return false;
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/api/contacts/$contactId/assign'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode({
+          'telecallerId': telecallerId,
+        }),
+      ).timeout(const Duration(seconds: 7));
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 401) {
+        await forceLogout();
+      }
+      return false;
+    } catch (e) {
+      print('Error reassigning contact: $e');
+      return false;
+    }
+  }
+
+  // Bulk transfer contacts
+  static Future<bool> bulkTransferContacts(List<int> contactIds, int? telecallerId) async {
+    if (!isAuthenticated) return false;
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/contacts/bulk-transfer'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode({
+          'contactIds': contactIds,
+          'telecallerId': telecallerId,
+        }),
+      ).timeout(const Duration(seconds: 7));
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 401) {
+        await forceLogout();
+      }
+      return false;
+    } catch (e) {
+      print('Error bulk transferring contacts: $e');
+      return false;
+    }
+  }
 }

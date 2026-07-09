@@ -20,6 +20,10 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
   List<dynamic> _campaigns = [];
   List<dynamic> _callLogs = [];
   Map<String, dynamic> _billing = {};
+  List<dynamic> _overdueLeads = [];
+  List<int> _selectedOverdueIds = [];
+  int? _bulkTransferTelecallerId;
+  bool _isTransferring = false;
 
   // Filter States
   int? _selectedTelecallerId;
@@ -35,7 +39,7 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(() {
       setState(() {}); // refresh FAB or header title based on active tab
     });
@@ -78,6 +82,7 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
         date: dateParam,
       );
       final billingData = await ApiService.fetchCompanyBilling();
+      final overdueData = await ApiService.fetchOverdueFollowUps();
 
       // Use the telecallers list from billing details to ensure it doesn't get shrunk during filtering
       final callersList = billingData['telecallers'] as List<dynamic>? ?? analyticsData['callers'] as List<dynamic>? ?? [];
@@ -88,6 +93,7 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
         _campaigns = campaignsData;
         _callLogs = logsData;
         _billing = billingData;
+        _overdueLeads = overdueData;
         _isLoadingAll = false;
       });
     } catch (e) {
@@ -1886,6 +1892,7 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
                 _buildTelecallersTab(layout, isDark),
                 _buildCampaignsTab(layout, isDark),
                 _buildCallLogsTab(layout, isDark),
+                _buildTransfersTab(layout, isDark),
               ],
             ),
       bottomNavigationBar: BottomNavigationBar(
@@ -1906,6 +1913,7 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
           BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Callers'),
           BottomNavigationBarItem(icon: Icon(Icons.campaign_outlined), label: 'Campaigns'),
           BottomNavigationBarItem(icon: Icon(Icons.description_outlined), label: 'Logs'),
+          BottomNavigationBarItem(icon: Icon(Icons.swap_horiz_outlined), label: 'Transfers'),
         ],
       ),
       floatingActionButton: _tabController.index == 1 
@@ -1921,6 +1929,280 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
                   child: const Icon(Icons.add_road, color: Colors.white),
                 )
               : null,
+    );
+  }
+
+  // ── Tab 5: Transfers View ──
+  Widget _buildTransfersTab(ResponsiveLayout layout, bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    // Filter overdue leads based on search query
+    final filteredLeads = _overdueLeads.where((lead) {
+      final name = lead['name']?.toString().toLowerCase() ?? '';
+      final phone = lead['phone_number']?.toString() ?? '';
+      return name.contains(_searchQuery) || phone.contains(_searchQuery);
+    }).toList();
+
+    int calculateDays(dynamic dateStr) {
+      if (dateStr == null) return 0;
+      try {
+        final start = DateTime.parse(dateStr.toString()).toLocal();
+        final diff = DateTime.now().difference(start).inDays;
+        return diff < 0 ? 0 : diff;
+      } catch (_) {
+        return 0;
+      }
+    }
+
+    return Column(
+      children: [
+        // Search box (reuse UI style)
+        Padding(
+          padding: EdgeInsets.all(layout.padding),
+          child: TextField(
+            controller: _searchQueryController,
+            decoration: InputDecoration(
+              hintText: 'Search overdue leads...',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              suffixIcon: _searchQuery.isNotEmpty 
+                  ? IconButton(
+                      icon: const Icon(Icons.clear), 
+                      onPressed: () => _searchQueryController.clear(),
+                    ) 
+                  : null,
+              filled: true,
+              fillColor: isDark ? const Color(0xFF12131A) : Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+              ),
+            ),
+          ),
+        ),
+
+        // Leads List
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _fetchData,
+            child: filteredLeads.isEmpty
+                ? ListView(
+                    children: [
+                      SizedBox(height: layout.scale(80, 120)),
+                      Center(
+                        child: Text(
+                          _searchQuery.isNotEmpty 
+                              ? 'No overdue leads match your search.' 
+                              : 'No overdue follow-up leads (7+ days).',
+                          style: TextStyle(color: subtextColor),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.separated(
+                    padding: EdgeInsets.symmetric(horizontal: layout.padding),
+                    itemCount: filteredLeads.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final lead = filteredLeads[index];
+                      final days = calculateDays(lead['follow_up_started_at']);
+
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF12131A) : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    lead['name'] ?? 'Unknown Lead',
+                                    style: TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(lead['phone_number'] ?? '', style: const TextStyle(fontSize: 12)),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withOpacity(0.08),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          lead['campaign_name'] ?? 'N/A',
+                                          style: const TextStyle(color: Colors.blue, fontSize: 9, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF64748B).withOpacity(0.08),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'Caller: ${lead['assigned_caller'] ?? 'Unassigned'}',
+                                          style: const TextStyle(color: Color(0xFF64748B), fontSize: 9),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: (days >= 10 ? const Color(0xFFEF4444) : const Color(0xFFF59E0B)).withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    '$days Days',
+                                    style: TextStyle(
+                                      color: days >= 10 ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                // Inline Reassignment Select
+                                SizedBox(
+                                  height: 28,
+                                  child: TextButton(
+                                    onPressed: () {
+                                      _showSingleTransferDialog(lead);
+                                    },
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: Size.zero,
+                                    ),
+                                    child: const Text('Reassign', style: TextStyle(color: Color(0xFF6366F1), fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showSingleTransferDialog(Map<String, dynamic> lead) {
+    int? selectedCallerId;
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+          final textColor = isDark ? Colors.white : const Color(0xFF111827);
+
+          return AlertDialog(
+            backgroundColor: cardColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text('Reassign Lead', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Choose a new telecaller to assign "${lead['name']}" to:',
+                  style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF4B5563), fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: isDark ? const Color(0xFF222435) : const Color(0xFFD1D5DB)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: selectedCallerId,
+                      hint: const Text('Select Telecaller...'),
+                      style: TextStyle(color: textColor),
+                      dropdownColor: cardColor,
+                      items: [
+                        const DropdownMenuItem<int>(
+                          value: null,
+                          child: Text('Unassigned (General Pool)'),
+                        ),
+                        ..._telecallers
+                            .where((tc) => tc['id']?.toString() != lead['assigned_to']?.toString())
+                            .map((tc) {
+                          return DropdownMenuItem<int>(
+                            value: tc['id'],
+                            child: Text(tc['name'] ?? 'Telecaller'),
+                          );
+                        }).toList(),
+                      ],
+                      onChanged: (val) {
+                        setDialogState(() {
+                          selectedCallerId = val;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  setState(() {
+                    _isLoadingAll = true;
+                  });
+                  final success = await ApiService.reassignContact(
+                    lead['id'],
+                    selectedCallerId,
+                  );
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Lead reassigned successfully.')),
+                    );
+                    _fetchData();
+                  } else {
+                    setState(() {
+                      _isLoadingAll = false;
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Failed to reassign lead.')),
+                    );
+                  }
+                },
+                child: const Text('Reassign'),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

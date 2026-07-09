@@ -230,32 +230,25 @@ const FollowUpTransfers = () => {
 
       {/* Metrics Row */}
       <div style={styles.metricsRow}>
-        <div className="glass-card" style={styles.metricCard}>
-          <Clock size={24} color="#f59e0b" style={styles.metricIcon} />
+        <div style={styles.metricCardOverdue}>
+          <Clock size={24} color="#ffffff" style={styles.metricIconWhite} />
           <div>
-            <div style={styles.metricLabel}>Total Overdue Leads</div>
-            <div style={styles.metricValue}>{totalOverdue}</div>
+            <div style={styles.metricLabelWhite}>Total Overdue Leads</div>
+            <div style={styles.metricValueWhite}>{totalOverdue}</div>
           </div>
         </div>
-        <div className="glass-card" style={styles.metricCard}>
-          <Calendar size={24} color="#ef4444" style={styles.metricIcon} />
+        <div style={styles.metricCardLongest}>
+          <Calendar size={24} color="#ffffff" style={styles.metricIconWhite} />
           <div>
-            <div style={styles.metricLabel}>Longest Follow-up</div>
-            <div style={styles.metricValue}>
+            <div style={styles.metricLabelWhite}>Longest Follow-up</div>
+            <div style={styles.metricValueWhite}>
               {longestFollowUp > 0 ? `${longestFollowUp} Days` : 'N/A'}
             </div>
           </div>
         </div>
-        <div className="glass-card" style={styles.metricCard}>
-          <CheckSquare size={24} color="#10b981" style={styles.metricIcon} />
-          <div>
-            <div style={styles.metricLabel}>Selected for Transfer</div>
-            <div style={styles.metricValue}>{selectedContacts.length}</div>
-          </div>
-        </div>
       </div>
 
-      {/* Filter and Bulk Action Section */}
+      {/* Filter Section */}
       <div style={styles.filterSection}>
         <div style={styles.filterGroup}>
           <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
@@ -280,38 +273,10 @@ const FollowUpTransfers = () => {
             ))}
           </select>
         </div>
-
-        {selectedContacts.length > 0 && (
-          <div style={styles.bulkActionBar}>
-            <span style={styles.bulkText}>
-              Transfer {selectedContacts.length} selected leads to:
-            </span>
-            <select
-              value={bulkTelecallerId}
-              onChange={(e) => setBulkTelecallerId(e.target.value)}
-              style={styles.bulkSelect}
-            >
-              <option value="">Choose New Telecaller...</option>
-              <option value="null">Unassigned (Return to general pool)</option>
-              {telecallers.map(tc => (
-                <option key={tc.id} value={tc.id}>{tc.name}</option>
-              ))}
-            </select>
-            <button
-              onClick={handleBulkTransfer}
-              className="btn btn-primary"
-              disabled={actionLoading || !bulkTelecallerId}
-              style={{ padding: '0.65rem 1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <Shuffle size={16} />
-              {actionLoading ? 'Transferring...' : 'Transfer Now'}
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Main Grid Card */}
-      <div className="glass-card">
+      <div className="glass-card" style={styles.tableCard}>
         {loading ? (
           <div style={styles.centeredMessage}>Loading overdue follow-up list...</div>
         ) : (
@@ -319,19 +284,6 @@ const FollowUpTransfers = () => {
             <table>
               <thead>
                 <tr>
-                  <th style={{ width: '40px', textAlign: 'center' }}>
-                    <button 
-                      onClick={handleSelectAll} 
-                      style={styles.checkboxButton}
-                      title="Select All"
-                    >
-                      {selectedContacts.length === filteredContacts.length && filteredContacts.length > 0 ? (
-                        <CheckSquare size={18} color="#a78bfa" />
-                      ) : (
-                        <Square size={18} color="var(--text-muted)" />
-                      )}
-                    </button>
-                  </th>
                   <th>Lead ID</th>
                   <th>Lead Name</th>
                   <th>Phone Number</th>
@@ -345,28 +297,15 @@ const FollowUpTransfers = () => {
               <tbody>
                 {filteredContacts.length === 0 ? (
                   <tr>
-                    <td colSpan="9" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem 1rem' }}>
+                    <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem 1rem' }}>
                       No follow-up leads exceed the 1 week threshold.
                     </td>
                   </tr>
                 ) : (
                   filteredContacts.map(contact => {
                     const days = calculateDaysInFollowUp(contact.follow_up_started_at);
-                    const isSelected = selectedContacts.includes(contact.id);
                     return (
-                      <tr key={contact.id} style={isSelected ? styles.selectedRow : {}}>
-                        <td style={{ textAlign: 'center' }}>
-                          <button 
-                            onClick={() => handleToggleSelect(contact.id)} 
-                            style={styles.checkboxButton}
-                          >
-                            {isSelected ? (
-                              <CheckSquare size={18} color="#a78bfa" />
-                            ) : (
-                              <Square size={18} color="var(--text-muted)" />
-                            )}
-                          </button>
-                        </td>
+                      <tr key={contact.id}>
                         <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>#{contact.id}</td>
                         <td style={{ fontWeight: '600' }}>{contact.name}</td>
                         <td style={{ letterSpacing: '0.5px' }}>{contact.phone_number}</td>
@@ -452,40 +391,56 @@ const styles = {
     marginBottom: '1.5rem',
     flexWrap: 'wrap',
   },
-  metricCard: {
+  metricCardOverdue: {
     flex: 1,
-    minWidth: '220px',
+    minWidth: '240px',
     display: 'flex',
     alignItems: 'center',
-    padding: '1.25rem 1.5rem',
-    gap: '1rem',
+    padding: '1.5rem 1.75rem',
+    gap: '1.25rem',
+    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    borderRadius: '16px',
+    border: 'none',
+    boxShadow: '0 10px 25px -5px rgba(245, 158, 11, 0.3)',
+    transition: 'transform 0.2s ease',
   },
-  metricIcon: {
+  metricCardLongest: {
+    flex: 1,
+    minWidth: '240px',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '1.5rem 1.75rem',
+    gap: '1.25rem',
+    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+    borderRadius: '16px',
+    border: 'none',
+    boxShadow: '0 10px 25px -5px rgba(239, 68, 68, 0.3)',
+    transition: 'transform 0.2s ease',
+  },
+  metricIconWhite: {
     padding: '10px',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: '10px',
-    border: '1px solid rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: '12px',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
   },
-  metricLabel: {
-    color: 'var(--text-secondary)',
-    fontSize: '0.82rem',
+  metricLabelWhite: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: '0.85rem',
     fontWeight: '500',
-    marginBottom: '2px',
+    marginBottom: '4px',
   },
-  metricValue: {
-    color: 'var(--text-primary)',
-    fontSize: '1.5rem',
-    fontWeight: '700',
+  metricValueWhite: {
+    color: '#ffffff',
+    fontSize: '1.75rem',
+    fontWeight: '800',
   },
   filterSection: {
-    background: 'var(--bg-secondary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: '12px',
-    padding: '1rem',
+    background: 'linear-gradient(135deg, var(--bg-secondary) 0%, rgba(255, 255, 255, 0.02) 100%)',
+    border: '1px solid rgba(167, 139, 250, 0.15)',
+    borderRadius: '16px',
+    padding: '1.25rem',
     marginBottom: '1.5rem',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
+    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)',
   },
   filterGroup: {
     display: 'flex',
@@ -523,43 +478,6 @@ const styles = {
     outline: 'none',
     cursor: 'pointer',
   },
-  bulkActionBar: {
-    display: 'flex',
-    gap: '1rem',
-    alignItems: 'center',
-    paddingTop: '0.75rem',
-    borderTop: '1px solid var(--border-color)',
-    flexWrap: 'wrap',
-  },
-  bulkText: {
-    color: 'var(--text-primary)',
-    fontWeight: '600',
-    fontSize: '0.9rem',
-  },
-  bulkSelect: {
-    height: '38px',
-    minWidth: '220px',
-    padding: '0 10px',
-    background: 'var(--bg-primary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: '6px',
-    color: 'var(--text-primary)',
-    fontSize: '0.85rem',
-    outline: 'none',
-    cursor: 'pointer',
-  },
-  checkboxButton: {
-    background: 'transparent',
-    border: 'none',
-    cursor: 'pointer',
-    padding: '4px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectedRow: {
-    backgroundColor: 'rgba(167, 139, 250, 0.04)',
-  },
   inlineSelectWrapper: {
     position: 'relative',
     display: 'inline-flex',
@@ -587,6 +505,11 @@ const styles = {
     textAlign: 'center',
     color: 'var(--text-secondary)',
     padding: '3rem 1rem',
+  },
+  tableCard: {
+    border: '1px solid rgba(167, 139, 250, 0.15)',
+    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)',
+    borderRadius: '16px',
   }
 };
 
