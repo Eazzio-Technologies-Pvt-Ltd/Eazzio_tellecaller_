@@ -479,6 +479,7 @@ const Contacts = () => {
             </form>
           </div>
         </div>
+      )}
       {/* Lead Process Timeline Modal */}
       {isProcessModalOpen && selectedContact && (
         <div className="modal-overlay" style={{ zIndex: 1050 }}>
@@ -641,7 +642,6 @@ const Contacts = () => {
             </div>
           </div>
         </div>
-      )}
       )}
     </div>
   );

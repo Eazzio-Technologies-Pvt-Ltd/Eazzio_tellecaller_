@@ -124,7 +124,10 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
     if (d.getHours() < 12) {
       d.setDate(d.getDate() - 1);
     }
-    return d.toISOString().substring(0, 10);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   });
   const [dateMode, setDateMode] = useState('day'); // 'day' or 'month'
 
@@ -134,10 +137,13 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
     if (d.getHours() < 12) {
       d.setDate(d.getDate() - 1);
     }
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
     if (mode === 'day') {
-      setSelectedDate(d.toISOString().substring(0, 10));
+      const day = String(d.getDate()).padStart(2, '0');
+      setSelectedDate(`${year}-${month}-${day}`);
     } else {
-      setSelectedDate(d.toISOString().substring(0, 7));
+      setSelectedDate(`${year}-${month}`);
     }
   };
 
