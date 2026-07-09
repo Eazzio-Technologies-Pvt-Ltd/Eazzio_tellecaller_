@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:eazzio_telecaller/services/api_service.dart';
 import 'package:eazzio_telecaller/services/layout_service.dart';
 import 'package:eazzio_telecaller/screens/login_screen.dart';
@@ -28,6 +29,8 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
   // Filter States
   int? _selectedTelecallerId;
   String _selectedDatePeriod = "today"; // today, month, all
+  DateTime _customDate = DateTime.now();
+  DateTime _customMonth = DateTime.now();
   
   // Search state
   final TextEditingController _searchQueryController = TextEditingController();
@@ -67,9 +70,9 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
       // Resolve date filter parameter
       String? dateParam;
       if (_selectedDatePeriod == "today") {
-        dateParam = DateFormat('yyyy-MM-dd').format(DateTime.now());
+        dateParam = DateFormat('yyyy-MM-dd').format(_customDate);
       } else if (_selectedDatePeriod == "month") {
-        dateParam = DateFormat('yyyy-MM').format(DateTime.now());
+        dateParam = DateFormat('yyyy-MM').format(_customMonth);
       }
 
       final analyticsData = await ApiService.fetchAnalytics(
@@ -84,8 +87,8 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
       final billingData = await ApiService.fetchCompanyBilling();
       final overdueData = await ApiService.fetchOverdueFollowUps();
 
-      // Use the telecallers list from billing details to ensure it doesn't get shrunk during filtering
-      final callersList = billingData['telecallers'] as List<dynamic>? ?? analyticsData['callers'] as List<dynamic>? ?? [];
+      // Use the telecallers list from analytics details to ensure we get all daily metrics
+      final callersList = analyticsData['callers'] as List<dynamic>? ?? billingData['telecallers'] as List<dynamic>? ?? [];
 
       setState(() {
         _analytics = analyticsData;
@@ -140,6 +143,49 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
             child: const Text('Log Out', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<DateTime?> _showMonthPickerDialog(BuildContext context, DateTime initialMonth) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+
+    final List<DateTime> months = [];
+    final now = DateTime.now();
+    for (int i = 0; i < 12; i++) {
+      months.add(DateTime(now.year, now.month - i, 1));
+    }
+
+    return showDialog<DateTime>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Select Month', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Container(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: months.length,
+            itemBuilder: (context, index) {
+              final m = months[index];
+              final isSelected = m.year == initialMonth.year && m.month == initialMonth.month;
+              return ListTile(
+                title: Text(
+                  DateFormat('MMMM yyyy').format(m),
+                  style: TextStyle(
+                    color: isSelected ? Theme.of(context).primaryColor : textColor,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                trailing: isSelected ? Icon(Icons.check_circle, color: Theme.of(context).primaryColor) : null,
+                onTap: () => Navigator.pop(context, m),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -910,15 +956,51 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
                 // Period Card Filter
                 Expanded(
                   child: PopupMenuButton<String>(
-                    onSelected: (val) {
-                      setState(() {
-                        _selectedDatePeriod = val;
-                      });
-                      _fetchData();
+                    onSelected: (val) async {
+                      if (val == "today") {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _customDate,
+                          firstDate: DateTime(2025),
+                          lastDate: DateTime.now(),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: ColorScheme.fromSeed(
+                                  seedColor: const Color(0xFF4F46E5),
+                                  brightness: Theme.of(context).brightness,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _selectedDatePeriod = "today";
+                            _customDate = picked;
+                          });
+                          _fetchData();
+                        }
+                      } else if (val == "month") {
+                        final picked = await _showMonthPickerDialog(context, _customMonth);
+                        if (picked != null) {
+                          setState(() {
+                            _selectedDatePeriod = "month";
+                            _customMonth = picked;
+                          });
+                          _fetchData();
+                        }
+                      } else if (val == "all") {
+                        setState(() {
+                          _selectedDatePeriod = "all";
+                        });
+                        _fetchData();
+                      }
                     },
                     itemBuilder: (context) => const [
-                      PopupMenuItem(value: "today", child: Text("Today")),
-                      PopupMenuItem(value: "month", child: Text("This Month")),
+                      PopupMenuItem(value: "today", child: Text("Choose Date")),
+                      PopupMenuItem(value: "month", child: Text("Choose Month")),
                       PopupMenuItem(value: "all", child: Text("All Time")),
                     ],
                     child: Container(
@@ -945,12 +1027,12 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
                               const SizedBox(height: 2),
                               Text(
                                 _selectedDatePeriod == "today"
-                                    ? "Today"
+                                    ? DateFormat('dd MMM yyyy').format(_customDate)
                                     : _selectedDatePeriod == "month"
-                                        ? "This Month"
+                                        ? DateFormat('MMMM yyyy').format(_customMonth)
                                         : "All Time",
                                 style: const TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF4F46E5),
                                 ),
@@ -1468,17 +1550,73 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const SizedBox(height: 2),
-                              Text(tc['email'] ?? 'No mobile number', style: const TextStyle(fontSize: 12)),
+                              Text(tc['email'] ?? 'No mobile number', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
                               const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: _getStatusColor(status).withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  status.toUpperCase(),
-                                  style: TextStyle(color: _getStatusColor(status), fontSize: 9, fontWeight: FontWeight.bold),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: _getStatusColor(status).withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      status.toUpperCase(),
+                                      style: TextStyle(color: _getStatusColor(status), fontSize: 9, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: RichText(
+                                      text: TextSpan(
+                                        style: TextStyle(fontSize: 10.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                        children: [
+                                          const TextSpan(text: 'Talk: '),
+                                          TextSpan(
+                                            text: _formatDuration(_parseInt(tc['calling_time'])),
+                                            style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: RichText(
+                                      text: TextSpan(
+                                        style: TextStyle(fontSize: 10.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                        children: [
+                                          const TextSpan(text: 'Active: '),
+                                          TextSpan(
+                                            text: _formatDuration(_parseInt(tc['working_time'])),
+                                            style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              RichText(
+                                text: TextSpan(
+                                  style: TextStyle(fontSize: 10.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                  children: [
+                                    const TextSpan(text: 'Break: '),
+                                    TextSpan(
+                                      text: _formatDuration(_parseInt(tc['break_time'])),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+                                    ),
+                                    const TextSpan(text: ' (Idle: '),
+                                    TextSpan(
+                                      text: _formatDuration(_parseInt(tc['idle_time'])),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent),
+                                    ),
+                                    const TextSpan(text: ')'),
+                                  ],
                                 ),
                               ),
                             ],
@@ -1551,13 +1689,23 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
                     statusColor = const Color(0xFF64748B);
                 }
 
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF12131A) : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
-                  ),
+                return InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CampaignLeadsScreen(campaign: camp),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF12131A) : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                    ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1653,8 +1801,9 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
                       ),
                     ],
                   ),
-                );
-              },
+                ),
+              );
+            },
             ),
     );
   }
@@ -2354,6 +2503,546 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+// Campaign Leads List Screen for Mobile Admin
+class CampaignLeadsScreen extends StatefulWidget {
+  final Map<String, dynamic> campaign;
+  const CampaignLeadsScreen({super.key, required this.campaign});
+
+  @override
+  State<CampaignLeadsScreen> createState() => _CampaignLeadsScreenState();
+}
+
+class _CampaignLeadsScreenState extends State<CampaignLeadsScreen> {
+  List<dynamic> _contacts = [];
+  bool _isLoading = true;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLeads();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchLeads() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final contacts = await ApiService.fetchContacts(campaignId: widget.campaign['id']);
+      setState(() {
+        _contacts = contacts;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading campaign leads: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF0A0B10) : const Color(0xFFF5F6FC);
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    final filteredLeads = _contacts.where((c) {
+      final name = c['name']?.toString().toLowerCase() ?? '';
+      final phone = c['phone_number']?.toString() ?? '';
+      return name.contains(_searchQuery.toLowerCase()) || phone.contains(_searchQuery);
+    }).toList();
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: isDark ? const Color(0xFF12131A) : Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.campaign['name'] ?? 'Campaign Leads',
+              style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Leads & Contacts Process Tracker',
+              style: TextStyle(color: subtextColor, fontSize: 11),
+            ),
+          ],
+        ),
+        iconTheme: IconThemeData(color: textColor),
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: TextField(
+              controller: _searchController,
+              style: TextStyle(color: textColor),
+              decoration: InputDecoration(
+                hintText: 'Search leads by name or phone...',
+                hintStyle: TextStyle(color: subtextColor, fontSize: 13),
+                prefixIcon: Icon(Icons.search, color: subtextColor),
+                filled: true,
+                fillColor: cardColor,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                ),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                });
+              },
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
+                : filteredLeads.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No leads found matching query.',
+                          style: TextStyle(color: subtextColor),
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _fetchLeads,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          itemCount: filteredLeads.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final lead = filteredLeads[index];
+                            final status = lead['status'] ?? 'pending';
+
+                            Color statusColor;
+                            switch (status.toString().toLowerCase()) {
+                              case 'connected':
+                              case 'completed':
+                                statusColor = const Color(0xFF10B981);
+                                break;
+                              case 'follow_up':
+                                statusColor = const Color(0xFFA855F7);
+                                break;
+                              case 'calling':
+                                statusColor = const Color(0xFF3B82F6);
+                                break;
+                              case 'missed':
+                                statusColor = const Color(0xFFEF4444);
+                                break;
+                              case 'pending':
+                              default:
+                                statusColor = const Color(0xFF64748B);
+                            }
+
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: cardColor,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                title: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        lead['name'] ?? 'Unknown',
+                                        style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: statusColor.withOpacity(0.3)),
+                                      ),
+                                      child: Text(
+                                        status.toString().toUpperCase(),
+                                        style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Phone: ${lead['phone_number'] ?? 'No phone'}',
+                                      style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Assigned to: ${lead['assigned_caller'] ?? lead['assigned_to'] ?? 'Unassigned'}',
+                                      style: TextStyle(color: subtextColor, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                                trailing: Icon(Icons.arrow_forward_ios_rounded, color: subtextColor, size: 14),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => LeadProcessScreen(contact: lead),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Lead Process Timeline History Screen for Mobile Admin
+class LeadProcessScreen extends StatefulWidget {
+  final Map<String, dynamic> contact;
+  const LeadProcessScreen({super.key, required this.contact});
+
+  @override
+  State<LeadProcessScreen> createState() => _LeadProcessScreenState();
+}
+
+class _LeadProcessScreenState extends State<LeadProcessScreen> {
+  List<dynamic> _logs = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLogs();
+  }
+
+  Future<void> _fetchLogs() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final logs = await ApiService.fetchCallLogsForContact(widget.contact['id']);
+      setState(() {
+        _logs = logs;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading calling process logs: $e')),
+      );
+    }
+  }
+
+  String _formatDate(String dateStr) {
+    try {
+      final parsed = DateTime.parse(dateStr).toLocal();
+      return DateFormat('hh:mm a | dd MMM yyyy').format(parsed);
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
+  String _formatDuration(int seconds) {
+    if (seconds <= 0) return '0s';
+    final int mins = seconds ~/ 60;
+    final int remainingSecs = seconds % 60;
+    return mins > 0 ? '${mins}m ${remainingSecs}s' : '${remainingSecs}s';
+  }
+
+  Future<void> _playRecording(String relativeUrl) async {
+    String fullUrl = relativeUrl;
+    if (!relativeUrl.startsWith('http') && !relativeUrl.startsWith('blob')) {
+      final String baseUrl = ApiService.baseUrl;
+      fullUrl = '$baseUrl${relativeUrl.startsWith('/') ? '' : '/'}$relativeUrl';
+    }
+    
+    final uri = Uri.parse(fullUrl);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Could not launch $fullUrl';
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error launching call recording: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF0A0B10) : const Color(0xFFF5F6FC);
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: isDark ? const Color(0xFF12131A) : Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Lead Process History',
+              style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              widget.contact['name'] ?? 'Contact Process',
+              style: TextStyle(color: subtextColor, fontSize: 11),
+            ),
+          ],
+        ),
+        iconTheme: IconThemeData(color: textColor),
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.01),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.contact['name'] ?? 'Unknown Lead',
+                  style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.phone_iphone_rounded, color: subtextColor, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      widget.contact['phone_number'] ?? 'No number',
+                      style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Divider(),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Campaign: ${widget.contact['campaign_name'] ?? 'N/A'}',
+                      style: TextStyle(color: subtextColor, fontSize: 12),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (isDark ? const Color(0xFF1E293B) : const Color(0xFFEEF2FF)),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Status: ${widget.contact['status'] ?? 'pending'}',
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
+                : _logs.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No calling history logs found.',
+                          style: TextStyle(color: subtextColor),
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _fetchLogs,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          itemCount: _logs.length,
+                          itemBuilder: (context, index) {
+                            final log = _logs[index];
+                            final status = log['call_status'] ?? 'connected';
+                            final duration = int.tryParse(log['duration']?.toString() ?? '0') ?? 0;
+                            
+                            Color statusColor;
+                            IconData statusIcon;
+                            switch (status.toString().toLowerCase()) {
+                              case 'connected':
+                              case 'received':
+                              case 'completed':
+                                statusColor = const Color(0xFF10B981);
+                                statusIcon = Icons.check_circle_rounded;
+                                break;
+                              case 'missed':
+                                statusColor = const Color(0xFFEF4444);
+                                statusIcon = Icons.cancel_rounded;
+                                break;
+                              case 'non-connected':
+                              default:
+                                statusColor = const Color(0xFFF59E0B);
+                                statusIcon = Icons.hourglass_empty_rounded;
+                            }
+
+                            return IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Column(
+                                    children: [
+                                      Container(
+                                        width: 14,
+                                        height: 14,
+                                        decoration: BoxDecoration(
+                                          color: statusColor,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.white, width: 2),
+                                        ),
+                                        child: Icon(statusIcon, color: Colors.white, size: 8),
+                                      ),
+                                      if (index < _logs.length - 1)
+                                        Expanded(
+                                          child: Container(
+                                            width: 2,
+                                            color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Container(
+                                      margin: const EdgeInsets.only(bottom: 16),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: cardColor,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                _formatDate(log['called_at'] ?? ''),
+                                                style: TextStyle(color: subtextColor, fontSize: 11, fontWeight: FontWeight.bold),
+                                              ),
+                                              Text(
+                                                status.toString().toUpperCase(),
+                                                style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Dialed By: ${log['telecaller_name'] ?? 'Deleted Caller'}',
+                                            style: TextStyle(color: textColor, fontSize: 12),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Talk Time: ${_formatDuration(duration)}',
+                                            style: TextStyle(color: subtextColor, fontSize: 12),
+                                          ),
+                                          if (log['feedback'] != null && log['feedback'].toString().trim().isNotEmpty) ...[
+                                            const SizedBox(height: 8),
+                                            Container(
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF3F4F6),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                log['feedback'],
+                                                style: TextStyle(
+                                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF4B5563),
+                                                  fontSize: 11,
+                                                  fontStyle: FontStyle.italic,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          if (log['recording_url'] != null) ...[
+                                            const SizedBox(height: 8),
+                                            Align(
+                                              alignment: Alignment.centerRight,
+                                              child: TextButton.icon(
+                                                onPressed: () => _playRecording(log['recording_url']),
+                                                icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
+                                                label: const Text('Listen Call', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor: const Color(0xFF6366F1),
+                                                  padding: EdgeInsets.zero,
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+          ),
+        ],
       ),
     );
   }

@@ -616,4 +616,86 @@ class ApiService {
       return false;
     }
   }
+
+  // Add a single lead to a campaign
+  static Future<Map<String, dynamic>> addLead({
+    required int campaignId,
+    required String name,
+    required String phoneNumber,
+  }) async {
+    if (!isAuthenticated) return {'success': false, 'error': 'Unauthenticated'};
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/contacts/add-lead'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode({
+          'campaignId': campaignId,
+          'name': name,
+          'phoneNumber': phoneNumber,
+        }),
+      ).timeout(const Duration(seconds: 7));
+      
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      if (response.statusCode == 201) {
+        return {'success': true, 'message': data['message'] ?? 'Lead added successfully.'};
+      } else {
+        return {'success': false, 'error': data['message'] ?? data['error'] ?? 'Failed to add lead.'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Connection error: $e'};
+    }
+  }
+
+  // Fetch all contacts filtered by campaign or status
+  static Future<List<dynamic>> fetchContacts({int? campaignId, String? status, String? search}) async {
+    if (!isAuthenticated) return [];
+    try {
+      var urlStr = '$_baseUrl/api/contacts';
+      final List<String> params = [];
+      if (campaignId != null) params.add('campaignId=$campaignId');
+      if (status != null) params.add('status=$status');
+      if (search != null) params.add('search=$search');
+      if (params.isNotEmpty) {
+        urlStr += '?${params.join('&')}';
+      }
+      final response = await http.get(
+        Uri.parse(urlStr),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 7));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await forceLogout();
+      }
+    } catch (e) {
+      print('Error fetching contacts: $e');
+    }
+    return [];
+  }
+
+  // Fetch call logs for a specific contact
+  static Future<List<dynamic>> fetchCallLogsForContact(int contactId) async {
+    if (!isAuthenticated) return [];
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/call-logs?contactId=$contactId'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 7));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await forceLogout();
+      }
+    } catch (e) {
+      print('Error fetching call logs for contact: $e');
+    }
+    return [];
+  }
 }

@@ -414,3 +414,67 @@ exports.bulkTransferContacts = async (req, res) => {
     res.status(500).json({ error: 'Server error bulk transferring contacts.' });
   }
 };
+
+// Add a single lead to a campaign with collision checking
+exports.addLead = async (req, res) => {
+  const { campaignId, name, phoneNumber } = req.body;
+  const userId = req.user.id;
+
+  if (!campaignId || !name || !phoneNumber) {
+    return res.status(400).json({ error: 'Campaign ID, name, and phone number are required.' });
+  }
+
+  try {
+    // Normalize phone number (strip non-digits)
+    const cleanPhone = String(phoneNumber).replace(/\D/g, '');
+    if (!cleanPhone) {
+      return res.status(400).json({ error: 'A valid phone number is required.' });
+    }
+
+    // Verify campaign exists
+    const campaignCheck = await db.query('SELECT * FROM campaigns WHERE id = $1', [campaignId]);
+    if (campaignCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Campaign not found.' });
+    }
+
+    // Search for duplicates in the same company context (routed via search_path automatically)
+    // Querying with suffix match to optimize database indexing
+    const searchSuffix = cleanPhone.length > 8 ? cleanPhone.slice(-8) : cleanPhone;
+    const existingResult = await db.query(
+      `SELECT c.*, u.name as telecaller_name 
+       FROM contacts c
+       LEFT JOIN users u ON c.assigned_to = u.id
+       WHERE c.phone_number LIKE $1`,
+      [`%${searchSuffix}`]
+    );
+
+    const duplicate = existingResult.rows.find(row => {
+      const dbPhoneClean = row.phone_number.replace(/\D/g, '');
+      return dbPhoneClean.endsWith(cleanPhone) || cleanPhone.endsWith(dbPhoneClean);
+    });
+
+    if (duplicate) {
+      const callerName = duplicate.telecaller_name || 'another telecaller';
+      return res.status(409).json({
+        error: 'already_exists',
+        message: `This lead was already added by ${callerName}.`
+      });
+    }
+
+    // Insert the new contact and assign to this telecaller
+    const insertResult = await db.query(
+      `INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [campaignId, name, phoneNumber, 'pending', userId]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Lead added successfully.',
+      contact: insertResult.rows[0]
+    });
+  } catch (error) {
+    console.error('Add lead error:', error);
+    res.status(500).json({ error: 'Server error adding lead.' });
+  }
+};

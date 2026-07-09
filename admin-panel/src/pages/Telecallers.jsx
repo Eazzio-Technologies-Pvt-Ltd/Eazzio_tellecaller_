@@ -34,13 +34,31 @@ const Telecallers = () => {
   const [pendingCaller, setPendingCaller] = useState(null); // { name, email }
   const [limitErrorDetails, setLimitErrorDetails] = useState(null); // { allowedLimit, rate, planType }
 
+  // Date and Month Filters
+  const [filterType, setFilterType] = useState('date'); // 'date' or 'month'
+  const [filterDate, setFilterDate] = useState(() => {
+    const d = new Date();
+    if (d.getHours() < 12) {
+      d.setDate(d.getDate() - 1);
+    }
+    return d.toISOString().substring(0, 10);
+  });
+  const [filterMonth, setFilterMonth] = useState(() => {
+    const d = new Date();
+    if (d.getHours() < 12) {
+      d.setDate(d.getDate() - 1);
+    }
+    return d.toISOString().substring(0, 7);
+  });
+
   // Success / Error alerts
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
 
   const fetchTelecallers = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/call-logs/analytics`, {
+      const activeFilter = filterType === 'date' ? filterDate : filterMonth;
+      const response = await fetch(`${API_BASE_URL}/api/call-logs/analytics?date=${activeFilter}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -58,7 +76,7 @@ const Telecallers = () => {
 
   useEffect(() => {
     fetchTelecallers();
-  }, []);
+  }, [filterType, filterDate, filterMonth]);
 
   const handleAddCaller = async (e) => {
     e.preventDefault();
@@ -469,6 +487,71 @@ const Telecallers = () => {
           <UserPlus size={18} />
           Register Telecaller
         </button>
+      </div>
+
+      {/* Date & Month Filter */}
+      <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '1rem 1.5rem', display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+          <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Filter Type</label>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button 
+              className={`btn ${filterType === 'date' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
+              onClick={() => setFilterType('date')}
+            >
+              Single Date
+            </button>
+            <button 
+              className={`btn ${filterType === 'month' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
+              onClick={() => setFilterType('month')}
+            >
+              Whole Month
+            </button>
+          </div>
+        </div>
+
+        {filterType === 'date' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Select Date</label>
+            <input 
+              type="date" 
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              style={{
+                padding: '0.4rem 0.8rem',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+                outline: 'none',
+                fontSize: '0.9rem'
+              }}
+            />
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Select Month</label>
+            <input 
+              type="month" 
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              style={{
+                padding: '0.4rem 0.8rem',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+                outline: 'none',
+                fontSize: '0.9rem'
+              }}
+            />
+          </div>
+        )}
+
+        <div style={{ marginLeft: 'auto', alignSelf: 'flex-end', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          Showing stats for <strong>{filterType === 'date' ? filterDate : filterMonth}</strong> (daily reset at 12:00 PM)
+        </div>
       </div>
 
       <div className="glass-card">

@@ -43,6 +43,48 @@ const Contacts = () => {
   const [bulkTelecallerId, setBulkTelecallerId] = useState('');
   const [bulkAssigning, setBulkAssigning] = useState(false);
 
+  // Lead Process History States
+  const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [processLogs, setProcessLogs] = useState([]);
+  const [loadingProcess, setLoadingProcess] = useState(false);
+  const [activeRecordingUrl, setActiveRecordingUrl] = useState(null);
+
+  const handleViewProcess = async (contact) => {
+    setSelectedContact(contact);
+    setIsProcessModalOpen(true);
+    setLoadingProcess(true);
+    setProcessLogs([]);
+    setActiveRecordingUrl(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/call-logs?contactId=${contact.id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProcessLogs(data);
+      }
+    } catch (err) {
+      console.error('Error fetching process logs:', err);
+    } finally {
+      setLoadingProcess(false);
+    }
+  };
+
+  const handlePlayRecording = (recordingUrl) => {
+    let fullUrl = recordingUrl;
+    if (recordingUrl && !recordingUrl.startsWith('http') && !recordingUrl.startsWith('blob')) {
+      fullUrl = `${API_BASE_URL}${recordingUrl.startsWith('/') ? '' : '/'}${recordingUrl}`;
+    }
+    if (activeRecordingUrl === fullUrl) {
+      setActiveRecordingUrl(null);
+    } else {
+      setActiveRecordingUrl(fullUrl);
+    }
+  };
+
   const fetchCampaigns = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/campaigns`, {
@@ -324,12 +366,13 @@ const Contacts = () => {
                   <th>Assigned Telecaller</th>
                   <th>Last Dialed At</th>
                   <th>Follow Up Date</th>
+                  <th>Calling Process</th>
                 </tr>
               </thead>
               <tbody>
                 {contacts.length === 0 ? (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan="9" style={{ textAlign: 'center', color: '#6b7280' }}>
                       No contacts found matching the filters.
                     </td>
                   </tr>
@@ -358,6 +401,15 @@ const Contacts = () => {
                       </td>
                       <td style={{ color: 'var(--color-secondary)', fontWeight: '500', fontSize: '0.85rem' }}>
                         {contact.follow_up_date ? parseDbDate(contact.follow_up_date).toLocaleDateString() : '-'}
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.8rem', height: 'auto', minWidth: 'auto' }}
+                          onClick={() => handleViewProcess(contact)}
+                        >
+                          View Process
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -427,6 +479,169 @@ const Contacts = () => {
             </form>
           </div>
         </div>
+      {/* Lead Process Timeline Modal */}
+      {isProcessModalOpen && selectedContact && (
+        <div className="modal-overlay" style={{ zIndex: 1050 }}>
+          <div className="modal-content" style={{ maxWidth: '650px', width: '90%', maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+              <div>
+                <h2 style={{ margin: 0 }}>Calling Process Timeline</h2>
+                <p className="subtitle" style={{ margin: '4px 0 0' }}>All interactions and status updates for this lead</p>
+              </div>
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={() => {
+                  setIsProcessModalOpen(false);
+                  setSelectedContact(null);
+                  setProcessLogs([]);
+                  setActiveRecordingUrl(null);
+                }}
+                style={{ minWidth: 'auto', padding: '6px 12px' }}
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {/* Contact Quick Details Info Header */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '12px', borderRadius: '10px', marginBottom: '1.5rem' }}>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Lead Name</div>
+                <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{selectedContact.name}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Phone Number</div>
+                <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{selectedContact.phone_number}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Campaign</div>
+                <div style={{ fontSize: '0.9rem' }}>{selectedContact.campaign_name || 'N/A'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Current Status</div>
+                <div style={{ marginTop: '4px' }}>
+                  <span className={`badge badge-${selectedContact.status}`} style={{ fontSize: '0.75rem' }}>
+                    {selectedContact.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Call Recording Playback Sticky Header inside Modal */}
+            {activeRecordingUrl && (
+              <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: '10px', marginBottom: '1.25rem', gap: '10px' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  🔊 Playback Active
+                </span>
+                <audio src={activeRecordingUrl} controls autoPlay style={{ flex: 1, height: '28px' }} />
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '4px 8px', fontSize: '0.75rem', height: 'auto', minWidth: 'auto' }}
+                  onClick={() => setActiveRecordingUrl(null)}
+                >
+                  Stop
+                </button>
+              </div>
+            )}
+
+            {/* Timeline Process List */}
+            <div style={{ paddingLeft: '8px' }}>
+              {loadingProcess ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Loading history logs...</div>
+              ) : processLogs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px dashed var(--border-color)', fontStyle: 'italic' }}>
+                  No call logs or processes found for this lead. It hasn't been called yet.
+                </div>
+              ) : (
+                <div style={{ position: 'relative', borderLeft: '2px solid var(--border-color)', paddingLeft: '20px', marginLeft: '10px' }}>
+                  {processLogs.map((log) => {
+                    const callDate = parseDbDate(log.called_at);
+                    const formattedDate = callDate ? callDate.toLocaleString() : '-';
+                    const durationStr = (log.call_status === 'connected' || log.call_status === 'received') 
+                      ? `${Math.floor(log.duration / 60)}m ${log.duration % 60}s`
+                      : '0s';
+
+                    return (
+                      <div key={log.id} style={{ marginBottom: '1.5rem', position: 'relative' }}>
+                        {/* Timeline Bullet Point */}
+                        <div style={{ 
+                          position: 'absolute', 
+                          left: '-29px', 
+                          top: '2px', 
+                          width: '16px', 
+                          height: '16px', 
+                          borderRadius: '50%', 
+                          background: log.call_status === 'connected' || log.call_status === 'received' ? '#10b981' : '#f59e0b',
+                          border: '4px solid var(--bg-primary)'
+                        }}></div>
+
+                        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '12px 16px' }}>
+                          {/* Log Header */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>
+                              {formattedDate}
+                            </span>
+                            <span className={`badge badge-${log.call_status}`} style={{ fontSize: '0.75rem' }}>
+                              {log.call_status}
+                            </span>
+                          </div>
+
+                          {/* Details Grid */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            <div>
+                              <strong>Called By:</strong> {log.telecaller_name}
+                            </div>
+                            <div>
+                              <strong>Talk Time:</strong> {durationStr}
+                            </div>
+                          </div>
+
+                          {/* Feedback text */}
+                          {log.feedback && (
+                            <div style={{ marginTop: '8px', padding: '8px', background: 'var(--bg-primary)', borderRadius: '6px', fontSize: '0.82rem', border: '1px solid var(--border-color)' }}>
+                              <strong>Feedback:</strong> {log.feedback}
+                            </div>
+                          )}
+
+                          {/* Call Recording Play/Listen */}
+                          {log.recording_url && (
+                            <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                style={{ padding: '4px 8px', fontSize: '0.78rem', height: 'auto', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                onClick={() => handlePlayRecording(log.recording_url)}
+                              >
+                                🔊 {activeRecordingUrl && activeRecordingUrl.includes(log.recording_url) ? 'Playing...' : 'Listen Call'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={() => {
+                  setIsProcessModalOpen(false);
+                  setSelectedContact(null);
+                  setProcessLogs([]);
+                  setActiveRecordingUrl(null);
+                }}
+              >
+                Close View
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       )}
     </div>
   );

@@ -547,9 +547,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              _telemetry.resetSession();
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (ctx) => const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+                ),
+              );
+              await _telemetry.resetSession();
               await ApiService.logout();
               if (mounted) {
+                Navigator.pop(context); // close loader
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -561,6 +569,207 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
     );
+  }
+
+  void _showAddLeadDialog() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+      ),
+    );
+
+    List<dynamic> campaigns = [];
+    try {
+      campaigns = await ApiService.fetchCampaigns();
+    } catch (e) {
+      print('Error fetching campaigns: $e');
+    }
+
+    if (mounted) {
+      Navigator.pop(context); // Close loading spinner
+    }
+
+    if (campaigns.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No active campaigns found. Please contact admin.')),
+        );
+      }
+      return;
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    int? selectedCampaignId = campaigns.isNotEmpty ? campaigns[0]['id'] : null;
+
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            backgroundColor: cardColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text(
+              'Add Lead to Campaign',
+              style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<int>(
+                      dropdownColor: cardColor,
+                      value: selectedCampaignId,
+                      decoration: InputDecoration(
+                        labelText: 'Select Campaign',
+                        labelStyle: TextStyle(color: subtextColor, fontSize: 12),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: subtextColor.withOpacity(0.5)),
+                        ),
+                      ),
+                      style: TextStyle(color: textColor),
+                      items: campaigns.map<DropdownMenuItem<int>>((camp) {
+                        return DropdownMenuItem<int>(
+                          value: camp['id'],
+                          child: Text(camp['name'] ?? 'Campaign'),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        setDialogState(() {
+                          selectedCampaignId = val;
+                        });
+                      },
+                      validator: (value) => value == null ? 'Campaign is required' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: nameController,
+                      style: TextStyle(color: textColor),
+                      decoration: InputDecoration(
+                        labelText: 'Lead Name',
+                        labelStyle: TextStyle(color: subtextColor, fontSize: 12),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: subtextColor.withOpacity(0.5)),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Name is required';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: phoneController,
+                      style: TextStyle(color: textColor),
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Phone Number',
+                        labelStyle: TextStyle(color: subtextColor, fontSize: 12),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: subtextColor.withOpacity(0.5)),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Phone number is required';
+                        }
+                        final clean = value.replaceAll(RegExp(r'\D'), '');
+                        if (clean.length < 8) {
+                          return 'Enter a valid phone number';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancel', style: TextStyle(color: subtextColor)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () async {
+                  if (formKey.currentState!.validate()) {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (ctx) => const Center(
+                        child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+                      ),
+                    );
+
+                    final res = await ApiService.addLead(
+                      campaignId: selectedCampaignId!,
+                      name: nameController.text.trim(),
+                      phoneNumber: phoneController.text.trim(),
+                    );
+
+                    if (mounted) {
+                      Navigator.pop(context); // pop loading
+                    }
+
+                    if (res['success'] == true) {
+                      if (mounted) {
+                        Navigator.pop(context); // pop add dialog
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Lead added successfully.')),
+                        );
+                      }
+                    } else {
+                      if (mounted) {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            backgroundColor: cardColor,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: Row(
+                              children: [
+                                const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+                                const SizedBox(width: 8),
+                                Text('Conflict Detected', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                              ],
+                            ),
+                            content: Text(
+                              res['error'] ?? 'Lead could not be added.',
+                              style: TextStyle(color: textColor, fontSize: 14),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('OK', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    }
+                  }
+                },
+                child: const Text('Add Lead', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -588,7 +797,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         actions: [
           Container(
-            margin: EdgeInsets.only(right: layout.scale(6.0, 8.0)),
+            margin: EdgeInsets.only(right: layout.scale(12.0, 16.0)),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
@@ -597,53 +806,80 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               color: cardColor,
             ),
-            child: IconButton(
-              icon: Icon(
-                themeNotifier.value == ThemeMode.dark ? Icons.light_mode_rounded : Icons.dark_mode_outlined,
-                color: isDark ? Colors.amber : const Color(0xFF64748B),
-                size: layout.scale(18.0, 20.0),
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                cardColor: cardColor,
               ),
-              onPressed: () async {
-                final prefs = await SharedPreferences.getInstance();
-                if (themeNotifier.value == ThemeMode.dark) {
-                  themeNotifier.value = ThemeMode.light;
-                  await prefs.setBool('is_light_theme', true);
-                } else {
-                  themeNotifier.value = ThemeMode.dark;
-                  await prefs.setBool('is_light_theme', false);
-                }
-                setState(() {});
-              },
-              tooltip: 'Toggle Theme',
-              padding: EdgeInsets.zero,
-              constraints: BoxConstraints(
-                minWidth: layout.scale(36.0, 40.0),
-                minHeight: layout.scale(36.0, 40.0),
-              ),
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.only(right: layout.scale(12.0, 16.0)),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isDark ? const Color(0xFF881337) : const Color(0xFFFEE2E2),
-                width: 1.5,
-              ),
-              color: isDark ? const Color(0xFF4C0519) : const Color(0xFFFEF2F2),
-            ),
-            child: IconButton(
-              icon: Icon(
-                Icons.power_settings_new_rounded,
-                color: const Color(0xFFEF4444),
-                size: layout.scale(18.0, 20.0),
-              ),
-              onPressed: _handleLogout,
-              tooltip: 'Logout',
-              padding: EdgeInsets.zero,
-              constraints: BoxConstraints(
-                minWidth: layout.scale(36.0, 40.0),
-                minHeight: layout.scale(36.0, 40.0),
+              child: PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.settings,
+                  color: isDark ? Colors.white : const Color(0xFF64748B),
+                  size: layout.scale(18.0, 20.0),
+                ),
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(
+                  minWidth: layout.scale(36.0, 40.0),
+                  minHeight: layout.scale(36.0, 40.0),
+                ),
+                onSelected: (val) async {
+                  if (val == 'theme') {
+                    final prefs = await SharedPreferences.getInstance();
+                    if (themeNotifier.value == ThemeMode.dark) {
+                      themeNotifier.value = ThemeMode.light;
+                      await prefs.setBool('is_light_theme', true);
+                    } else {
+                      themeNotifier.value = ThemeMode.dark;
+                      await prefs.setBool('is_light_theme', false);
+                    }
+                    setState(() {});
+                  } else if (val == 'add_lead') {
+                    _showAddLeadDialog();
+                  } else if (val == 'logout') {
+                    _handleLogout();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'theme',
+                    child: Row(
+                      children: [
+                        Icon(
+                          themeNotifier.value == ThemeMode.dark ? Icons.light_mode_rounded : Icons.dark_mode_outlined,
+                          color: isDark ? Colors.amber : const Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          themeNotifier.value == ThemeMode.dark ? 'Light Mode' : 'Dark Mode',
+                          style: TextStyle(color: textColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'add_lead',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person_add_alt_1_rounded, color: Colors.blue),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Add Lead',
+                          style: TextStyle(color: textColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  PopupMenuItem(
+                    value: 'logout',
+                    child: const Row(
+                      children: [
+                        Icon(Icons.power_settings_new_rounded, color: Colors.red),
+                        const SizedBox(width: 10),
+                        Text('Logout', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

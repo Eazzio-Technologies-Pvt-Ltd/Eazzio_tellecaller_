@@ -19,6 +19,19 @@ class TelemetryService with WidgetsBindingObserver {
   TelemetryState _currentState = TelemetryState.idle;
   bool shiftCompleteShown = false;
   bool _isAppPaused = false;
+  String _sessionDate = '';
+
+  String getTrackingDate([DateTime? dt]) {
+    final now = dt ?? DateTime.now();
+    DateTime target = now;
+    if (now.hour < 12) {
+      target = now.subtract(const Duration(days: 1));
+    }
+    final year = target.year;
+    final month = target.month.toString().padLeft(2, '0');
+    final day = target.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
 
   // Session counters in seconds
   int _workingTime = 0;
@@ -70,19 +83,35 @@ class TelemetryService with WidgetsBindingObserver {
   }
 
   // Start the daily telemetry session
-  void startSession() {
+  Future<void> startSession() async {
     if (_timer != null) return;
     
     // Set status online
     ApiService.updateStatus('online');
     _currentState = TelemetryState.idle;
     _isAppPaused = false;
+    _sessionDate = getTrackingDate();
 
     // Fetch initial daily stats from server
-    initializeSessionFromServer();
+    await initializeSessionFromServer();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isAppPaused) return;
+
+      // Check for 12:00 PM boundary crossover
+      final currentTrackingDate = getTrackingDate();
+      if (currentTrackingDate != _sessionDate) {
+        _sessionDate = currentTrackingDate;
+        _workingTime = 0;
+        _talkTime = 0;
+        _breakTime = 0;
+        _idleTime = 0;
+        connectedCalls = 0;
+        missedCalls = 0;
+        nonConnectedCalls = 0;
+        receivedCalls = 0;
+        _syncWithServer();
+      }
 
       if (_currentState != TelemetryState.onBreak) {
         _workingTime++;
@@ -165,16 +194,16 @@ class TelemetryService with WidgetsBindingObserver {
   }
 
   // Clear session variables
-  void stopSession() {
+  Future<void> stopSession() async {
     _timer?.cancel();
     _timer = null;
     _isAppPaused = false;
-    _syncWithServer();
-    ApiService.updateStatus('offline');
+    await _syncWithServer();
+    await ApiService.updateStatus('offline');
   }
 
-  void resetSession() {
-    stopSession();
+  Future<void> resetSession() async {
+    await stopSession();
     _workingTime = 0;
     _talkTime = 0;
     _breakTime = 0;

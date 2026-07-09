@@ -168,7 +168,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       context: context,
       barrierDismissible: true,
       builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
+        const isDark = false;
         final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
         final textColor = isDark ? Colors.white : const Color(0xFF111827);
         final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
@@ -300,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
+        const isDark = false;
         final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
         final textColor = isDark ? Colors.white : const Color(0xFF111827);
         final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
@@ -511,7 +511,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const isDark = false;
     final textColor = isDark ? Colors.white : const Color(0xFF111827);
     final labelColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final fieldFillColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF3F4F6);

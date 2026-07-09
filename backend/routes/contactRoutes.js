@@ -44,5 +44,6 @@ router.post('/bulk-transfer', authMiddleware('admin'), contactController.bulkTra
 router.get('/allotted', authMiddleware('telecaller'), contactController.getAllottedContacts);
 router.put('/:contactId/status', authMiddleware(), contactController.updateContactStatus);
 router.put('/:contactId/assign', authMiddleware('admin'), contactController.assignContact);
+router.post('/add-lead', authMiddleware(), contactController.addLead);
 
 module.exports = router;

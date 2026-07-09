@@ -3,6 +3,22 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const nodemailer = require('nodemailer');
 
+function getTrackingDate(dateInput) {
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+    return dateInput;
+  }
+  const d = dateInput ? new Date(dateInput) : new Date();
+  const hours = d.getHours();
+  let target = d;
+  if (hours < 12) {
+    target = new Date(d.getTime() - 24 * 60 * 60 * 1000);
+  }
+  const year = target.getFullYear();
+  const month = String(target.getMonth() + 1).padStart(2, '0');
+  const day = String(target.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_eazzio_telecaller_system_2026';
@@ -141,7 +157,7 @@ exports.login = async (req, res) => {
       }
 
       // Ensure session exists for today in company database
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTrackingDate();
       const sessionCheck = await db.query(
         'SELECT * FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
         [user.id, today]
