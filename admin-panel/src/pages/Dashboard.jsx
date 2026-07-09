@@ -119,15 +119,25 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTelecaller, setSelectedTelecaller] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().substring(0, 10));
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    if (d.getHours() < 12) {
+      d.setDate(d.getDate() - 1);
+    }
+    return d.toISOString().substring(0, 10);
+  });
   const [dateMode, setDateMode] = useState('day'); // 'day' or 'month'
 
   const handleDateModeChange = (mode) => {
     setDateMode(mode);
+    const d = new Date();
+    if (d.getHours() < 12) {
+      d.setDate(d.getDate() - 1);
+    }
     if (mode === 'day') {
-      setSelectedDate(new Date().toISOString().substring(0, 10));
+      setSelectedDate(d.toISOString().substring(0, 10));
     } else {
-      setSelectedDate(new Date().toISOString().substring(0, 7));
+      setSelectedDate(d.toISOString().substring(0, 7));
     }
   };
 

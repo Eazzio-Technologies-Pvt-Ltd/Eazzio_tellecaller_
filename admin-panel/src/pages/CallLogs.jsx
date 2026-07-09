@@ -147,13 +147,16 @@ const CallLogs = ({ user, setActiveTab }) => {
     }
   };
 
+  const getTrackingDate = (d) => {
+    const target = new Date(d);
+    if (target.getHours() < 12) {
+      target.setDate(target.getDate() - 1);
+    }
+    return target.toISOString().substring(0, 10);
+  };
+
   const isToday = (date) => {
-    const today = new Date();
-    return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
-    );
+    return getTrackingDate(date) === getTrackingDate(new Date());
   };
 
   const getTodayStats = () => {
@@ -196,14 +199,10 @@ const CallLogs = ({ user, setActiveTab }) => {
     if (timeFilter === 'today') {
       if (!isToday(logDate)) return false;
     } else if (timeFilter === 'yesterday') {
-      const yesterday = new Date();
-      yesterday.setDate(now.getDate() - 1);
-      const isYesterday = (
-        logDate.getDate() === yesterday.getDate() &&
-        logDate.getMonth() === yesterday.getMonth() &&
-        logDate.getFullYear() === yesterday.getFullYear()
-      );
-      if (!isYesterday) return false;
+      const todayTracking = new Date(getTrackingDate(new Date()));
+      const yesterdayTracking = new Date(todayTracking.getTime() - 24 * 60 * 60 * 1000);
+      const yesterdayStr = yesterdayTracking.toISOString().substring(0, 10);
+      if (getTrackingDate(logDate) !== yesterdayStr) return false;
     } else if (timeFilter === 'week') {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(now.getDate() - 7);
