@@ -37,6 +37,8 @@ router.post('/import', authMiddleware('admin'), upload.single('file'), contactCo
 router.post('/allot', authMiddleware('admin'), contactController.allotContactsManually);
 router.post('/assign-campaign', authMiddleware('admin'), contactController.assignCampaignContacts);
 router.get('/', authMiddleware('admin'), contactController.getContacts);
+router.get('/overdue-follow-ups', authMiddleware('admin'), contactController.getFollowUpOverdueContacts);
+router.post('/bulk-transfer', authMiddleware('admin'), contactController.bulkTransferContacts);
 
 // Telecaller endpoints
 router.get('/allotted', authMiddleware('telecaller'), contactController.getAllottedContacts);

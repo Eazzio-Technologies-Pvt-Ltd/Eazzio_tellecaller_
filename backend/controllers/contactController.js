@@ -271,6 +271,12 @@ exports.updateContactStatus = async (req, res) => {
       paramIndex++;
     }
 
+    if (status === 'follow_up') {
+      updateSql += ', follow_up_started_at = COALESCE(follow_up_started_at, CURRENT_TIMESTAMP)';
+    } else {
+      updateSql += ', follow_up_started_at = NULL';
+    }
+
     updateSql += `, last_called_at = CURRENT_TIMESTAMP WHERE id = $${paramIndex}`;
     params.push(contactId);
 
@@ -297,9 +303,10 @@ exports.assignContact = async (req, res) => {
         ? parseInt(telecallerId) 
         : null;
 
+    // Reset status to pending, clear follow_up_date and follow_up_started_at upon reassignment
     await db.query(
-      'UPDATE contacts SET assigned_to = $1 WHERE id = $2',
-      [assignedTo, contactId]
+      'UPDATE contacts SET assigned_to = $1, status = $2, follow_up_date = NULL, follow_up_started_at = NULL WHERE id = $3',
+      [assignedTo, 'pending', contactId]
     );
 
     res.json({ message: 'Contact assigned successfully.' });
@@ -331,5 +338,79 @@ exports.assignCampaignContacts = async (req, res) => {
   } catch (error) {
     console.error('Bulk assign error:', error);
     res.status(500).json({ error: 'Failed to assign campaign contacts.' });
+  }
+};
+
+// Get contacts that have been in follow up status for more than 7 days
+exports.getFollowUpOverdueContacts = async (req, res) => {
+  try {
+    const sql = `
+      SELECT c.*, u.name as assigned_caller, camp.name as campaign_name 
+      FROM contacts c
+      LEFT JOIN users u ON c.assigned_to = u.id
+      LEFT JOIN campaigns camp ON c.campaign_id = camp.id
+      WHERE c.status = 'follow_up' AND c.follow_up_started_at IS NOT NULL
+      ORDER BY c.follow_up_started_at ASC
+    `;
+    const result = await db.query(sql);
+
+    // Filter in JS for maximum compatibility between SQLite and PostgreSQL date representations
+    const overdueContacts = result.rows.filter(contact => {
+      let dateVal;
+      const val = contact.follow_up_started_at;
+      if (typeof val === 'number') {
+        dateVal = new Date(val);
+      } else if (typeof val === 'string' || val instanceof String) {
+        if (!isNaN(val)) {
+          dateVal = new Date(parseInt(val, 10));
+        } else {
+          let dateStr = val;
+          if (!dateStr.includes('Z') && !dateStr.includes('T')) {
+            if (dateStr.includes(' ') && dateStr.includes('-')) {
+              dateStr = dateStr.replace(' ', 'T') + 'Z';
+            }
+          }
+          dateVal = new Date(dateStr);
+        }
+      } else if (val instanceof Date) {
+        dateVal = val;
+      }
+
+      if (!dateVal || isNaN(dateVal.getTime())) return false;
+
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      return dateVal <= oneWeekAgo;
+    });
+
+    res.json(overdueContacts);
+  } catch (error) {
+    console.error('Get overdue follow-up contacts error:', error);
+    res.status(500).json({ error: 'Server error retrieving overdue follow-up contacts.' });
+  }
+};
+
+// Bulk transfer specific contacts to another telecaller
+exports.bulkTransferContacts = async (req, res) => {
+  const { contactIds, telecallerId } = req.body;
+
+  if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
+    return res.status(400).json({ error: 'Please specify contactIds as a non-empty array.' });
+  }
+
+  try {
+    const assignedTo = (telecallerId && telecallerId !== 'null' && telecallerId !== '') 
+        ? parseInt(telecallerId) 
+        : null;
+
+    const placeholders = contactIds.map((_, index) => `$${index + 2}`).join(', ');
+    const sql = `UPDATE contacts SET assigned_to = $1, status = 'pending', follow_up_date = NULL, follow_up_started_at = NULL WHERE id IN (${placeholders})`;
+
+    await db.query(sql, [assignedTo, ...contactIds]);
+
+    res.json({ message: `Successfully transferred ${contactIds.length} contacts.` });
+  } catch (error) {
+    console.error('Bulk transfer contacts error:', error);
+    res.status(500).json({ error: 'Server error bulk transferring contacts.' });
   }
 };

@@ -91,6 +91,12 @@ exports.createCallLog = async (req, res) => {
       params[0] = 'follow_up';
     }
 
+    if (params[0] === 'follow_up') {
+      updateSql += ', follow_up_started_at = COALESCE(follow_up_started_at, CURRENT_TIMESTAMP)';
+    } else {
+      updateSql += ', follow_up_started_at = NULL';
+    }
+
     updateSql += ` WHERE id = $${paramIndex}`;
     params.push(contactId);
 

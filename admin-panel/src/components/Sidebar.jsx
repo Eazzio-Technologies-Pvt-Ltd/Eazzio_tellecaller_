@@ -13,7 +13,8 @@ import {
   LayoutGrid,
   IndianRupee,
   LifeBuoy,
-  Headphones
+  Headphones,
+  Shuffle
 } from 'lucide-react';
 
 import Logo from './Logo';
@@ -48,6 +49,7 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
         { id: 'billing',     label: isDemoUser ? 'Subscribe' : 'Billing', icon: IndianRupee },
         { id: 'campaigns',   label: 'Campaigns',       icon: PhoneOutgoing },
         { id: 'contacts',    label: 'Contacts',        icon: Contact2 },
+        { id: 'follow-up-transfers', label: 'Lead Transfers', icon: Shuffle },
         { id: 'call-logs',   label: 'Call Logs',       icon: History },
         { id: 'help-desk',   label: 'Help Desk',       icon: LifeBuoy },
       ];

@@ -13,6 +13,7 @@ import Companies from './pages/Companies';
 import BillingPage from './pages/BillingPage';
 import HelpDesk from './pages/HelpDesk';
 import SupportTickets from './pages/SupportTickets';
+import FollowUpTransfers from './pages/FollowUpTransfers';
 import { Mail, Lock, LogIn, AlertCircle, Menu, X, ShieldCheck, ArrowLeft, RefreshCw, Phone, Users, TrendingUp, Shield, Zap, Building2, Eye, EyeOff, Briefcase, Tag } from 'lucide-react';
 import Logo from './components/Logo';
 
@@ -697,6 +698,8 @@ const App = () => {
         return <Campaigns user={user} />;
       case 'contacts':
         return <Contacts />;
+      case 'follow-up-transfers':
+        return <FollowUpTransfers />;
       case 'call-logs':
         return <CallLogs user={user} setActiveTab={setActiveTab} />;
       case 'accounts':

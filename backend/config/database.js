@@ -255,6 +255,7 @@ async function initializeSchema() {
       assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
       last_called_at ${timestampType},
       follow_up_date ${timestampType},
+      follow_up_started_at ${timestampType},
       created_at ${timestampType}
     )`,
 
@@ -339,6 +340,15 @@ async function initializeSchema() {
     // Column already exists, ignore
   }
 
+  // Add follow_up_started_at column if it doesn't exist in main contacts table
+  try {
+    const tsType = dbType === 'postgres' ? 'TIMESTAMP' : 'DATETIME';
+    await queryMain(`ALTER TABLE contacts ADD COLUMN follow_up_started_at ${tsType}`);
+    console.log('Added follow_up_started_at column to contacts table in main db.');
+  } catch (err) {
+    // Column already exists, ignore
+  }
+
   // Migrate all dynamic company databases to add current_token column (SQLite only)
   try {
     const databasesDir = getDatabasesDir();
@@ -350,11 +360,16 @@ async function initializeSchema() {
           const compDb = new sqlite3.Database(sqliteFile);
           await new Promise((resolve) => {
             compDb.run('ALTER TABLE users ADD COLUMN current_token TEXT', [], (err) => {
+              resolve();
+            });
+          });
+          await new Promise((resolve) => {
+            compDb.run('ALTER TABLE contacts ADD COLUMN follow_up_started_at DATETIME', [], (err) => {
               compDb.close();
               resolve();
             });
           });
-          console.log(`Migrated company database ${file} to add current_token.`);
+          console.log(`Migrated company database ${file} to add current_token and follow_up_started_at.`);
         }
       }
     }
@@ -475,6 +490,14 @@ async function initializeSchema() {
             await client.query(`SET search_path TO "${schemaName}"`);
             await client.query('ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)');
             await client.query('ALTER TABLE contacts ALTER COLUMN name TYPE VARCHAR(255)');
+            
+            try {
+              await client.query('ALTER TABLE contacts ADD COLUMN follow_up_started_at TIMESTAMP');
+              console.log(`Added follow_up_started_at to schema ${schemaName}`);
+            } catch (e) {
+              // Ignore if already exists
+            }
+            
             console.log(`Migrated contacts table column types to VARCHAR(50) and VARCHAR(255) in schema: ${schemaName}`);
           } finally {
             client.release();
@@ -542,6 +565,7 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
           assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
           last_called_at ${timestampType},
           follow_up_date ${timestampType},
+          follow_up_started_at ${timestampType},
           created_at ${timestampType}
         )`,
 
@@ -650,6 +674,7 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
       assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
       last_called_at ${timestampType},
       follow_up_date ${timestampType},
+      follow_up_started_at ${timestampType},
       created_at ${timestampType}
     )`,
 
