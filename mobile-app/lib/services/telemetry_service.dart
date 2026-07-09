@@ -44,6 +44,9 @@ class TelemetryService {
     ApiService.updateStatus('online');
     _currentState = TelemetryState.idle;
 
+    // Fetch initial daily stats from server
+    initializeSessionFromServer();
+
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_currentState != TelemetryState.onBreak) {
         _workingTime++;
@@ -69,6 +72,32 @@ class TelemetryService {
         _syncWithServer();
       }
     });
+  }
+
+  // Fetch today's telemetry stats from server to initialize cumulative timing
+  Future<void> initializeSessionFromServer() async {
+    if (!ApiService.isAuthenticated) return;
+    try {
+      final data = await ApiService.fetchTodayTelemetry();
+      if (data != null && data['success'] == true) {
+        final telemetry = data['telemetry'];
+        final calls = data['calls'];
+        
+        _workingTime = telemetry['workingTime'] ?? 0;
+        _talkTime = telemetry['talkTime'] ?? 0;
+        _breakTime = telemetry['breakTime'] ?? 0;
+        _idleTime = telemetry['idleTime'] ?? 0;
+        
+        connectedCalls = calls['connected'] ?? 0;
+        nonConnectedCalls = calls['nonConnected'] ?? 0;
+        receivedCalls = calls['received'] ?? 0;
+        missedCalls = calls['missed'] ?? 0;
+        
+        print('[TelemetryService] Session initialized from server: workingTime=$_workingTime, talkTime=$_talkTime, breakTime=$_breakTime, idleTime=$_idleTime');
+      }
+    } catch (e) {
+      print('[TelemetryService] Error initializing session from server: $e');
+    }
   }
 
   // Set Caller state to break

@@ -26,6 +26,7 @@ const upload = multer({ storage });
 // Telecaller logs and telemetry sync
 router.post('/', authMiddleware('telecaller'), upload.single('recording'), callLogController.createCallLog);
 router.post('/telemetry/sync', authMiddleware('telecaller'), callLogController.syncTelemetry);
+router.get('/telemetry/today', authMiddleware('telecaller'), callLogController.getTodayTelemetry);
 
 // Admin reporting and logs list
 router.get('/', authMiddleware('admin'), callLogController.getCallLogs);

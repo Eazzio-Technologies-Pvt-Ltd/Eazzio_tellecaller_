@@ -419,6 +419,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Start telemetry session automatically on entry if not already active
     if (!_telemetry.isActive) {
       _telemetry.startSession();
+    } else {
+      _telemetry.initializeSessionFromServer();
     }
 
     // Run first call log sync and start periodic timer

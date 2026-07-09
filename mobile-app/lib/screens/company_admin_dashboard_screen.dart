@@ -94,6 +94,8 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
         _callLogs = logsData;
         _billing = billingData;
         _overdueLeads = overdueData;
+        _selectedOverdueIds.clear();
+        _bulkTransferTelecallerId = null;
         _isLoadingAll = false;
       });
     } catch (e) {
@@ -1982,6 +1984,144 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
           ),
         ),
 
+        // Bulk transfer action bar at the top of list
+        if (_selectedOverdueIds.isNotEmpty)
+          Container(
+            margin: EdgeInsets.symmetric(horizontal: layout.padding, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.20)),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  '${_selectedOverdueIds.length} Selected',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 13),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: isDark ? const Color(0xFF222435) : const Color(0xFFD1D5DB)),
+                    ),
+                    height: 36,
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: _bulkTransferTelecallerId,
+                        hint: const Text('Transfer to...', style: TextStyle(fontSize: 12)),
+                        dropdownColor: cardColor,
+                        style: TextStyle(color: textColor, fontSize: 12),
+                        isExpanded: true,
+                        items: [
+                          const DropdownMenuItem<int>(
+                            value: null,
+                            child: Text('Unassigned (General Pool)', style: TextStyle(fontSize: 12)),
+                          ),
+                          ..._telecallers.map((tc) {
+                            return DropdownMenuItem<int>(
+                              value: tc['id'],
+                              child: Text(tc['name'] ?? 'Telecaller', style: const TextStyle(fontSize: 12)),
+                            );
+                          }).toList(),
+                        ],
+                        onChanged: (val) {
+                          setState(() {
+                            _bulkTransferTelecallerId = val;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _isTransferring
+                      ? null
+                      : () async {
+                          setState(() {
+                            _isTransferring = true;
+                          });
+                          final success = await ApiService.bulkTransferContacts(
+                            _selectedOverdueIds,
+                            _bulkTransferTelecallerId,
+                          );
+                          setState(() {
+                            _isTransferring = false;
+                          });
+                          if (success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Leads transferred successfully.')),
+                            );
+                            setState(() {
+                              _selectedOverdueIds.clear();
+                              _bulkTransferTelecallerId = null;
+                            });
+                            _fetchData();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Failed to transfer leads.')),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    minimumSize: const Size(0, 36),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                  child: _isTransferring
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 1.5),
+                        )
+                      : const Text('Transfer', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+
+        // Select All / Stats row
+        if (filteredLeads.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: layout.padding + 4, vertical: 4),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: Checkbox(
+                    value: filteredLeads.isNotEmpty && _selectedOverdueIds.length == filteredLeads.length,
+                    onChanged: (val) {
+                      setState(() {
+                        if (val == true) {
+                          _selectedOverdueIds = filteredLeads.map<int>((lead) => lead['id'] as int).toList();
+                        } else {
+                          _selectedOverdueIds.clear();
+                        }
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Select All Overdue Leads',
+                  style: TextStyle(color: subtextColor, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                const Spacer(),
+                Text(
+                  'Total: ${filteredLeads.length}',
+                  style: TextStyle(color: subtextColor, fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+
         // Leads List
         Expanded(
           child: RefreshIndicator(
@@ -2009,7 +2149,7 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
                       final days = calculateDays(lead['follow_up_started_at']);
 
                       return Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                         decoration: BoxDecoration(
                           color: isDark ? const Color(0xFF12131A) : Colors.white,
                           borderRadius: BorderRadius.circular(12),
@@ -2020,6 +2160,18 @@ class _CompanyAdminDashboardScreenState extends State<CompanyAdminDashboardScree
                         ),
                         child: Row(
                           children: [
+                            Checkbox(
+                              value: _selectedOverdueIds.contains(lead['id']),
+                              onChanged: (val) {
+                                setState(() {
+                                  if (val == true) {
+                                    _selectedOverdueIds.add(lead['id'] as int);
+                                  } else {
+                                    _selectedOverdueIds.remove(lead['id']);
+                                  }
+                                });
+                              },
+                            ),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,

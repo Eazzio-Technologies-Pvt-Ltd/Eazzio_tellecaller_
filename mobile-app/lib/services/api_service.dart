@@ -247,6 +247,27 @@ class ApiService {
     }
   }
 
+  // Fetch today's telemetry session stats
+  static Future<Map<String, dynamic>?> fetchTodayTelemetry() async {
+    if (!isAuthenticated) return null;
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/call-logs/telemetry/today'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await forceLogout();
+      }
+    } catch (e) {
+      print('Error fetching today telemetry: $e');
+    }
+    return null;
+  }
+
   // ── Company Admin Dashboard Client APIs ──
 
   static Future<Map<String, dynamic>> fetchAnalytics({int? telecallerId, String? date}) async {

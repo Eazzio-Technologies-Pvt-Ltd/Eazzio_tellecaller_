@@ -437,3 +437,62 @@ exports.getAnalytics = async (req, res) => {
   }
 };
 
+// Fetch today's telemetry and call outcomes count for the logged-in telecaller
+exports.getTodayTelemetry = async (req, res) => {
+  const userId = req.user.id;
+  const today = new Date().toISOString().split('T')[0];
+
+  try {
+    const sessionCheck = await db.query(
+      'SELECT * FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
+      [userId, today]
+    );
+
+    let session = {
+      total_working_time: 0,
+      total_calling_time: 0,
+      total_idle_time: 0,
+      total_break_time: 0
+    };
+    
+    if (sessionCheck.rows.length > 0) {
+      session = sessionCheck.rows[0];
+    }
+
+    const isPg = db.dbType === 'postgres';
+    const dateFilter = isPg ? "called_at::date = $1" : "date(called_at) = $1";
+    const callsCheck = await db.query(
+      `SELECT 
+         COUNT(CASE WHEN call_status = 'connected' THEN 1 END) as connected,
+         COUNT(CASE WHEN call_status = 'non-connected' THEN 1 END) as non_connected,
+         COUNT(CASE WHEN call_status = 'received' THEN 1 END) as received,
+         COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed
+       FROM call_logs 
+       WHERE telecaller_id = $2 AND ${dateFilter}`,
+      [today, userId]
+    );
+
+    const callCounts = callsCheck.rows[0] || { connected: 0, non_connected: 0, received: 0, missed: 0 };
+
+    res.json({
+      success: true,
+      telemetry: {
+        workingTime: parseInt(session.total_working_time || 0, 10),
+        talkTime: parseInt(session.total_calling_time || 0, 10),
+        idleTime: parseInt(session.total_idle_time || 0, 10),
+        breakTime: parseInt(session.total_break_time || 0, 10),
+      },
+      calls: {
+        connected: parseInt(callCounts.connected || 0, 10),
+        nonConnected: parseInt(callCounts.non_connected || 0, 10),
+        received: parseInt(callCounts.received || 0, 10),
+        missed: parseInt(callCounts.missed || 0, 10),
+      }
+    });
+  } catch (error) {
+    console.error('Get today telemetry error:', error);
+    res.status(500).json({ error: 'Server error fetching telemetry.' });
+  }
+};
+
+
