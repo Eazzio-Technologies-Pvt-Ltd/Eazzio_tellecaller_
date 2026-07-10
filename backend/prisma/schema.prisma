@@ -1,0 +1,234 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SuperAdmin
+  CompanyAdmin
+  Telecaller
+
+  @@map("user_role")
+}
+
+enum LeadStatus {
+  Pending
+  Completed
+  FollowUp
+  Missed
+  New
+  InProgress
+  Converted
+  Closed
+  Stale
+
+  @@map("lead_status")
+}
+
+enum TransferStatus {
+  Pending
+  Approved
+  Rejected
+
+  @@map("transfer_status")
+}
+
+model Company {
+  id                   Int       @id @default(autoincrement())
+  name                 String    @db.VarChar(100)
+  nature               String    @db.VarChar(100)
+  noOfTelecallers      Int       @default(0) @map("no_of_telecallers")
+  regNum               String    @unique @map("reg_num") @db.VarChar(50)
+  adminEmail           String    @unique @map("admin_email") @db.VarChar(100)
+  adminPasswordHash    String    @map("admin_password_hash") @db.VarChar(255)
+  adminPlainPassword   String    @map("admin_plain_password") @db.VarChar(255)
+  pricePerTelecaller   Int       @default(59) @map("price_per_telecaller")
+  planType             String    @default("monthly") @map("plan_type") @db.VarChar(20)
+  subscriptionStart    DateTime? @map("subscription_start")
+  subscriptionEnd      DateTime? @map("subscription_end")
+  editCount            Int       @default(0) @map("edit_count")
+  macAddress           String?   @map("mac_address") @db.VarChar(255)
+  callRecordingEnabled Int       @default(0) @map("call_recording_enabled")
+  callRecordingEndDate DateTime? @map("call_recording_end_date")
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  payments Payment[]
+
+  @@map("companies")
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String    @db.VarChar(100)
+  email         String    @unique @db.VarChar(100)
+  passwordHash  String    @map("password_hash") @db.VarChar(255)
+  role          String    @default("telecaller") @db.VarChar(20)
+  status        String    @default("offline") @db.VarChar(20)
+  lastActiveAt  DateTime? @default(now()) @map("last_active_at")
+  createdAt     DateTime? @default(now()) @map("created_at")
+  plainPassword String?   @map("plain_password") @db.VarChar(255)
+  currentToken  String?   @map("current_token") @db.Text
+  profilePhoto  String?   @map("profile_photo") @db.Text
+
+  // Relations
+  createdCampaigns Campaign[]          @relation("CampaignCreatedBy")
+  assignedContacts Contact[]           @relation("ContactAssignedTo")
+  addedContacts    Contact[]           @relation("ContactAddedBy")
+  callLogs         CallLog[]           @relation("CallLogTelecaller")
+  transfersFrom    LeadTransfer[]      @relation("TransferFromUser")
+  transfersTo      LeadTransfer[]      @relation("TransferToUser")
+  sessions         TelecallerSession[] @relation("SessionTelecaller")
+
+  @@map("users")
+}
+
+model Campaign {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(100)
+  description String?   @db.Text
+  status      String    @default("pending") @db.VarChar(20)
+  createdBy   Int?      @map("created_by")
+  createdAt   DateTime? @default(now()) @map("created_at")
+
+  // Relations
+  creator  User?     @relation("CampaignCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  contacts Contact[] @relation("CampaignContacts")
+
+  @@map("campaigns")
+}
+
+model Contact {
+  id                Int       @id @default(autoincrement())
+  campaignId        Int?      @map("campaign_id")
+  name              String    @db.VarChar(255)
+  phoneNumber       String    @map("phone_number") @db.VarChar(50)
+  status            String    @default("pending") @db.VarChar(20)
+  assignedTo        Int?      @map("assigned_to")
+  lastCalledAt      DateTime? @map("last_called_at")
+  followUpDate      DateTime? @map("follow_up_date")
+  followUpStartedAt DateTime? @map("follow_up_started_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  addedBy           Int?      @map("added_by")
+
+  // Stale lead feature fields
+  lastFollowUpAt DateTime? @map("last_follow_up_at")
+  isStale        Boolean   @default(false) @map("is_stale")
+  staleSince     DateTime? @map("stale_since")
+
+  // Relations
+  campaign     Campaign?      @relation("CampaignContacts", fields: [campaignId], references: [id], onDelete: Cascade)
+  assignedUser User?          @relation("ContactAssignedTo", fields: [assignedTo], references: [id], onDelete: SetNull)
+  addedUser    User?          @relation("ContactAddedBy", fields: [addedBy], references: [id], onDelete: SetNull)
+  callLogs     CallLog[]      @relation("ContactCallLogs")
+  transfers    LeadTransfer[] @relation("ContactTransfers")
+
+  @@map("contacts")
+}
+
+model CallLog {
+  id           Int      @id @default(autoincrement())
+  contactId    Int?     @map("contact_id")
+  telecallerId Int?     @map("telecaller_id")
+  callStatus   String   @map("call_status") @db.VarChar(20)
+  duration     Int      @default(0)
+  feedback     String?  @db.Text
+  recordingUrl String?  @map("recording_url") @db.Text
+  calledAt     DateTime @default(now()) @map("called_at")
+
+  // Relations
+  contact    Contact? @relation("ContactCallLogs", fields: [contactId], references: [id], onDelete: Cascade)
+  telecaller User?    @relation("CallLogTelecaller", fields: [telecallerId], references: [id], onDelete: SetNull)
+
+  @@map("call_logs")
+}
+
+model LeadTransfer {
+  id         Int      @id @default(autoincrement())
+  contactId  Int?     @map("contact_id")
+  fromUserId Int?     @map("from_user_id")
+  toUserId   Int?     @map("to_user_id")
+  status     String   @default("pending") @db.VarChar(20)
+  reason     String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  contact  Contact? @relation("ContactTransfers", fields: [contactId], references: [id], onDelete: Cascade)
+  fromUser User?    @relation("TransferFromUser", fields: [fromUserId], references: [id], onDelete: SetNull)
+  toUser   User?    @relation("TransferToUser", fields: [toUserId], references: [id], onDelete: SetNull)
+
+  @@map("lead_transfers")
+}
+
+model TelecallerSession {
+  id               Int       @id @default(autoincrement())
+  telecallerId     Int       @map("telecaller_id")
+  date             DateTime  @default(now()) @db.Date
+  totalWorkingTime Int       @default(0) @map("total_working_time")
+  totalCallingTime Int       @default(0) @map("total_calling_time")
+  totalIdleTime    Int       @default(0) @map("total_idle_time")
+  totalBreakTime   Int       @default(0) @map("total_break_time")
+  lastUpdatedAt    DateTime? @default(now()) @map("last_updated_at")
+
+  // Relations
+  telecaller User @relation("SessionTelecaller", fields: [telecallerId], references: [id], onDelete: Cascade)
+
+  @@unique([telecallerId, date])
+  @@map("telecaller_sessions")
+}
+
+model AdminNotification {
+  id        Int      @id @default(autoincrement())
+  message   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("admin_notifications")
+}
+
+model SupportTicket {
+  id            Int       @id @default(autoincrement())
+  companyRegNum String    @map("company_reg_num") @db.VarChar(50)
+  companyName   String    @map("company_name") @db.VarChar(100)
+  adminEmail    String    @map("admin_email") @db.VarChar(100)
+  subject       String    @db.VarChar(255)
+  message       String    @db.Text
+  status        String    @default("open") @db.VarChar(20)
+  imageUrl      String?   @map("image_url") @db.VarChar(255)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  resolvedAt    DateTime? @map("resolved_at")
+
+  @@map("support_tickets")
+}
+
+model PasswordReset {
+  id        Int      @id @default(autoincrement())
+  email     String   @db.VarChar(100)
+  otp       String   @db.VarChar(6)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("password_resets")
+}
+
+model Payment {
+  id                Int      @id @default(autoincrement())
+  companyRegNum     String   @map("company_reg_num") @db.VarChar(50)
+  razorpayOrderId   String   @unique @map("razorpay_order_id") @db.VarChar(100)
+  razorpayPaymentId String?  @map("razorpay_payment_id") @db.VarChar(100)
+  razorpaySignature String?  @map("razorpay_signature") @db.VarChar(255)
+  amount            Int // Amount in paise
+  planType          String   @map("plan_type") @db.VarChar(20)
+  noOfTelecallers   Int      @map("no_of_telecallers")
+  callRecording     Boolean  @default(false) @map("call_recording")
+  status            String   @default("pending") @db.VarChar(20) // pending, success, failed
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Relations
+  company Company @relation(fields: [companyRegNum], references: [regNum], onDelete: Cascade)
+
+  @@map("payments")
+}
