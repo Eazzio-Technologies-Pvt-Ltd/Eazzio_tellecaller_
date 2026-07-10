@@ -463,9 +463,9 @@ exports.addLead = async (req, res) => {
 
     // Insert the new contact and assign to this telecaller
     const insertResult = await db.query(
-      `INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [campaignId, name, phoneNumber, 'pending', userId]
+      `INSERT INTO contacts (campaign_id, name, phone_number, status, assigned_to, added_by) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [campaignId, name, phoneNumber, 'pending', userId, userId]
     );
 
     res.status(201).json({

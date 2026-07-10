@@ -1289,7 +1289,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final addedLeads = _allottedContacts
-        .where((c) => c['status'] == 'pending' || c['status'] == 'calling')
+        .where((c) => c['added_by'] != null && c['added_by'] == (_profileUser?['id'] ?? -1))
         .toList();
 
     final followUpLeads = _allottedContacts
@@ -1419,6 +1419,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             child: Text(
                               'Campaign: $campaign',
                               style: TextStyle(color: isDark ? Colors.grey[300] : Colors.grey[700], fontSize: 11),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: lead['added_by'] != null && lead['added_by'] == (_profileUser?['id'] ?? -1)
+                                  ? const Color(0x1F10B981)
+                                  : const Color(0x1F3B82F6),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              lead['added_by'] != null && lead['added_by'] == (_profileUser?['id'] ?? -1)
+                                  ? 'ADDED BY OWN'
+                                  : 'ALLOTTED',
+                              style: TextStyle(
+                                color: lead['added_by'] != null && lead['added_by'] == (_profileUser?['id'] ?? -1)
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFF3B82F6),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -1974,16 +1996,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       setState(() {});
                     },
                   ),
-                ),
-                Divider(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB), height: 1),
-                ListTile(
-                  leading: const Icon(Icons.lock_outline_rounded, color: Color(0xFF6366F1)),
-                  title: Text(
-                    'Change Password',
-                    style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF64748B)),
-                  onTap: _showChangePasswordDialog,
                 ),
                 Divider(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB), height: 1),
                 ListTile(

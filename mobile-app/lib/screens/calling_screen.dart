@@ -271,39 +271,47 @@ class _CallingScreenState extends State<CallingScreen> {
       
       const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
       
-      // Try up to 4 times (total ~3.5 seconds) to retrieve the call log matching the contact
-      for (int attempt = 1; attempt <= 4; attempt++) {
-        await Future.delayed(Duration(milliseconds: attempt == 1 ? 1500 : 600));
+      // Try up to 6 times (total ~5 seconds) to retrieve the call log matching the contact
+      for (int attempt = 1; attempt <= 6; attempt++) {
+        await Future.delayed(Duration(milliseconds: attempt == 1 ? 1500 : 800));
         
-        final dynamic callDetails = await channel.invokeMethod('getLastCallDetails');
+        final dynamic recentLogs = await channel.invokeMethod('getRecentCallLogs', {'limit': 15});
         
-        if (callDetails != null && callDetails is Map) {
-          final String number = callDetails['number'] ?? '';
-          final int duration = callDetails['duration'] ?? 0;
-          final int type = callDetails['type'] ?? 0;
+        if (recentLogs != null && recentLogs is List) {
+          final nowMs = DateTime.now().millisecondsSinceEpoch;
           
-          print('[CallLog] Attempt $attempt: Detected number=$number, duration=$duration, type=$type');
-          
-          final String cleanLogNumber = number.replaceAll(RegExp(r'\D'), '');
-          
-          if (cleanLogNumber.endsWith(contactPhone) || contactPhone.endsWith(cleanLogNumber)) {
-            setState(() {
-              _callDurationSeconds = duration; // Sync exact duration from Android call log
-              if (type == 2) {
-                // Outgoing
-                _detectedCallStatus = duration > 0 ? 'connected' : 'non-connected';
-              } else if (type == 1) {
-                // Incoming
-                _detectedCallStatus = duration > 0 ? 'received' : 'missed';
-              } else if (type == 3 || type == 5) {
-                // Missed or Rejected
-                _detectedCallStatus = 'missed';
-              } else {
-                _detectedCallStatus = duration > 0 ? 'connected' : 'non-connected';
+          for (var log in recentLogs) {
+            if (log is Map) {
+              final String number = log['number'] ?? '';
+              final int duration = log['duration'] ?? 0;
+              final int type = log['type'] ?? 0;
+              final int date = log['date'] ?? 0; // Epoch timestamp in milliseconds
+              
+              final String cleanLogNumber = number.replaceAll(RegExp(r'\D'), '');
+              
+              // Suffix match phone numbers (to handle country codes / formats) and verify date is within 5 minutes
+              if ((cleanLogNumber.endsWith(contactPhone) || contactPhone.endsWith(cleanLogNumber)) &&
+                  (nowMs - date).abs() < 300000) {
+                
+                setState(() {
+                  _callDurationSeconds = duration; // Sync exact duration from Android call log
+                  if (type == 2) {
+                    // Outgoing
+                    _detectedCallStatus = duration > 0 ? 'connected' : 'non-connected';
+                  } else if (type == 1) {
+                    // Incoming
+                    _detectedCallStatus = duration > 0 ? 'received' : 'missed';
+                  } else if (type == 3 || type == 5) {
+                    // Missed or Rejected
+                    _detectedCallStatus = 'missed';
+                  } else {
+                    _detectedCallStatus = duration > 0 ? 'connected' : 'non-connected';
+                  }
+                });
+                print('[CallLog] Match found in recent logs on attempt $attempt! Outcome: $_detectedCallStatus, Duration: $_callDurationSeconds');
+                return; // Exit on successful match
               }
-            });
-            print('[CallLog] Match found on attempt $attempt! Outcome: $_detectedCallStatus, Duration: $_callDurationSeconds');
-            return; // Exit on successful match
+            }
           }
         }
       }
@@ -313,9 +321,9 @@ class _CallingScreenState extends State<CallingScreen> {
         _detectedCallStatus = 'non-connected';
         _callDurationSeconds = 0;
       });
-      print('[CallLog] No matching call log found. Defaulting to non-connected.');
+      print('[CallLog] No matching recent call log found. Defaulting to non-connected.');
     } catch (e) {
-      print('[CallLog] Error retrieving last call log: $e');
+      print('[CallLog] Error retrieving recent call logs: $e');
       setState(() {
         _detectedCallStatus = 'non-connected';
         _callDurationSeconds = 0;

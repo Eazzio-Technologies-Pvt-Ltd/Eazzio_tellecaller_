@@ -541,6 +541,14 @@ exports.updateStatus = async (req, res) => {
     const currentResult = await db.query('SELECT status FROM users WHERE id = $1', [userId]);
     const currentStatus = currentResult.rows.length > 0 ? currentResult.rows[0].status : null;
 
+    // Record delta since last active timestamp before transitioning to new status
+    try {
+      const callLogController = require('./callLogController');
+      await callLogController.recordTelemetryDelta(userId);
+    } catch (telemetryErr) {
+      console.error('Failed to record telemetry delta on status change:', telemetryErr);
+    }
+
     // Always update the timestamp, but only log notifications on actual transitions
     await db.query('UPDATE users SET status = $1, last_active_at = CURRENT_TIMESTAMP WHERE id = $2', [status, userId]);
 

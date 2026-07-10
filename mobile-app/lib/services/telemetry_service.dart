@@ -20,6 +20,9 @@ class TelemetryService with WidgetsBindingObserver {
   bool shiftCompleteShown = false;
   bool _isAppPaused = false;
   String _sessionDate = '';
+  bool _isInitialized = false;
+
+  bool get isInitialized => _isInitialized;
 
   String getTrackingDate([DateTime? dt]) {
     final now = dt ?? DateTime.now();
@@ -68,15 +71,15 @@ class TelemetryService with WidgetsBindingObserver {
     }
   }
 
-  void _handleAppForeground() {
+  void _handleAppForeground() async {
     if (_isAppPaused && isActive) {
-      _isAppPaused = false;
       if (_currentState == TelemetryState.onBreak) {
         ApiService.updateStatus('break');
       } else {
         ApiService.updateStatus('online');
       }
-      initializeSessionFromServer();
+      await initializeSessionFromServer();
+      _isAppPaused = false;
     }
   }
 
@@ -84,6 +87,7 @@ class TelemetryService with WidgetsBindingObserver {
   Future<void> startSession() async {
     if (_timer != null) return;
     
+    _isInitialized = false;
     // Set status online
     ApiService.updateStatus('online');
     _currentState = TelemetryState.idle;
@@ -94,7 +98,7 @@ class TelemetryService with WidgetsBindingObserver {
     await initializeSessionFromServer();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_isAppPaused) return;
+      if (_isAppPaused || !_isInitialized) return;
 
       // Check for 12:00 AM boundary crossover
       final currentTrackingDate = getTrackingDate();
@@ -156,10 +160,12 @@ class TelemetryService with WidgetsBindingObserver {
         receivedCalls = calls['received'] ?? 0;
         missedCalls = calls['missed'] ?? 0;
         
+        _isInitialized = true;
         print('[TelemetryService] Session initialized from server: workingTime=$_workingTime, talkTime=$_talkTime, breakTime=$_breakTime, idleTime=$_idleTime');
       }
     } catch (e) {
       print('[TelemetryService] Error initializing session from server: $e');
+      _isInitialized = true; // allow tracking fallback if server fails
     }
   }
 
@@ -215,7 +221,7 @@ class TelemetryService with WidgetsBindingObserver {
 
   // Sync session timer data
   Future<void> _syncWithServer() async {
-    if (!ApiService.isAuthenticated) return;
+    if (!ApiService.isAuthenticated || !_isInitialized) return;
     await ApiService.syncTelemetry(
       workingTime: _workingTime,
       idleTime: _idleTime,

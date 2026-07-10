@@ -93,6 +93,14 @@ async function checkOfflineTelecallers() {
       for (const row of result.rows) {
         console.log(`[StatusMonitor][${regNum || 'Main'}] Telecaller ${row.name} (ID: ${row.id}) inactive for >35s. Setting status to offline.`);
         
+        // Record final delta since last active timestamp before marking offline
+        try {
+          const callLogController = require('./controllers/callLogController');
+          await callLogController.recordTelemetryDelta(row.id);
+        } catch (telemetryErr) {
+          console.error('Failed to record telemetry delta on offline status transition:', telemetryErr);
+        }
+
         // Update status to offline
         await db.query(
           'UPDATE users SET status = $1, last_active_at = CURRENT_TIMESTAMP WHERE id = $2',

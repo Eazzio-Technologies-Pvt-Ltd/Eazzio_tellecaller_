@@ -264,6 +264,7 @@ async function initializeSchema() {
       phone_number VARCHAR(50) NOT NULL,
       status VARCHAR(20) DEFAULT 'pending',
       assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      added_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
       last_called_at ${timestampType},
       follow_up_date ${timestampType},
       follow_up_started_at ${timestampType},
@@ -515,6 +516,12 @@ async function initializeSchema() {
       // 1. Alter public database contacts table
       await queryMain('ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)');
       await queryMain('ALTER TABLE contacts ALTER COLUMN name TYPE VARCHAR(255)');
+      try {
+        await queryMain('ALTER TABLE contacts ADD COLUMN added_by INTEGER');
+        console.log('Added added_by to public contacts table');
+      } catch (e) {
+        // Ignore if already exists
+      }
       console.log('Migrated public contacts table column types to VARCHAR(50) and VARCHAR(255).');
 
       // 2. Alter dynamic schemas
@@ -523,6 +530,8 @@ async function initializeSchema() {
         const schemaName = `company_${row.reg_num}`;
         try {
           const client = await pgPool.connect();
+          const errorHandler = (err) => { console.error('Database client error in migration check:', err.message); };
+          client.on('error', errorHandler);
           try {
             await client.query(`SET search_path TO "${schemaName}"`);
             await client.query('ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)');
@@ -531,6 +540,13 @@ async function initializeSchema() {
             try {
               await client.query('ALTER TABLE contacts ADD COLUMN follow_up_started_at TIMESTAMP');
               console.log(`Added follow_up_started_at to schema ${schemaName}`);
+            } catch (e) {
+              // Ignore if already exists
+            }
+
+            try {
+              await client.query('ALTER TABLE contacts ADD COLUMN added_by INTEGER REFERENCES users(id) ON DELETE SET NULL');
+              console.log(`Added added_by to contacts table in schema ${schemaName}`);
             } catch (e) {
               // Ignore if already exists
             }
@@ -559,6 +575,7 @@ async function initializeSchema() {
             
             console.log(`Migrated contacts table column types to VARCHAR(50) and VARCHAR(255) in schema: ${schemaName}`);
           } finally {
+            client.removeListener('error', errorHandler);
             client.release();
           }
         } catch (schemaErr) {
@@ -625,6 +642,7 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
           phone_number VARCHAR(50) NOT NULL,
           status VARCHAR(20) DEFAULT 'pending',
           assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          added_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
           last_called_at ${timestampType},
           follow_up_date ${timestampType},
           follow_up_started_at ${timestampType},

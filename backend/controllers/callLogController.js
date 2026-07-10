@@ -164,13 +164,101 @@ exports.createCallLog = async (req, res) => {
   }
 };
 
+// Record telemetry delta since last active timestamp based on server wall-clock time
+exports.recordTelemetryDelta = async (userId) => {
+  const today = getTrackingDate();
+  try {
+    const userCheck = await db.query('SELECT status, name, last_active_at FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) return;
+    const user = userCheck.rows[0];
+    const originalStatus = user.status;
+    const lastActive = user.last_active_at ? new Date(user.last_active_at) : null;
+    const now = new Date();
+
+    let delta = 0;
+    if (lastActive) {
+      delta = Math.floor((now.getTime() - lastActive.getTime()) / 1000);
+    }
+    if (delta <= 0) return;
+
+    let workDelta = 0;
+    let idleDelta = 0;
+    let breakDelta = 0;
+    let callingDelta = 0;
+
+    if (delta <= 35) {
+      // Normal heartbeat/transition interval
+      if (originalStatus === 'online') {
+        workDelta = delta;
+        idleDelta = delta;
+      } else if (originalStatus === 'calling') {
+        workDelta = delta;
+        callingDelta = delta;
+      } else if (originalStatus === 'break') {
+        breakDelta = delta;
+      }
+    } else {
+      // Heartbeat missed beyond 2x threshold (35 seconds)!
+      // The gap is counted as break time, not active working or calling time.
+      breakDelta = delta;
+      console.log(`[StatusMonitor] Telecaller ${user.name} missed heartbeat. Gap of ${delta}s counted as Break.`);
+    }
+
+    // Get or create session row for today
+    const sessionCheck = await db.query(
+      'SELECT * FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
+      [userId, today]
+    );
+
+    let session = {
+      total_working_time: 0,
+      total_idle_time: 0,
+      total_break_time: 0,
+      total_calling_time: 0
+    };
+
+    if (sessionCheck.rows.length === 0) {
+      await db.query(
+        `INSERT INTO telecaller_sessions (telecaller_id, date, total_working_time, total_idle_time, total_break_time, total_calling_time) 
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [userId, today, workDelta, idleDelta, breakDelta, callingDelta]
+      );
+      session.total_working_time = workDelta;
+      session.total_idle_time = idleDelta;
+      session.total_break_time = breakDelta;
+      session.total_calling_time = callingDelta;
+    } else {
+      const current = sessionCheck.rows[0];
+      const newWorking = (parseInt(current.total_working_time || 0, 10)) + workDelta;
+      const newIdle = (parseInt(current.total_idle_time || 0, 10)) + idleDelta;
+      const newBreak = (parseInt(current.total_break_time || 0, 10)) + breakDelta;
+      const newCalling = (parseInt(current.total_calling_time || 0, 10)) + callingDelta;
+
+      await db.query(
+        `UPDATE telecaller_sessions 
+         SET total_working_time = $1, total_idle_time = $2, total_break_time = $3, total_calling_time = $4, last_updated_at = CURRENT_TIMESTAMP
+         WHERE telecaller_id = $5 AND date = $6`,
+        [newWorking, newIdle, newBreak, newCalling, userId, today]
+      );
+      session.total_working_time = newWorking;
+      session.total_idle_time = newIdle;
+      session.total_break_time = newBreak;
+      session.total_calling_time = newCalling;
+    }
+
+    console.log(`[TelemetrySync] Telecaller: ${user.name} | Status: ${originalStatus} | Last Active: ${lastActive ? lastActive.toISOString() : 'None'} | Now: ${now.toISOString()} | Delta: ${delta}s | Increments -> Work: +${workDelta}s, Idle: +${idleDelta}s, Break: +${breakDelta}s, Talk: +${callingDelta}s | Totals -> Work: ${session.total_working_time}s, Talk: ${session.total_calling_time}s`);
+  } catch (error) {
+    console.error('Error recording telemetry delta:', error);
+  }
+};
+
 // Sync Telemetry session timers (working time, idle time, break time)
 exports.syncTelemetry = async (req, res) => {
-  const { workingTime, idleTime, breakTime, callingTime } = req.body;
   const userId = req.user.id;
-  const today = getTrackingDate();
-
   try {
+    // Record delta since last active timestamp
+    await exports.recordTelemetryDelta(userId);
+
     // Update user's last active timestamp because they just synced telemetry.
     // If they were marked offline (due to background check inactivity), mark them back online.
     const userCheck = await db.query('SELECT status, name FROM users WHERE id = $1', [userId]);
@@ -197,49 +285,6 @@ exports.syncTelemetry = async (req, res) => {
           [userId]
         );
       }
-    }
-
-    const sessionCheck = await db.query(
-      'SELECT * FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
-      [userId, today]
-    );
-
-    if (sessionCheck.rows.length === 0) {
-      try {
-        await db.query(
-          `INSERT INTO telecaller_sessions (telecaller_id, date, total_working_time, total_idle_time, total_break_time, total_calling_time) 
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [userId, today, workingTime || 0, idleTime || 0, breakTime || 0, callingTime || 0]
-        );
-      } catch (insertErr) {
-        const checkAgain = await db.query(
-          'SELECT * FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
-          [userId, today]
-        );
-        const current = checkAgain.rows[0] || {};
-        const newWorking = Math.max(parseInt(current.total_working_time || 0, 10), parseInt(workingTime || 0, 10));
-        const newIdle = Math.max(parseInt(current.total_idle_time || 0, 10), parseInt(idleTime || 0, 10));
-        const newBreak = Math.max(parseInt(current.total_break_time || 0, 10), parseInt(breakTime || 0, 10));
-        const newCalling = Math.max(parseInt(current.total_calling_time || 0, 10), parseInt(callingTime || 0, 10));
-        await db.query(
-          `UPDATE telecaller_sessions 
-           SET total_working_time = $1, total_idle_time = $2, total_break_time = $3, total_calling_time = $4, last_updated_at = CURRENT_TIMESTAMP
-           WHERE telecaller_id = $5 AND date = $6`,
-          [newWorking, newIdle, newBreak, newCalling, userId, today]
-        );
-      }
-    } else {
-      const current = sessionCheck.rows[0];
-      const newWorking = Math.max(parseInt(current.total_working_time || 0, 10), parseInt(workingTime || 0, 10));
-      const newIdle = Math.max(parseInt(current.total_idle_time || 0, 10), parseInt(idleTime || 0, 10));
-      const newBreak = Math.max(parseInt(current.total_break_time || 0, 10), parseInt(breakTime || 0, 10));
-      const newCalling = Math.max(parseInt(current.total_calling_time || 0, 10), parseInt(callingTime || 0, 10));
-      await db.query(
-        `UPDATE telecaller_sessions 
-         SET total_working_time = $1, total_idle_time = $2, total_break_time = $3, total_calling_time = $4, last_updated_at = CURRENT_TIMESTAMP
-         WHERE telecaller_id = $5 AND date = $6`,
-        [newWorking, newIdle, newBreak, newCalling, userId, today]
-      );
     }
 
     res.json({ success: true });
@@ -425,7 +470,8 @@ exports.getAnalytics = async (req, res) => {
           COUNT(CASE WHEN call_status = 'connected' THEN 1 END) as connected_count,
           COUNT(CASE WHEN call_status = 'non-connected' THEN 1 END) as non_connected_count,
           COUNT(CASE WHEN call_status = 'received' THEN 1 END) as received_count,
-          COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed_count
+          COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed_count,
+          COALESCE(SUM(duration), 0) as talk_time
         FROM call_logs
         WHERE ${isPg ? "TO_CHAR(called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM')" : "strftime('%Y-%m', called_at, '-6 hours', '-30 minutes')"} = $1
         GROUP BY telecaller_id
@@ -448,7 +494,8 @@ exports.getAnalytics = async (req, res) => {
           COUNT(CASE WHEN call_status = 'connected' THEN 1 END) as connected_count,
           COUNT(CASE WHEN call_status = 'non-connected' THEN 1 END) as non_connected_count,
           COUNT(CASE WHEN call_status = 'received' THEN 1 END) as received_count,
-          COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed_count
+          COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed_count,
+          COALESCE(SUM(duration), 0) as talk_time
         FROM call_logs
         WHERE ${isPg ? "(called_at - INTERVAL '6 hours 30 minutes')::date" : "date(called_at, '-6 hours', '-30 minutes')"} = $1
         GROUP BY telecaller_id
@@ -462,7 +509,7 @@ exports.getAnalytics = async (req, res) => {
         u.email, 
         u.status,
         COALESCE(ts.working_time, 0) as working_time,
-        COALESCE(ts.calling_time, 0) as calling_time,
+        COALESCE(cl.talk_time, 0) as calling_time,
         COALESCE(ts.idle_time, 0) as idle_time,
         COALESCE(ts.break_time, 0) as break_time,
         COALESCE(cl.connected_count, 0) as connected_count,
@@ -545,13 +592,21 @@ exports.getTodayTelemetry = async (req, res) => {
       [today, userId]
     );
 
+    const talkTimeCheck = await db.query(
+      `SELECT COALESCE(SUM(duration), 0) as talk_time 
+       FROM call_logs 
+       WHERE telecaller_id = $2 AND ${dateFilter}`,
+      [today, userId]
+    );
+
     const callCounts = callsCheck.rows[0] || { connected: 0, non_connected: 0, received: 0, missed: 0 };
+    const talkTime = parseInt(talkTimeCheck.rows[0].talk_time, 10);
 
     res.json({
       success: true,
       telemetry: {
         workingTime: parseInt(session.total_working_time || 0, 10),
-        talkTime: parseInt(session.total_calling_time || 0, 10),
+        talkTime: talkTime,
         idleTime: parseInt(session.total_idle_time || 0, 10),
         breakTime: parseInt(session.total_break_time || 0, 10),
       },
