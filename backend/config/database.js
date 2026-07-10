@@ -118,6 +118,8 @@ async function query(text, params = []) {
   if (dbType === 'postgres') {
     const store = dbStorage.getStore();
     const client = await pgPool.connect();
+    const errorHandler = (err) => { console.error('Database client error:', err.message); };
+    client.on('error', errorHandler);
     try {
       if (store && store.companyRegNum) {
         const schemaName = `company_${store.companyRegNum}`;
@@ -127,6 +129,7 @@ async function query(text, params = []) {
       }
       return await client.query(text, params);
     } finally {
+      client.removeListener('error', errorHandler);
       client.release();
     }
   } else {
@@ -162,10 +165,13 @@ async function query(text, params = []) {
 async function queryMain(text, params = []) {
   if (dbType === 'postgres') {
     const client = await pgPool.connect();
+    const errorHandler = (err) => { console.error('Database client error in queryMain:', err.message); };
+    client.on('error', errorHandler);
     try {
       await client.query('SET search_path TO "public"');
       return await client.query(text, params);
     } finally {
+      client.removeListener('error', errorHandler);
       client.release();
     }
   } else {
@@ -574,6 +580,8 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
   if (dbType === 'postgres') {
     const schemaName = `company_${regNum}`;
     const client = await pgPool.connect();
+    const errorHandler = (err) => { console.error('Database client error in initializeCompanySchema:', err.message); };
+    client.on('error', errorHandler);
     try {
       await client.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
       await client.query(`SET search_path TO "${schemaName}"`);
@@ -686,6 +694,7 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
 
       console.log(`[Database] Company PostgreSQL schema "${schemaName}" initialized successfully.`);
     } finally {
+      client.removeListener('error', errorHandler);
       client.release();
     }
     return;
@@ -855,11 +864,14 @@ async function getCompanyTelecallerCount(regNum) {
   if (dbType === 'postgres') {
     const schemaName = `company_${regNum}`;
     const client = await pgPool.connect();
+    const errorHandler = (err) => { console.error('Database client error in getCompanyTelecallerCount:', err.message); };
+    client.on('error', errorHandler);
     try {
       await client.query(`SET search_path TO "${schemaName}"`);
       const res = await client.query("SELECT COUNT(*) as count FROM users WHERE role = 'telecaller'");
       return parseInt(res.rows[0].count) || 0;
     } finally {
+      client.removeListener('error', errorHandler);
       client.release();
     }
   }
