@@ -19,14 +19,9 @@ function getTrackingDate(dateInput) {
   const year = parseInt(partMap.year, 10);
   const month = parseInt(partMap.month, 10);
   const day = parseInt(partMap.day, 10);
-  const hour = parseInt(partMap.hour, 10);
-  let istDate = new Date(Date.UTC(year, month - 1, day, hour));
-  if (hour < 12) {
-    istDate.setUTCDate(istDate.getUTCDate() - 1);
-  }
-  const targetYear = istDate.getUTCFullYear();
-  const targetMonth = String(istDate.getUTCMonth() + 1).padStart(2, '0');
-  const targetDay = String(istDate.getUTCDate()).padStart(2, '0');
+  const targetYear = year;
+  const targetMonth = String(month).padStart(2, '0');
+  const targetDay = String(day).padStart(2, '0');
   return `${targetYear}-${targetMonth}-${targetDay}`;
 }
 
@@ -292,9 +287,9 @@ exports.getCallLogs = async (req, res) => {
       const isMonth = date.length === 7;
       let dateCast;
       if (isMonth) {
-        dateCast = isPg ? `TO_CHAR(cl.called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM') = $${params.length}` : `strftime('%Y-%m', cl.called_at, '-6 hours', '-30 minutes') = $${params.length}`;
+        dateCast = isPg ? `TO_CHAR(cl.called_at + INTERVAL '5 hours 30 minutes', 'YYYY-MM') = $${params.length}` : `strftime('%Y-%m', cl.called_at, '+5 hours', '+30 minutes') = $${params.length}`;
       } else {
-        dateCast = isPg ? `(cl.called_at - INTERVAL '6 hours 30 minutes')::date = $${params.length}` : `date(cl.called_at, '-6 hours', '-30 minutes') = $${params.length}`;
+        dateCast = isPg ? `(cl.called_at + INTERVAL '5 hours 30 minutes')::date = $${params.length}` : `date(cl.called_at, '+5 hours', '+30 minutes') = $${params.length}`;
       }
       conditions.push(dateCast);
     }
@@ -324,14 +319,14 @@ exports.getAnalytics = async (req, res) => {
     let callTrend;
 
     const isPg = db.dbType === 'postgres';
-    const dateGrouping = isPg ? "TO_CHAR(called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM-DD')" : "date(called_at, '-6 hours', '-30 minutes')";
+    const dateGrouping = isPg ? "TO_CHAR(called_at + INTERVAL '5 hours 30 minutes', 'YYYY-MM-DD')" : "date(called_at, '+5 hours', '+30 minutes')";
 
     const isMonth = date && date.length === 7;
 
     if (parsedId) {
       const callFilter = date ? (isMonth 
-        ? (isPg ? "AND TO_CHAR(called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM') = $2" : "AND strftime('%Y-%m', called_at, '-6 hours', '-30 minutes') = $2")
-        : (isPg ? "AND (called_at - INTERVAL '6 hours 30 minutes')::date = $2" : "AND date(called_at, '-6 hours', '-30 minutes') = $2")
+        ? (isPg ? "AND TO_CHAR(called_at + INTERVAL '5 hours 30 minutes', 'YYYY-MM') = $2" : "AND strftime('%Y-%m', called_at, '+5 hours', '+30 minutes') = $2")
+        : (isPg ? "AND (called_at + INTERVAL '5 hours 30 minutes')::date = $2" : "AND date(called_at, '+5 hours', '+30 minutes') = $2")
       ) : '';
 
       let overviewQuery = `
@@ -368,12 +363,12 @@ exports.getAnalytics = async (req, res) => {
       `, [parsedId]);
     } else {
       const callFilterGlobal = date ? (isMonth 
-        ? (isPg ? "AND TO_CHAR(called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM') = $1" : "AND strftime('%Y-%m', called_at, '-6 hours', '-30 minutes') = $1")
-        : (isPg ? "AND (called_at - INTERVAL '6 hours 30 minutes')::date = $1" : "AND date(called_at, '-6 hours', '-30 minutes') = $1")
+        ? (isPg ? "AND TO_CHAR(called_at + INTERVAL '5 hours 30 minutes', 'YYYY-MM') = $1" : "AND strftime('%Y-%m', called_at, '+5 hours', '+30 minutes') = $1")
+        : (isPg ? "AND (called_at + INTERVAL '5 hours 30 minutes')::date = $1" : "AND date(called_at, '+5 hours', '+30 minutes') = $1")
       ) : '';
       const sumFilterGlobal = date ? (isMonth
-        ? (isPg ? "WHERE TO_CHAR(called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM') = $1" : "WHERE strftime('%Y-%m', called_at, '-6 hours', '-30 minutes') = $1")
-        : (isPg ? "WHERE (called_at - INTERVAL '6 hours 30 minutes')::date = $1" : "WHERE date(called_at, '-6 hours', '-30 minutes') = $1")
+        ? (isPg ? "WHERE TO_CHAR(called_at + INTERVAL '5 hours 30 minutes', 'YYYY-MM') = $1" : "WHERE strftime('%Y-%m', called_at, '+5 hours', '+30 minutes') = $1")
+        : (isPg ? "WHERE (called_at + INTERVAL '5 hours 30 minutes')::date = $1" : "WHERE date(called_at, '+5 hours', '+30 minutes') = $1")
       ) : '';
 
       let overviewQuery = `
@@ -538,7 +533,7 @@ exports.getTodayTelemetry = async (req, res) => {
     }
 
     const isPg = db.dbType === 'postgres';
-    const dateFilter = isPg ? "(called_at - INTERVAL '6 hours 30 minutes')::date = $1" : "date(called_at, '-6 hours', '-30 minutes') = $1";
+    const dateFilter = isPg ? "(called_at + INTERVAL '5 hours 30 minutes')::date = $1" : "date(called_at, '+5 hours', '+30 minutes') = $1";
     const callsCheck = await db.query(
       `SELECT 
          COUNT(CASE WHEN call_status = 'connected' THEN 1 END) as connected,

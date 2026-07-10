@@ -28,7 +28,6 @@ class ApiService {
 
   // Force Logout session on session expiry or multi-device login
   static Future<void> forceLogout() async {
-    TelemetryService().resetSession();
     _token = null;
     _lastStatus = null;
     final prefs = await SharedPreferences.getInstance();
@@ -36,6 +35,8 @@ class ApiService {
     await prefs.remove('user_name');
     await prefs.remove('user_email');
     await prefs.remove('user_role');
+
+    await TelemetryService().resetSession();
     
     // Redirect to login screen
     navigatorKey.currentState?.pushAndRemoveUntil(

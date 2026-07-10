@@ -23,13 +23,9 @@ class TelemetryService with WidgetsBindingObserver {
 
   String getTrackingDate([DateTime? dt]) {
     final now = dt ?? DateTime.now();
-    DateTime target = now;
-    if (now.hour < 12) {
-      target = now.subtract(const Duration(days: 1));
-    }
-    final year = target.year;
-    final month = target.month.toString().padLeft(2, '0');
-    final day = target.day.toString().padLeft(2, '0');
+    final year = now.year;
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
     return '$year-$month-$day';
   }
 
@@ -98,7 +94,7 @@ class TelemetryService with WidgetsBindingObserver {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isAppPaused) return;
 
-      // Check for 12:00 PM boundary crossover
+      // Check for 12:00 AM boundary crossover
       final currentTrackingDate = getTrackingDate();
       if (currentTrackingDate != _sessionDate) {
         _sessionDate = currentTrackingDate;

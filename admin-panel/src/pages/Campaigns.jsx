@@ -318,7 +318,7 @@ const Campaigns = ({ user }) => {
                           <div style={styles.actionsGroup}>
                             {camp.status !== 'completed' && (
                               <button 
-                                className="btn btn-secondary"
+                                className="btn btn-secondary btn-icon"
                                 style={styles.iconButton}
                                 title={camp.status === 'active' ? 'Pause Campaign' : 'Start Campaign'}
                                 onClick={() => handleStatusChange(camp.id, camp.status)}
@@ -333,7 +333,7 @@ const Campaigns = ({ user }) => {
 
                             {camp.status !== 'completed' && (
                               <button 
-                                className="btn btn-secondary"
+                                className="btn btn-secondary btn-icon"
                                 style={styles.iconButton}
                                 title="Mark as Completed"
                                 onClick={() => handleCompleteCampaign(camp.id)}
@@ -344,7 +344,7 @@ const Campaigns = ({ user }) => {
 
                             {camp.status !== 'completed' && (
                               <button 
-                                className="btn btn-secondary"
+                                className="btn btn-secondary btn-icon"
                                 style={styles.iconButton}
                                 title="Import CSV Contacts"
                                 onClick={() => {
@@ -364,7 +364,7 @@ const Campaigns = ({ user }) => {
                             )}
 
                             <button 
-                              className="btn btn-secondary"
+                              className="btn btn-secondary btn-icon"
                               style={styles.deleteButton}
                               title="Delete Campaign"
                               onClick={() => handleDeleteCampaign(camp.id, camp.name)}

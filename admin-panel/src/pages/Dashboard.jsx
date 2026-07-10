@@ -121,9 +121,6 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
   const [selectedTelecaller, setSelectedTelecaller] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => {
     const d = new Date();
-    if (d.getHours() < 12) {
-      d.setDate(d.getDate() - 1);
-    }
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -134,9 +131,6 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
   const handleDateModeChange = (mode) => {
     setDateMode(mode);
     const d = new Date();
-    if (d.getHours() < 12) {
-      d.setDate(d.getDate() - 1);
-    }
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     if (mode === 'day') {
@@ -858,7 +852,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
                 </div>
               </div>
               <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textAlign: 'right', fontWeight: '500', marginTop: '2px' }}>
-                Always updates at 12:00 PM
+                Always updates at 12:00 AM
               </span>
             </div>
           )}

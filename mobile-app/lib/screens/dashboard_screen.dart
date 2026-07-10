@@ -473,7 +473,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             onPressed: () async {
               Navigator.pop(context);
-              await ApiService.logout();
+              ApiService.logout();
               if (mounted) {
                 Navigator.pushReplacement(
                   context,
@@ -546,16 +546,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (ctx) => const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF6366F1)),
-                ),
-              );
-              await ApiService.logout();
+              ApiService.logout();
               if (mounted) {
-                Navigator.pop(context); // close loader
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const LoginScreen()),

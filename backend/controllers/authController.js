@@ -22,14 +22,9 @@ function getTrackingDate(dateInput) {
   const year = parseInt(partMap.year, 10);
   const month = parseInt(partMap.month, 10);
   const day = parseInt(partMap.day, 10);
-  const hour = parseInt(partMap.hour, 10);
-  let istDate = new Date(Date.UTC(year, month - 1, day, hour));
-  if (hour < 12) {
-    istDate.setUTCDate(istDate.getUTCDate() - 1);
-  }
-  const targetYear = istDate.getUTCFullYear();
-  const targetMonth = String(istDate.getUTCMonth() + 1).padStart(2, '0');
-  const targetDay = String(istDate.getUTCDate()).padStart(2, '0');
+  const targetYear = year;
+  const targetMonth = String(month).padStart(2, '0');
+  const targetDay = String(day).padStart(2, '0');
   return `${targetYear}-${targetMonth}-${targetDay}`;
 }
 

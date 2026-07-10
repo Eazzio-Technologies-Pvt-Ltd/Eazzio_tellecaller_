@@ -177,7 +177,7 @@ class _CallingScreenState extends State<CallingScreen> {
             ),
             onPressed: () async {
               Navigator.pop(context);
-              await ApiService.logout();
+              ApiService.logout();
               if (mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (context) => const LoginScreen()),

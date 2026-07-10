@@ -527,7 +527,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
         return Scaffold(
           backgroundColor: activeBgColor,
-          resizeToAvoidBottomInset: false,
+          resizeToAvoidBottomInset: true,
           body: SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -544,13 +544,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 // Interpolate from splash center position → top
                 final double currentTopMargin = splashTopMargin + (finalTopMargin - splashTopMargin) * _logoMove.value;
 
-                return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: layout.scale(14.0, 20.0)),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: availableHeight),
+                    child: IntrinsicHeight(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: layout.scale(14.0, 20.0)),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
                         // Animated spacer — centers logo on splash, shrinks after
                         SizedBox(height: currentTopMargin),
 
@@ -1015,11 +1019,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               ),
                             ),
                           ),
-                        ],
-                      ],
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                );
+                ),
+              );
               },
             ),
           ),

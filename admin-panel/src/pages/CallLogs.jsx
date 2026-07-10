@@ -149,10 +149,10 @@ const CallLogs = ({ user, setActiveTab }) => {
 
   const getTrackingDate = (d) => {
     const target = new Date(d);
-    if (target.getHours() < 12) {
-      target.setDate(target.getDate() - 1);
-    }
-    return target.toISOString().substring(0, 10);
+    const year = target.getFullYear();
+    const month = String(target.getMonth() + 1).padStart(2, '0');
+    const day = String(target.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const isToday = (date) => {

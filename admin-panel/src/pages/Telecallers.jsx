@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import API_BASE_URL from '../config/api';
-import { UserPlus, Mail, Shield, User, Lock, Trash2, Phone, FileSpreadsheet, Pencil, CreditCard, AlertTriangle } from 'lucide-react';
+import { UserPlus, Mail, Shield, User, Lock, Trash2, Phone, FileSpreadsheet, Pencil, CreditCard, AlertTriangle, RefreshCw } from 'lucide-react';
 
 const Telecallers = () => {
   const [callers, setCallers] = useState([]);
@@ -38,9 +38,6 @@ const Telecallers = () => {
   const [filterType, setFilterType] = useState('date'); // 'date' or 'month'
   const [filterDate, setFilterDate] = useState(() => {
     const d = new Date();
-    if (d.getHours() < 12) {
-      d.setDate(d.getDate() - 1);
-    }
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -48,9 +45,6 @@ const Telecallers = () => {
   });
   const [filterMonth, setFilterMonth] = useState(() => {
     const d = new Date();
-    if (d.getHours() < 12) {
-      d.setDate(d.getDate() - 1);
-    }
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     return `${year}-${month}`;
@@ -554,8 +548,26 @@ const Telecallers = () => {
           </div>
         )}
 
-        <div style={{ marginLeft: 'auto', alignSelf: 'flex-end', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          Showing stats for <strong>{filterType === 'date' ? filterDate : filterMonth}</strong> (daily reset at 12:00 PM)
+        <div style={{ marginLeft: 'auto', alignSelf: 'flex-end', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span>Showing stats for <strong>{filterType === 'date' ? filterDate : filterMonth}</strong> (daily reset at 12:00 AM)</span>
+          <button 
+            className="btn btn-secondary"
+            onClick={fetchTelecallers}
+            disabled={loading}
+            style={{
+              padding: '0.4rem 0.8rem',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              height: '34px',
+              borderColor: 'var(--border-color)',
+            }}
+            title="Refresh Data"
+          >
+            <RefreshCw size={14} />
+            <span>Update</span>
+          </button>
         </div>
       </div>
 
@@ -604,7 +616,7 @@ const Telecallers = () => {
                       <td>
                         <div style={{ display: 'flex', gap: '4px' }}>
                           <button 
-                            className="btn btn-secondary" 
+                            className="btn btn-secondary btn-icon" 
                             style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(124, 58, 237, 0.05)', border: '1px solid rgba(124, 58, 237, 0.1)' }}
                             title="Edit Telecaller"
                             onClick={() => handleStartEdit(caller)}
@@ -612,7 +624,7 @@ const Telecallers = () => {
                             <Pencil size={16} color="#7c3aed" />
                           </button>
                           <button 
-                            className="btn btn-secondary" 
+                            className="btn btn-secondary btn-icon" 
                             style={styles.deleteButton}
                             title="Delete Telecaller"
                             onClick={() => handleDeleteCaller(caller.id, caller.name)}
