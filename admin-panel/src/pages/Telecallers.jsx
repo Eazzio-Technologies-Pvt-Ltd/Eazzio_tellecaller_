@@ -616,7 +616,7 @@ const Telecallers = () => {
                       <td>
                         <div style={{ display: 'flex', gap: '4px' }}>
                           <button 
-                            className="btn btn-secondary" 
+                            className="btn btn-secondary btn-action-compact" 
                             style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(124, 58, 237, 0.05)', border: '1px solid rgba(124, 58, 237, 0.1)' }}
                             title="Edit Telecaller"
                             onClick={() => handleStartEdit(caller)}
@@ -624,7 +624,7 @@ const Telecallers = () => {
                             <Pencil size={16} color="#7c3aed" />
                           </button>
                           <button 
-                            className="btn btn-secondary" 
+                            className="btn btn-secondary btn-action-compact" 
                             style={styles.deleteButton}
                             title="Delete Telecaller"
                             onClick={() => handleDeleteCaller(caller.id, caller.name)}

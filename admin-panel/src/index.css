@@ -3049,6 +3049,13 @@ input::-ms-clear {
   animation: cardGlowPulse 0.8s ease-in-out;
 }
 
-
-
-
+/* Compact button formatting to prevent padding rules from squashing Lucide icons on mobile */
+.btn-action-compact {
+  padding: 0 !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}

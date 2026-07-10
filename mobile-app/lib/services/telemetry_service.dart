@@ -23,9 +23,11 @@ class TelemetryService with WidgetsBindingObserver {
 
   String getTrackingDate([DateTime? dt]) {
     final now = dt ?? DateTime.now();
-    final year = now.year;
-    final month = now.month.toString().padLeft(2, '0');
-    final day = now.day.toString().padLeft(2, '0');
+    // Convert to UTC first, then shift by exactly 5 hours and 30 minutes to get Asia/Kolkata (IST) time
+    final istTime = now.toUtc().add(const Duration(hours: 5, minutes: 30));
+    final year = istTime.year;
+    final month = istTime.month.toString().padLeft(2, '0');
+    final day = istTime.day.toString().padLeft(2, '0');
     return '$year-$month-$day';
   }
 
