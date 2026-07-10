@@ -94,6 +94,10 @@ if (dbType === 'postgres') {
       }
     });
   }
+  
+  pgPool.on('error', (err) => {
+    console.error('Unexpected error on idle client:', err.message);
+  });
 } else {
   console.log('Database Config: Using SQLite');
   const sqliteFile = path.resolve(process.env.SQLITE_FILE || path.join(__dirname, '..', 'database.sqlite'));
