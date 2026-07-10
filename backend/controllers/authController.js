@@ -1880,3 +1880,53 @@ exports.getColleagues = async (req, res) => {
   }
 };
 
+// Change Password — telecaller changes their own password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+    const companyRegNum = req.user.companyRegNum;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required.' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+    }
+
+    // Fetch the current user record
+    let userResult;
+    await db.dbStorage.run({ companyRegNum }, async () => {
+      userResult = await db.query('SELECT id, password_hash, plain_password FROM users WHERE id = $1', [userId]);
+    });
+
+    if (!userResult || userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Current password is incorrect.' });
+    }
+
+    // Hash new password
+    const newHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password in DB
+    await db.dbStorage.run({ companyRegNum }, async () => {
+      await db.query(
+        'UPDATE users SET password_hash = $1, plain_password = $2 WHERE id = $3',
+        [newHash, newPassword, userId]
+      );
+    });
+
+    res.json({ message: 'Password changed successfully.' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'Server error changing password.' });
+  }
+};

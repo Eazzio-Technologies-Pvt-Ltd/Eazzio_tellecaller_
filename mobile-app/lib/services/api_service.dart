@@ -136,6 +136,40 @@ class ApiService {
     }
   }
 
+  // Change Password
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (!isAuthenticated) return {'success': false, 'error': 'Not authenticated'};
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/api/auth/change-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message'] ?? 'Password updated successfully'};
+      } else {
+        if (response.statusCode == 401) {
+          await forceLogout();
+        }
+        return {'success': false, 'error': data['error'] ?? 'Failed to change password'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Server error: $e'};
+    }
+  }
+
   // Get allotted contacts for telecaller
   static Future<List<dynamic>> fetchAllottedContacts() async {
     if (!isAuthenticated) return [];

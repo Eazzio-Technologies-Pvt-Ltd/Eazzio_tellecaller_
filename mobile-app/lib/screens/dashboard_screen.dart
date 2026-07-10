@@ -1075,21 +1075,193 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _showChangePasswordDialog() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+    bool loading = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF12131A) : Colors.white,
-        title: Text('Change Password', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
-        content: Text(
-          'To change your password, please contact your administrator or use the forgot password option on the login screen.',
-          style: TextStyle(color: isDark ? Colors.grey[300] : Colors.grey[700]),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF12131A) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Change Password',
+            style: TextStyle(
+              color: isDark ? Colors.white : Colors.black,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ],
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: currentPasswordController,
+                    obscureText: obscureCurrent,
+                    style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                    decoration: InputDecoration(
+                      labelText: 'Current Password',
+                      labelStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscureCurrent ? Icons.visibility_off : Icons.visibility,
+                          color: const Color(0xFF6366F1),
+                        ),
+                        onPressed: () => setDialogState(() => obscureCurrent = !obscureCurrent),
+                      ),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                      ),
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFF6366F1)),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter current password';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: newPasswordController,
+                    obscureText: obscureNew,
+                    style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                    decoration: InputDecoration(
+                      labelText: 'New Password',
+                      labelStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscureNew ? Icons.visibility_off : Icons.visibility,
+                          color: const Color(0xFF6366F1),
+                        ),
+                        onPressed: () => setDialogState(() => obscureNew = !obscureNew),
+                      ),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                      ),
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFF6366F1)),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter new password';
+                      }
+                      if (value.trim().length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: confirmPasswordController,
+                    obscureText: obscureConfirm,
+                    style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                    decoration: InputDecoration(
+                      labelText: 'Confirm New Password',
+                      labelStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                          color: const Color(0xFF6366F1),
+                        ),
+                        onPressed: () => setDialogState(() => obscureConfirm = !obscureConfirm),
+                      ),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                      ),
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFF6366F1)),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please confirm new password';
+                      }
+                      if (value.trim() != newPasswordController.text.trim()) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: loading ? null : () => Navigator.pop(context),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: loading
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() => loading = true);
+                      
+                      final result = await ApiService.changePassword(
+                        currentPassword: currentPasswordController.text.trim(),
+                        newPassword: newPasswordController.text.trim(),
+                      );
+
+                      setDialogState(() => loading = false);
+
+                      if (context.mounted) {
+                        if (result['success'] == true) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(result['message'] ?? 'Password changed successfully'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(result['error'] ?? 'Error changing password'),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: loading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text(
+                      'Change',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

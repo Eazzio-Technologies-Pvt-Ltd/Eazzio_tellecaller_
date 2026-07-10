@@ -35,6 +35,7 @@ router.get('/colleagues', authMiddleware(), authController.getColleagues);
 router.get('/telecallers', authMiddleware('admin'), authController.getTelecallers);
 router.put('/telecallers/:id', authMiddleware('admin'), authController.editTelecaller);
 router.delete('/:id', authMiddleware('admin'), authController.deleteUser);
+router.put('/change-password', authMiddleware(), authController.changePassword);
 
 // Tenant/Company Management Routes
 router.post('/register-company', authController.registerCompany);
