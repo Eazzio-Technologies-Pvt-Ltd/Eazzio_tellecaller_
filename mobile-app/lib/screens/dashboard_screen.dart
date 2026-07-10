@@ -23,6 +23,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final TelemetryService _telemetry = TelemetryService();
   final CallService _callService = CallService();
+  int _leadHoldingPeriod = 7;
   Timer? _uiRefreshTimer;
   Timer? _syncTimer;
   bool _isSyncing = false;
@@ -449,6 +450,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Load profile and lead manager data
     _loadProfileData();
     _loadLeadManagerData();
+    _loadHoldingPeriod();
   }
 
   void _checkShiftCompletion() {
@@ -456,6 +458,77 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _telemetry.shiftCompleteShown = true;
       _showShiftCompleteDialog();
     }
+  }
+
+  Future<void> _loadHoldingPeriod() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _leadHoldingPeriod = prefs.getInt('lead_holding_period') ?? 7;
+    });
+  }
+
+  void _showLeadHoldingPeriodDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final controller = TextEditingController(text: _leadHoldingPeriod.toString());
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Lead Holding Period', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Set the number of days a lead can be held before automatic reallocation.', style: TextStyle(color: subtextColor, fontSize: 13, height: 1.4)),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: controller,
+              style: TextStyle(color: textColor),
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Period (Days)',
+                labelStyle: TextStyle(color: subtextColor, fontSize: 12),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF6366F1)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: subtextColor)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              final val = int.tryParse(controller.text) ?? 7;
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setInt('lead_holding_period', val);
+              setState(() {
+                _leadHoldingPeriod = val;
+              });
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showShiftCompleteDialog() {
@@ -1999,6 +2072,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 Divider(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB), height: 1),
                 ListTile(
+                  leading: const Icon(Icons.timer_rounded, color: Color(0xFF6366F1)),
+                  title: Text(
+                    'Lead Holding Period',
+                    style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                  ),
+                  trailing: Text(
+                    '$_leadHoldingPeriod Days',
+                    style: TextStyle(color: subtextColor, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  onTap: _showLeadHoldingPeriodDialog,
+                ),
+                Divider(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB), height: 1),
+                ListTile(
                   leading: const Icon(Icons.power_settings_new_rounded, color: Colors.redAccent),
                   title: Text(
                     'Log Out',
@@ -2040,8 +2126,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildSimSelectionCard(),
-                    SizedBox(height: layout.spacing),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -2347,7 +2431,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             : (_currentTabIndex == 1
                 ? [
                     IconButton(
+                      icon: const Icon(Icons.person_add_alt_1_rounded, color: Color(0xFF6366F1)),
+                      tooltip: 'Add Lead',
+                      onPressed: _showAddLeadDialog,
+                    ),
+                    IconButton(
                       icon: const Icon(Icons.refresh_rounded, color: Color(0xFF6366F1)),
+                      tooltip: 'Refresh',
                       onPressed: _loadLeadManagerData,
                     ),
                   ]
