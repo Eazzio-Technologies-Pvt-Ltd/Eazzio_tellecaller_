@@ -16,7 +16,7 @@ pg.types.setTypeParser(1114, function(stringValue) {
   return new Date(stringValue);
 });
 
-const dbType = process.env.DB_TYPE || (process.env.DATABASE_URL ? 'postgres' : 'sqlite');
+const dbType = process.env.DB_TYPE || 'postgres';
 let pgPool = null;
 let sqliteDb = null;
 
