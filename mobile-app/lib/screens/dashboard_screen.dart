@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:eazzio_telecaller/services/api_service.dart';
 import 'package:eazzio_telecaller/services/telemetry_service.dart';
 import 'package:eazzio_telecaller/services/call_service.dart';
@@ -26,6 +28,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isSyncing = false;
   List<Map<String, dynamic>> _availableSims = [];
   bool _loadingSims = false;
+
+  int _currentTabIndex = 0;
+  Map<String, dynamic>? _profileUser;
+  bool _loadingProfile = false;
+  List<dynamic> _colleagues = [];
+  List<dynamic> _allottedContacts = [];
+  List<dynamic> _transferRequests = [];
+  bool _loadingContacts = false;
+  bool _loadingTransfers = false;
+  String _profileImagePath = '';
+  String _searchQuery = '';
+  final TextEditingController _profileNameController = TextEditingController();
+  final TextEditingController _transferReasonController = TextEditingController();
+  int? _selectedColleagueId;
 
   Future<void> _fetchAndSelectSim() async {
     final status = await Permission.phone.request();
@@ -430,6 +446,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _syncCallLogs();
       }
     });
+    // Load profile and lead manager data
+    _loadProfileData();
+    _loadLeadManagerData();
   }
 
   void _checkShiftCompletion() {
@@ -762,6 +781,1269 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _loadProfileData() async {
+    setState(() {
+      _loadingProfile = true;
+    });
+    try {
+      final user = await ApiService.fetchMe();
+      if (user != null) {
+        setState(() {
+          _profileUser = user;
+          _profileNameController.text = user['name'] ?? '';
+        });
+      }
+    } catch (e) {
+      print('Error loading profile: $e');
+    } finally {
+      setState(() {
+        _loadingProfile = false;
+      });
+    }
+  }
+
+  Future<void> _pickProfileImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 500,
+        maxHeight: 500,
+        imageQuality: 80,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _profileImagePath = pickedFile.path;
+        });
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to pick image: $e')),
+      );
+    }
+  }
+
+  Future<void> _updateProfile() async {
+    if (_profileNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Name cannot be empty')),
+      );
+      return;
+    }
+
+    setState(() {
+      _loadingProfile = true;
+    });
+
+    try {
+      final result = await ApiService.updateProfile(
+        name: _profileNameController.text.trim(),
+        imagePath: _profileImagePath.isNotEmpty ? _profileImagePath : null,
+      );
+
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Profile updated successfully')),
+        );
+        setState(() {
+          _profileImagePath = ''; // Clear temporary path
+        });
+        await _loadProfileData(); // Reload updated profile
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['error'] ?? 'Failed to update profile')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() {
+        _loadingProfile = false;
+      });
+    }
+  }
+
+  Future<void> _loadLeadManagerData() async {
+    if (!mounted) return;
+    setState(() {
+      _loadingContacts = true;
+      _loadingTransfers = true;
+    });
+
+    try {
+      final contacts = await ApiService.fetchAllottedContacts();
+      final transfers = await ApiService.fetchTransferRequests();
+      final colleagues = await ApiService.fetchColleagues();
+
+      if (mounted) {
+        setState(() {
+          _allottedContacts = contacts;
+          _transferRequests = transfers;
+          _colleagues = colleagues;
+        });
+      }
+    } catch (e) {
+      print('Error loading Lead Manager data: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingContacts = false;
+          _loadingTransfers = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _submitTransferRequest(int contactId) async {
+    if (_selectedColleagueId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a colleague')),
+      );
+      return;
+    }
+
+    try {
+      final result = await ApiService.requestLeadTransfer(
+        contactId: contactId,
+        toUserId: _selectedColleagueId!,
+        reason: _transferReasonController.text.trim(),
+      );
+
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'])),
+        );
+        _transferReasonController.clear();
+        _selectedColleagueId = null;
+        Navigator.pop(context);
+        await _loadLeadManagerData(); // Reload lists
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['error'])),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  Future<void> _respondToTransfer(int transferId, String status) async {
+    setState(() {
+      _loadingTransfers = true;
+    });
+
+    try {
+      final result = await ApiService.respondToTransferRequest(
+        transferId: transferId,
+        status: status,
+      );
+
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'])),
+        );
+        await _loadLeadManagerData();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['error'])),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() {
+        _loadingTransfers = false;
+      });
+    }
+  }
+
+  void _showTransferDialog(dynamic contact) {
+    _transferReasonController.clear();
+    _selectedColleagueId = null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Transfer Lead: ${contact['name']}',
+            style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Select Target Colleague',
+                  style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                _colleagues.isEmpty
+                    ? Text(
+                        'No other colleagues available in this company.',
+                        style: TextStyle(color: subtextColor, fontSize: 13),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _selectedColleagueId,
+                            dropdownColor: cardColor,
+                            hint: Text('Choose a telecaller', style: TextStyle(color: subtextColor, fontSize: 14)),
+                            isExpanded: true,
+                            items: _colleagues.map<DropdownMenuItem<int>>((colleague) {
+                              return DropdownMenuItem<int>(
+                                value: colleague['id'],
+                                child: Text(
+                                  '${colleague['name']} (${colleague['email']})',
+                                  style: TextStyle(color: textColor, fontSize: 14),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setDialogState(() {
+                                _selectedColleagueId = val;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                const SizedBox(height: 16),
+                Text(
+                  'Reason for Transfer',
+                  style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _transferReasonController,
+                  maxLines: 2,
+                  style: TextStyle(color: textColor),
+                  decoration: InputDecoration(
+                    hintText: 'Enter reason...',
+                    hintStyle: TextStyle(color: subtextColor, fontSize: 13),
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF1E293B).withOpacity(0.3) : const Color(0xFFF9FAFB),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(color: subtextColor)),
+            ),
+            ElevatedButton(
+              onPressed: _selectedColleagueId == null
+                  ? null
+                  : () => _submitTransferRequest(contact['id']),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Submit Request', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF12131A) : Colors.white,
+        title: Text('Change Password', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+        content: Text(
+          'To change your password, please contact your administrator or use the forgot password option on the login screen.',
+          style: TextStyle(color: isDark ? Colors.grey[300] : Colors.grey[700]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveTab(ResponsiveLayout layout, bool isDark) {
+    switch (_currentTabIndex) {
+      case 0:
+        return _buildWorkspaceTab(layout, isDark);
+      case 1:
+        return _buildLeadManagerTab(layout, isDark);
+      case 2:
+        return _buildProfileTab(layout, isDark);
+      case 3:
+        return _buildSettingsTab(layout, isDark);
+      default:
+        return _buildWorkspaceTab(layout, isDark);
+    }
+  }
+
+  Widget _buildLeadManagerTab(ResponsiveLayout layout, bool isDark) {
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    if (_loadingContacts && _allottedContacts.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final addedLeads = _allottedContacts
+        .where((c) => c['status'] == 'pending' || c['status'] == 'calling')
+        .toList();
+
+    final followUpLeads = _allottedContacts
+        .where((c) => c['status'] == 'follow_up')
+        .toList();
+
+    return DefaultTabController(
+      length: 4,
+      child: Column(
+        children: [
+          TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            labelColor: const Color(0xFF6366F1),
+            unselectedLabelColor: subtextColor,
+            indicatorColor: const Color(0xFF6366F1),
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            tabs: const [
+              Tab(text: 'Added Leads'),
+              Tab(text: 'Follow Ups'),
+              Tab(text: 'Transfers'),
+              Tab(text: 'All Leads'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildLeadList(addedLeads, layout, isDark, showTransferBtn: true),
+                _buildLeadList(followUpLeads, layout, isDark, showFollowUpInfo: true),
+                _buildTransfersView(layout, isDark),
+                _buildAllLeadsTab(layout, isDark),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeadList(
+    List<dynamic> leads,
+    ResponsiveLayout layout,
+    bool isDark, {
+    bool showTransferBtn = false,
+    bool showFollowUpInfo = false,
+  }) {
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    if (leads.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.assignment_late_rounded, size: 48, color: subtextColor.withOpacity(0.5)),
+            const SizedBox(height: 12),
+            Text(
+              'No leads found',
+              style: TextStyle(color: subtextColor, fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: leads.length,
+      itemBuilder: (context, index) {
+        final lead = leads[index];
+        final String name = lead['name'] ?? 'Unknown';
+        final String phone = lead['phone_number'] ?? '';
+        final String campaign = lead['campaign_name'] ?? 'General';
+        final String status = lead['status'] ?? 'pending';
+
+        String followUpTime = '';
+        if (showFollowUpInfo && lead['follow_up_date'] != null) {
+          try {
+            final date = DateTime.parse(lead['follow_up_date'].toString()).toLocal();
+            final day = date.day.toString().padLeft(2, '0');
+            final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            final month = months[date.month - 1];
+            final hour = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+            final min = date.minute.toString().padLeft(2, '0');
+            final ampm = date.hour >= 12 ? 'PM' : 'AM';
+            followUpTime = '$day $month, $hour:$min $ampm';
+          } catch (_) {
+            followUpTime = lead['follow_up_date'].toString();
+          }
+        }
+
+        return Card(
+          color: cardColor,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+          ),
+          margin: const EdgeInsets.only(bottom: 10),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        phone,
+                        style: TextStyle(color: subtextColor, fontSize: 12),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Campaign: $campaign',
+                              style: TextStyle(color: isDark ? Colors.grey[300] : Colors.grey[700], fontSize: 11),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: status == 'follow_up'
+                                  ? const Color(0x20A855F7)
+                                  : (status == 'calling' ? const Color(0x2010B981) : const Color(0x206366F1)),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              status.replaceAll('_', ' ').toUpperCase(),
+                              style: TextStyle(
+                                color: status == 'follow_up'
+                                    ? const Color(0xFFA855F7)
+                                    : (status == 'calling' ? const Color(0xFF10B981) : const Color(0xFF6366F1)),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (showFollowUpInfo && followUpTime.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.alarm_on_rounded, size: 14, color: Color(0xFFA855F7)),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Follow Up: $followUpTime',
+                              style: const TextStyle(color: Color(0xFFA855F7), fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (showTransferBtn)
+                  IconButton(
+                    icon: const Icon(Icons.swap_horiz_rounded, color: Color(0xFF6366F1)),
+                    tooltip: 'Transfer Lead',
+                    onPressed: () => _showTransferDialog(lead),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTransfersView(ResponsiveLayout layout, bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    if (_loadingTransfers && _transferRequests.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final incoming = _transferRequests
+        .where((t) => t['to_user_name'] == (_profileUser?['name'] ?? ''))
+        .toList();
+
+    final outgoing = _transferRequests
+        .where((t) => t['from_user_name'] == (_profileUser?['name'] ?? ''))
+        .toList();
+
+    return RefreshIndicator(
+      onRefresh: _loadLeadManagerData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'INCOMING TRANSFER APPROVALS',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: subtextColor, letterSpacing: 1.0),
+            ),
+            const SizedBox(height: 8),
+            if (incoming.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: Text('No incoming transfer requests', style: TextStyle(color: subtextColor, fontSize: 13)),
+                ),
+              )
+            else
+              ...incoming.map((req) => _buildTransferRequestCard(req, isIncoming: true, isDark: isDark)),
+            
+            const SizedBox(height: 20),
+            Text(
+              'OUTGOING TRANSFER REQUESTS',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: subtextColor, letterSpacing: 1.0),
+            ),
+            const SizedBox(height: 8),
+            if (outgoing.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: Text('No outgoing transfer requests', style: TextStyle(color: subtextColor, fontSize: 13)),
+                ),
+              )
+            else
+              ...outgoing.map((req) => _buildTransferRequestCard(req, isIncoming: false, isDark: isDark)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransferRequestCard(dynamic req, {required bool isIncoming, required bool isDark}) {
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    final int transferId = req['id'];
+    final String contactName = req['contact_name'] ?? 'Unknown Lead';
+    final String contactPhone = req['contact_phone'] ?? '';
+    final String fromUser = req['from_user_name'] ?? 'Someone';
+    final String toUser = req['to_user_name'] ?? 'Someone';
+    final String status = req['status'] ?? 'pending';
+    final String reason = req['reason'] ?? '';
+
+    Color statusColor;
+    if (status == 'approved') {
+      statusColor = const Color(0xFF10B981);
+    } else if (status == 'rejected') {
+      statusColor = const Color(0xFFEF4444);
+    } else {
+      statusColor = const Color(0xFFF59E0B);
+    }
+
+    return Card(
+      color: cardColor,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+      ),
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  contactName,
+                  style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    status.toUpperCase(),
+                    style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              contactPhone,
+              style: TextStyle(color: subtextColor, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isIncoming ? 'From: $fromUser' : 'To: $toUser',
+              style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+            if (reason.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Reason: "$reason"',
+                style: TextStyle(color: subtextColor, fontSize: 11, fontStyle: FontStyle.italic),
+              ),
+            ],
+            if (isIncoming && status == 'pending') ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => _respondToTransfer(transferId, 'rejected'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    child: const Text('Reject', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () => _respondToTransfer(transferId, 'approved'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                    child: const Text('Approve', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAllLeadsTab(ResponsiveLayout layout, bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    final filtered = _allottedContacts.where((lead) {
+      final name = lead['name']?.toString().toLowerCase() ?? '';
+      final phone = lead['phone_number']?.toString() ?? '';
+      final term = _searchQuery.toLowerCase();
+      return name.contains(term) || phone.contains(term);
+    }).toList();
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: TextField(
+            style: TextStyle(color: textColor),
+            onChanged: (val) {
+              setState(() {
+                _searchQuery = val;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Search leads...',
+              hintStyle: TextStyle(color: subtextColor, fontSize: 14),
+              prefixIcon: const Icon(Icons.search, size: 20),
+              filled: true,
+              fillColor: isDark ? const Color(0xFF12131A) : Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFF6366F1)),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: _buildLeadList(filtered, layout, isDark, showTransferBtn: true),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileTab(ResponsiveLayout layout, bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    if (_loadingProfile && _profileUser == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final user = _profileUser ?? {};
+    final String photoUrl = user['profile_photo'] ?? '';
+    final String name = user['name'] ?? '';
+    final String email = user['email'] ?? '';
+    final String role = user['role'] ?? 'telecaller';
+    final String companyRegNum = user['companyRegNum'] ?? '';
+
+    ImageProvider avatarImage;
+    if (_profileImagePath.isNotEmpty) {
+      avatarImage = FileImage(File(_profileImagePath));
+    } else if (photoUrl.isNotEmpty) {
+      avatarImage = NetworkImage('${ApiService.baseUrl}$photoUrl');
+    } else {
+      avatarImage = const AssetImage('assets/logo_transparent.png');
+    }
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(layout.scale(16.0, 20.0)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Stack(
+              children: [
+                Container(
+                  width: layout.scale(100.0, 120.0),
+                  height: layout.scale(100.0, 120.0),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF3F4F6),
+                    border: Border.all(
+                      color: const Color(0xFF6366F1),
+                      width: 3,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6366F1).withOpacity(0.2),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: photoUrl.isNotEmpty || _profileImagePath.isNotEmpty
+                        ? Image(
+                            image: avatarImage,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(
+                                child: Text(
+                                  name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                                  style: TextStyle(
+                                    fontSize: layout.scale(32.0, 40.0),
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF6366F1),
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Center(
+                            child: Text(
+                              name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                              style: TextStyle(
+                                  fontSize: layout.scale(32.0, 40.0),
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF6366F1)),
+                            ),
+                          ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: _pickProfileImage,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF6366F1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: EdgeInsets.all(layout.scale(16.0, 20.0)),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(layout.cardRadius),
+              border: Border.all(
+                color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Name',
+                  style: TextStyle(color: subtextColor, fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _profileNameController,
+                  style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
+                  decoration: InputDecoration(
+                    hintText: 'Enter your name',
+                    hintStyle: TextStyle(color: subtextColor),
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF1E293B).withOpacity(0.3) : const Color(0xFFF9FAFB),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFF6366F1)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Mobile Number',
+                  style: TextStyle(color: subtextColor, fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  initialValue: email,
+                  readOnly: true,
+                  style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontWeight: FontWeight.w500),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF11131E) : const Color(0xFFF3F4F6),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Role',
+                            style: TextStyle(color: subtextColor, fontWeight: FontWeight.w600, fontSize: 13),
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            initialValue: role.toUpperCase(),
+                            readOnly: true,
+                            style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontWeight: FontWeight.w500),
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: isDark ? const Color(0xFF11131E) : const Color(0xFFF3F4F6),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Company Code',
+                            style: TextStyle(color: subtextColor, fontWeight: FontWeight.w600, fontSize: 13),
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            initialValue: companyRegNum,
+                            readOnly: true,
+                            style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontWeight: FontWeight.w500),
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: isDark ? const Color(0xFF11131E) : const Color(0xFFF3F4F6),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _loadingProfile ? null : _updateProfile,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(layout.cardRadius),
+              ),
+            ),
+            child: _loadingProfile
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text(
+                    'Update Profile',
+                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsTab(ResponsiveLayout layout, bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(layout.scale(12.0, 16.0)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildSimSelectionCard(),
+          SizedBox(height: layout.spacing),
+          Container(
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(layout.cardRadius),
+              border: Border.all(
+                color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: Icon(
+                    isDark ? Icons.light_mode_rounded : Icons.dark_mode_outlined,
+                    color: isDark ? Colors.amber : const Color(0xFF6366F1),
+                  ),
+                  title: Text(
+                    isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+                    style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                  ),
+                  trailing: Switch(
+                    value: isDark,
+                    activeColor: const Color(0xFF6366F1),
+                    onChanged: (val) async {
+                      final prefs = await SharedPreferences.getInstance();
+                      if (val) {
+                        themeNotifier.value = ThemeMode.dark;
+                        await prefs.setBool('is_light_theme', false);
+                      } else {
+                        themeNotifier.value = ThemeMode.light;
+                        await prefs.setBool('is_light_theme', true);
+                      }
+                      setState(() {});
+                    },
+                  ),
+                ),
+                Divider(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB), height: 1),
+                ListTile(
+                  leading: const Icon(Icons.lock_outline_rounded, color: Color(0xFF6366F1)),
+                  title: Text(
+                    'Change Password',
+                    style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF64748B)),
+                  onTap: _showChangePasswordDialog,
+                ),
+                Divider(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB), height: 1),
+                ListTile(
+                  leading: const Icon(Icons.power_settings_new_rounded, color: Colors.redAccent),
+                  title: Text(
+                    'Log Out',
+                    style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+                  ),
+                  onTap: _handleLogout,
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: layout.spacing),
+          Center(
+            child: Text(
+              'Eazzio Telecaller v1.0.0',
+              style: TextStyle(color: subtextColor, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkspaceTab(ResponsiveLayout layout, bool isDark) {
+    final mutedColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF94A3B8);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight,
+            ),
+            child: IntrinsicHeight(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: layout.scale(12.0, 16.0),
+                  vertical: layout.scale(8.0, 12.0),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildSimSelectionCard(),
+                    SizedBox(height: layout.spacing),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'TELEMETRY METRICS',
+                          style: TextStyle(
+                            fontSize: layout.fontSizeCaption,
+                            fontWeight: FontWeight.bold,
+                            color: mutedColor,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        SizedBox(height: layout.scale(8.0, 10.0)),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildTimerCard(
+                                title: 'Work Time',
+                                value: _formatDuration(_telemetry.workingTime),
+                                target: '8h',
+                                progress: _telemetry.workingTime / 28800,
+                                valueColor: const Color(0xFF6366F1),
+                                icon: Icons.access_time_rounded,
+                                context: context,
+                              ),
+                            ),
+                            SizedBox(width: layout.scale(8.0, 12.0)),
+                            Expanded(
+                              child: _buildTimerCard(
+                                title: 'Talk Time',
+                                value: _formatDuration(_telemetry.talkTime),
+                                target: '4h',
+                                progress: _telemetry.talkTime / 14400,
+                                valueColor: const Color(0xFF10B981),
+                                icon: Icons.phone_in_talk_rounded,
+                                context: context,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: layout.scale(8.0, 12.0)),
+                        _buildTimerCard(
+                          title: 'Break Time',
+                          value: _formatDuration(_telemetry.breakTime),
+                          target: '2h',
+                          progress: _telemetry.breakTime / 7200,
+                          valueColor: const Color(0xFFA855F7),
+                          icon: Icons.coffee_rounded,
+                          context: context,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: layout.spacing),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'CALL OUTCOMES TODAY',
+                          style: TextStyle(
+                            fontSize: layout.fontSizeCaption,
+                            fontWeight: FontWeight.bold,
+                            color: mutedColor,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        SizedBox(height: layout.scale(8.0, 10.0)),
+                        Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildCallCounter(
+                                    label: 'Connected',
+                                    count: _telemetry.connectedCalls,
+                                    baseColor: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                                    badgeBgColor: isDark ? const Color(0x1A34D399) : const Color(0xFFE6F4EA),
+                                    icon: Icons.phone_callback_rounded,
+                                    context: context,
+                                    isDark: isDark,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _buildCallCounter(
+                                    label: 'Non-Connected',
+                                    count: _telemetry.nonConnectedCalls,
+                                    baseColor: isDark ? const Color(0xFFFB923C) : const Color(0xFFD97706),
+                                    badgeBgColor: isDark ? const Color(0x1AFB923C) : const Color(0xFFFEF3C7),
+                                    icon: Icons.phone_paused_rounded,
+                                    context: context,
+                                    isDark: isDark,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildCallCounter(
+                                    label: 'Received',
+                                    count: _telemetry.receivedCalls,
+                                    baseColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                                    badgeBgColor: isDark ? const Color(0x1A38BDF8) : const Color(0xFFE0F2FE),
+                                    icon: Icons.call_received_rounded,
+                                    context: context,
+                                    isDark: isDark,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _buildCallCounter(
+                                    label: 'Missed',
+                                    count: _telemetry.missedCalls,
+                                    baseColor: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
+                                    badgeBgColor: isDark ? const Color(0x1AF87171) : const Color(0xFFFEE2E2),
+                                    icon: Icons.call_missed_rounded,
+                                    context: context,
+                                    isDark: isDark,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    SizedBox(height: layout.spacing),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6366F1), Color(0xFF7C3AED)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(layout.cardRadius),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6366F1).withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: _handleSessionToggle,
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: layout.scale(12.0, 16.0)),
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(layout.cardRadius),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _telemetry.isActive ? Icons.play_arrow_rounded : Icons.play_circle_filled_rounded,
+                              color: Colors.white,
+                              size: layout.scale(20.0, 24.0),
+                            ),
+                            SizedBox(width: layout.scale(6.0, 8.0)),
+                            Text(
+                              _telemetry.isActive ? 'Open Calling Workspace' : 'Start Calling Session',
+                              style: TextStyle(
+                                fontSize: layout.fontSizeHeading,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final layout = ResponsiveLayout(context);
@@ -769,7 +2051,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final bgColor = isDark ? const Color(0xFF0A0B10) : const Color(0xFFF5F6FC);
     final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF111827);
-    final mutedColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF94A3B8);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -778,316 +2059,175 @@ class _DashboardScreenState extends State<DashboardScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          'Caller Dashboard',
+          _currentTabIndex == 0
+              ? 'Caller Dashboard'
+              : (_currentTabIndex == 1
+                  ? 'Lead Manager'
+                  : (_currentTabIndex == 2 ? 'My Profile' : 'Settings')),
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: textColor,
             fontSize: layout.fontSizeTitle,
           ),
         ),
-        actions: [
-          Container(
-            margin: EdgeInsets.only(right: layout.scale(12.0, 16.0)),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isDark ? const Color(0xFF222435) : const Color(0xFFE2E8F0),
-                width: 1.5,
-              ),
-              color: cardColor,
-            ),
-            child: Theme(
-              data: Theme.of(context).copyWith(
-                cardColor: cardColor,
-              ),
-              child: PopupMenuButton<String>(
-                icon: Icon(
-                  Icons.settings,
-                  color: isDark ? Colors.white : const Color(0xFF64748B),
-                  size: layout.scale(18.0, 20.0),
-                ),
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(
-                  minWidth: layout.scale(36.0, 40.0),
-                  minHeight: layout.scale(36.0, 40.0),
-                ),
-                onSelected: (val) async {
-                  if (val == 'theme') {
-                    final prefs = await SharedPreferences.getInstance();
-                    if (themeNotifier.value == ThemeMode.dark) {
-                      themeNotifier.value = ThemeMode.light;
-                      await prefs.setBool('is_light_theme', true);
-                    } else {
-                      themeNotifier.value = ThemeMode.dark;
-                      await prefs.setBool('is_light_theme', false);
-                    }
-                    setState(() {});
-                  } else if (val == 'add_lead') {
-                    _showAddLeadDialog();
-                  } else if (val == 'logout') {
-                    _handleLogout();
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'theme',
-                    child: Row(
-                      children: [
-                        Icon(
-                          themeNotifier.value == ThemeMode.dark ? Icons.light_mode_rounded : Icons.dark_mode_outlined,
-                          color: isDark ? Colors.amber : const Color(0xFF64748B),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          themeNotifier.value == ThemeMode.dark ? 'Light Mode' : 'Dark Mode',
-                          style: TextStyle(color: textColor),
-                        ),
-                      ],
+        actions: _currentTabIndex == 0
+            ? [
+                Container(
+                  margin: EdgeInsets.only(right: layout.scale(12.0, 16.0)),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF222435) : const Color(0xFFE2E8F0),
+                      width: 1.5,
                     ),
+                    color: cardColor,
                   ),
-                  PopupMenuItem(
-                    value: 'add_lead',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.person_add_alt_1_rounded, color: Colors.blue),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Add Lead',
-                          style: TextStyle(color: textColor),
-                        ),
-                      ],
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      cardColor: cardColor,
                     ),
-                  ),
-                  const PopupMenuDivider(),
-                  PopupMenuItem(
-                    value: 'logout',
-                    child: const Row(
-                      children: [
-                        Icon(Icons.power_settings_new_rounded, color: Colors.red),
-                        const SizedBox(width: 10),
-                        Text('Logout', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                ),
-                child: IntrinsicHeight(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: layout.scale(12.0, 16.0),
-                      vertical: layout.scale(8.0, 12.0),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildSimSelectionCard(),
-                        SizedBox(height: layout.spacing),
-
-                        // Timers Row
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              'TELEMETRY METRICS',
-                              style: TextStyle(
-                                fontSize: layout.fontSizeCaption,
-                                fontWeight: FontWeight.bold,
-                                color: mutedColor,
-                                letterSpacing: 1.0,
+                    child: PopupMenuButton<String>(
+                      icon: Icon(
+                        Icons.settings,
+                        color: isDark ? Colors.white : const Color(0xFF64748B),
+                        size: layout.scale(18.0, 20.0),
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(
+                        minWidth: layout.scale(36.0, 40.0),
+                        minHeight: layout.scale(36.0, 40.0),
+                      ),
+                      onSelected: (val) async {
+                        if (val == 'theme') {
+                          final prefs = await SharedPreferences.getInstance();
+                          if (themeNotifier.value == ThemeMode.dark) {
+                            themeNotifier.value = ThemeMode.light;
+                            await prefs.setBool('is_light_theme', true);
+                          } else {
+                            themeNotifier.value = ThemeMode.dark;
+                            await prefs.setBool('is_light_theme', false);
+                          }
+                          setState(() {});
+                        } else if (val == 'add_lead') {
+                          _showAddLeadDialog();
+                        } else if (val == 'logout') {
+                          _handleLogout();
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'theme',
+                          child: Row(
+                            children: [
+                              Icon(
+                                themeNotifier.value == ThemeMode.dark ? Icons.light_mode_rounded : Icons.dark_mode_outlined,
+                                color: isDark ? Colors.amber : const Color(0xFF64748B),
                               ),
-                            ),
-                            SizedBox(height: layout.scale(8.0, 10.0)),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildTimerCard(
-                                    title: 'Work Time',
-                                    value: _formatDuration(_telemetry.workingTime),
-                                    target: '8h',
-                                    progress: _telemetry.workingTime / 28800,
-                                    valueColor: const Color(0xFF6366F1),
-                                    icon: Icons.access_time_rounded,
-                                    context: context,
-                                  ),
-                                ),
-                                SizedBox(width: layout.scale(8.0, 12.0)),
-                                Expanded(
-                                  child: _buildTimerCard(
-                                    title: 'Talk Time',
-                                    value: _formatDuration(_telemetry.talkTime),
-                                    target: '4h',
-                                    progress: _telemetry.talkTime / 14400,
-                                    valueColor: const Color(0xFF10B981),
-                                    icon: Icons.phone_in_talk_rounded,
-                                    context: context,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: layout.scale(8.0, 12.0)),
-                            _buildTimerCard(
-                              title: 'Break Time',
-                              value: _formatDuration(_telemetry.breakTime),
-                              target: '2h',
-                              progress: _telemetry.breakTime / 7200,
-                              valueColor: const Color(0xFFA855F7),
-                              icon: Icons.coffee_rounded,
-                              context: context,
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: layout.spacing),
-
-                        // Call Outcomes Layout
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              'CALL OUTCOMES TODAY',
-                              style: TextStyle(
-                                fontSize: layout.fontSizeCaption,
-                                fontWeight: FontWeight.bold,
-                                color: mutedColor,
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                            SizedBox(height: layout.scale(8.0, 10.0)),
-                            Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildCallCounter(
-                                        label: 'Connected',
-                                        count: _telemetry.connectedCalls,
-                                        baseColor: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
-                                        badgeBgColor: isDark ? const Color(0x1A34D399) : const Color(0xFFE6F4EA),
-                                        icon: Icons.phone_callback_rounded,
-                                        context: context,
-                                        isDark: isDark,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: _buildCallCounter(
-                                        label: 'Non-Connected',
-                                        count: _telemetry.nonConnectedCalls,
-                                        baseColor: isDark ? const Color(0xFFFB923C) : const Color(0xFFD97706),
-                                        badgeBgColor: isDark ? const Color(0x1AFB923C) : const Color(0xFFFEF3C7),
-                                        icon: Icons.phone_paused_rounded,
-                                        context: context,
-                                        isDark: isDark,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildCallCounter(
-                                        label: 'Received',
-                                        count: _telemetry.receivedCalls,
-                                        baseColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
-                                        badgeBgColor: isDark ? const Color(0x1A38BDF8) : const Color(0xFFE0F2FE),
-                                        icon: Icons.call_received_rounded,
-                                        context: context,
-                                        isDark: isDark,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: _buildCallCounter(
-                                        label: 'Missed',
-                                        count: _telemetry.missedCalls,
-                                        baseColor: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
-                                        badgeBgColor: isDark ? const Color(0x1AF87171) : const Color(0xFFFEE2E2),
-                                        icon: Icons.call_missed_rounded,
-                                        context: context,
-                                        isDark: isDark,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        SizedBox(height: layout.spacing),
-
-                        // Core Action Button
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF6366F1), Color(0xFF7C3AED)],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(layout.cardRadius),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF6366F1).withOpacity(0.3),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
+                              const SizedBox(width: 10),
+                              Text(
+                                themeNotifier.value == ThemeMode.dark ? 'Light Mode' : 'Dark Mode',
+                                style: TextStyle(color: textColor),
                               ),
                             ],
                           ),
-                          child: ElevatedButton(
-                            onPressed: _handleSessionToggle,
-                            style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(vertical: layout.scale(12.0, 16.0)),
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(layout.cardRadius),
+                        ),
+                        PopupMenuItem(
+                          value: 'add_lead',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.person_add_alt_1_rounded, color: Colors.blue),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Add Lead',
+                                style: TextStyle(color: textColor),
                               ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  _telemetry.isActive ? Icons.play_arrow_rounded : Icons.play_circle_filled_rounded,
-                                  color: Colors.white,
-                                  size: layout.scale(20.0, 24.0),
-                                ),
-                                SizedBox(width: layout.scale(6.0, 8.0)),
-                                Text(
-                                  _telemetry.isActive ? 'Open Calling Workspace' : 'Start Calling Session',
-                                  style: TextStyle(
-                                    fontSize: layout.fontSizeHeading,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(),
+                        PopupMenuItem(
+                          value: 'logout',
+                          child: const Row(
+                            children: [
+                              Icon(Icons.power_settings_new_rounded, color: Colors.red),
+                              const SizedBox(width: 10),
+                              Text('Logout', style: TextStyle(color: Colors.red)),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
-            );
+              ]
+            : (_currentTabIndex == 1
+                ? [
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded, color: Color(0xFF6366F1)),
+                      onPressed: _loadLeadManagerData,
+                    ),
+                  ]
+                : null),
+      ),
+      body: SafeArea(
+        child: _buildActiveTab(layout, isDark),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF12131A) : Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB),
+              width: 1,
+            ),
+          ),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentTabIndex,
+          onTap: (index) {
+            setState(() {
+              _currentTabIndex = index;
+            });
+            if (index == 1) {
+              _loadLeadManagerData();
+            } else if (index == 2) {
+              _loadProfileData();
+            }
           },
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: const Color(0xFF6366F1),
+          unselectedItemColor: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 11),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_rounded),
+              activeIcon: Icon(Icons.dashboard_rounded, color: Color(0xFF6366F1)),
+              label: 'Workspace',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_alt_rounded),
+              activeIcon: Icon(Icons.people_alt_rounded, color: Color(0xFF6366F1)),
+              label: 'Lead Manager',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_rounded),
+              activeIcon: Icon(Icons.person_rounded, color: Color(0xFF6366F1)),
+              label: 'Profile',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings_rounded),
+              activeIcon: Icon(Icons.settings_rounded, color: Color(0xFF6366F1)),
+              label: 'Settings',
+            ),
+          ],
         ),
       ),
     );
   }
+
 
 
 

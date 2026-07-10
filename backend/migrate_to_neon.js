@@ -231,7 +231,7 @@ async function startMigration() {
         const compDb = new sqlite3.Database(sqliteFile);
         
         try {
-          const tenantTables = ['users', 'campaigns', 'contacts', 'call_logs', 'telecaller_sessions', 'admin_notifications'];
+          const tenantTables = ['users', 'campaigns', 'contacts', 'call_logs', 'telecaller_sessions', 'admin_notifications', 'lead_transfers'];
           for (const table of tenantTables) {
             await migrateTenantTable(compDb, table, regNum, pgSchema);
           }

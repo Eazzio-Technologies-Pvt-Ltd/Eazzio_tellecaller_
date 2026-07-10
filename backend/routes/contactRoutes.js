@@ -45,5 +45,8 @@ router.get('/allotted', authMiddleware('telecaller'), contactController.getAllot
 router.put('/:contactId/status', authMiddleware(), contactController.updateContactStatus);
 router.put('/:contactId/assign', authMiddleware('admin'), contactController.assignContact);
 router.post('/add-lead', authMiddleware(), contactController.addLead);
+router.post('/transfer-request', authMiddleware(), contactController.requestTransfer);
+router.get('/transfer-requests', authMiddleware(), contactController.getTransferRequests);
+router.put('/transfer-requests/:id/respond', authMiddleware(), contactController.respondTransferRequest);
 
 module.exports = router;

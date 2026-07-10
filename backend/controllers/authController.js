@@ -608,7 +608,7 @@ exports.getMe = async (req, res) => {
 
     // Case 2: Superadmin (details stored in users table in master database)
     if (req.user.role === 'admin' && !regNum) {
-      result = await db.queryMain('SELECT id, name, email, role, status FROM users WHERE id = $1', [req.user.id]);
+      result = await db.queryMain('SELECT id, name, email, role, status, profile_photo FROM users WHERE id = $1', [req.user.id]);
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Superadmin not found.' });
       }
@@ -619,7 +619,7 @@ exports.getMe = async (req, res) => {
 
     // Case 3: Telecaller (details stored in users table in company isolated schema)
     await db.dbStorage.run({ companyRegNum: regNum }, async () => {
-      result = await db.query('SELECT id, name, email, role, status FROM users WHERE id = $1', [req.user.id]);
+      result = await db.query('SELECT id, name, email, role, status, profile_photo FROM users WHERE id = $1', [req.user.id]);
     });
 
     if (result.rows.length === 0) {
@@ -1791,6 +1791,92 @@ exports.resetPassword = async (req, res) => {
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ error: 'Server error while resetting password: ' + error.message });
+  }
+};
+
+// Update current user's profile details (Name & Profile Photo)
+exports.updateProfile = async (req, res) => {
+  const userId = req.user.id;
+  const regNum = req.user.companyRegNum;
+  const { name } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ error: 'Name is required' });
+  }
+
+  try {
+    let profilePhotoUrl = null;
+    if (req.file) {
+      profilePhotoUrl = `/uploads/profiles/${req.file.filename}`;
+    }
+
+    if (regNum) {
+      // Company isolated user (Telecaller or Admin)
+      await db.dbStorage.run({ companyRegNum: regNum }, async () => {
+        if (profilePhotoUrl) {
+          await db.query(
+            'UPDATE users SET name = $1, profile_photo = $2 WHERE id = $3',
+            [name, profilePhotoUrl, userId]
+          );
+        } else {
+          await db.query(
+            'UPDATE users SET name = $1 WHERE id = $2',
+            [name, userId]
+          );
+        }
+      });
+    } else {
+      // Main DB user (Superadmin or Admin without companyRegNum)
+      if (profilePhotoUrl) {
+        await db.queryMain(
+          'UPDATE users SET name = $1, profile_photo = $2 WHERE id = $3',
+          [name, profilePhotoUrl, userId]
+        );
+      } else {
+        await db.queryMain(
+          'UPDATE users SET name = $1 WHERE id = $2',
+          [name, userId]
+        );
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully.',
+      user: {
+        name,
+        profilePhoto: profilePhotoUrl
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Server error updating profile.' });
+  }
+};
+
+// Get other telecallers in the same company (colleagues)
+exports.getColleagues = async (req, res) => {
+  const regNum = req.user.companyRegNum;
+  const userId = req.user.id;
+
+  if (!regNum) {
+    return res.json([]);
+  }
+
+  try {
+    let result;
+    await db.dbStorage.run({ companyRegNum: regNum }, async () => {
+      // Fetch other users who are telecallers in the same company
+      result = await db.query(
+        "SELECT id, name, email, role, status, profile_photo FROM users WHERE role = 'telecaller' AND id != $1",
+        [userId]
+      );
+    });
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get colleagues error:', error);
+    res.status(500).json({ error: 'Server error fetching colleagues.' });
   }
 };
 

@@ -478,3 +478,153 @@ exports.addLead = async (req, res) => {
     res.status(500).json({ error: 'Server error adding lead.' });
   }
 };
+
+// Request a lead transfer to another telecaller
+exports.requestTransfer = async (req, res) => {
+  const { contactId, toUserId, reason } = req.body;
+  const fromUserId = req.user.id;
+
+  if (!contactId || !toUserId) {
+    return res.status(400).json({ error: 'Contact ID and target User ID are required.' });
+  }
+
+  try {
+    // Check if the contact exists and belongs to the logged-in telecaller
+    const contactCheck = await db.query(
+      'SELECT * FROM contacts WHERE id = $1 AND assigned_to = $2',
+      [contactId, fromUserId]
+    );
+    if (contactCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Contact not found or not assigned to you.' });
+    }
+
+    // Check if target user exists and is a telecaller in the company
+    const userCheck = await db.query(
+      "SELECT * FROM users WHERE id = $1 AND role = 'telecaller'",
+      [toUserId]
+    );
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Target telecaller not found.' });
+    }
+
+    // Check if there is already a pending transfer request for this contact
+    const existingCheck = await db.query(
+      "SELECT * FROM lead_transfers WHERE contact_id = $1 AND status = 'pending'",
+      [contactId]
+    );
+    if (existingCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'A pending transfer request already exists for this lead.' });
+    }
+
+    // Insert the transfer request
+    const insertRes = await db.query(
+      'INSERT INTO lead_transfers (contact_id, from_user_id, to_user_id, status, reason) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [contactId, fromUserId, toUserId, 'pending', reason || '']
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Transfer request submitted successfully.',
+      transfer: insertRes.rows[0]
+    });
+  } catch (error) {
+    console.error('Request transfer error:', error);
+    res.status(500).json({ error: 'Server error requesting lead transfer.' });
+  }
+};
+
+// Fetch incoming and outgoing transfer requests for the logged-in user
+exports.getTransferRequests = async (req, res) => {
+  const userId = req.user.id;
+  const role = req.user.role;
+
+  try {
+    let querySql;
+    let params;
+
+    if (role === 'admin') {
+      // Admin sees ALL transfer requests
+      querySql = `
+        SELECT lt.*, c.name as contact_name, c.phone_number as contact_phone,
+               u_from.name as from_user_name, u_to.name as to_user_name
+        FROM lead_transfers lt
+        JOIN contacts c ON lt.contact_id = c.id
+        LEFT JOIN users u_from ON lt.from_user_id = u_from.id
+        LEFT JOIN users u_to ON lt.to_user_id = u_to.id
+        ORDER BY lt.id DESC
+      `;
+      params = [];
+    } else {
+      // Telecaller sees requests where they are either the sender or receiver
+      querySql = `
+        SELECT lt.*, c.name as contact_name, c.phone_number as contact_phone,
+               u_from.name as from_user_name, u_to.name as to_user_name
+        FROM lead_transfers lt
+        JOIN contacts c ON lt.contact_id = c.id
+        LEFT JOIN users u_from ON lt.from_user_id = u_from.id
+        LEFT JOIN users u_to ON lt.to_user_id = u_to.id
+        WHERE lt.from_user_id = $1 OR lt.to_user_id = $1
+        ORDER BY lt.id DESC
+      `;
+      params = [userId];
+    }
+
+    const result = await db.query(querySql, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get transfer requests error:', error);
+    res.status(500).json({ error: 'Server error fetching transfer requests.' });
+  }
+};
+
+// Approve or reject a transfer request
+exports.respondTransferRequest = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body; // 'approved' or 'rejected'
+  const userId = req.user.id;
+  const role = req.user.role;
+
+  if (status !== 'approved' && status !== 'rejected') {
+    return res.status(400).json({ error: "Status must be either 'approved' or 'rejected'." });
+  }
+
+  try {
+    // Fetch transfer request details
+    const ltRes = await db.query('SELECT * FROM lead_transfers WHERE id = $1', [id]);
+    if (ltRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Transfer request not found.' });
+    }
+
+    const request = ltRes.rows[0];
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: 'This transfer request has already been processed.' });
+    }
+
+    // Authorization: only the target user or admin can respond
+    if (request.to_user_id !== userId && role !== 'admin') {
+      return res.status(403).json({ error: 'You are not authorized to respond to this transfer request.' });
+    }
+
+    // Update transfer request status
+    await db.query('UPDATE lead_transfers SET status = $1 WHERE id = $2', [status, id]);
+
+    // If approved, update the contact's assigned_to column
+    if (status === 'approved') {
+      await db.query(
+        'UPDATE contacts SET assigned_to = $1 WHERE id = $2',
+        [request.to_user_id, request.contact_id]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: `Transfer request successfully ${status}.`,
+      status
+    });
+  } catch (error) {
+    console.error('Respond transfer request error:', error);
+    res.status(500).json({ error: 'Server error processing transfer request response.' });
+  }
+};
+

@@ -698,4 +698,175 @@ class ApiService {
     }
     return [];
   }
+
+  // Update profile details (Name and profile photo)
+  static Future<Map<String, dynamic>> updateProfile({
+    required String name,
+    String? imagePath,
+  }) async {
+    if (!isAuthenticated) return {'success': false, 'error': 'Not authenticated'};
+    try {
+      final request = http.MultipartRequest(
+        'PUT',
+        Uri.parse('$_baseUrl/api/auth/profile'),
+      );
+
+      // Headers
+      request.headers['Authorization'] = 'Bearer $_token';
+
+      // Fields
+      request.fields['name'] = name;
+
+      // Attach file if present
+      if (imagePath != null && imagePath.isNotEmpty) {
+        final file = File(imagePath);
+        if (await file.exists()) {
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'profile_photo',
+              file.path,
+              contentType: MediaType('image', 'jpeg'),
+            ),
+          );
+        }
+      }
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
+      final response = await http.Response.fromStream(streamedResponse);
+      final Map<String, dynamic> data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message'] ?? 'Profile updated', 'user': data['user']};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Profile update failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Cannot connect to server: $e'};
+    }
+  }
+
+  // Fetch current user details
+  static Future<Map<String, dynamic>?> fetchMe() async {
+    if (!isAuthenticated) return null;
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/auth/me'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await forceLogout();
+      }
+    } catch (e) {
+      print('Error fetching current user info: $e');
+    }
+    return null;
+  }
+
+  // Fetch company colleagues (other telecallers)
+  static Future<List<dynamic>> fetchColleagues() async {
+    if (!isAuthenticated) return [];
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/auth/colleagues'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 7));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await forceLogout();
+      }
+    } catch (e) {
+      print('Error fetching colleagues: $e');
+    }
+    return [];
+  }
+
+  // Request lead transfer to another telecaller
+  static Future<Map<String, dynamic>> requestLeadTransfer({
+    required int contactId,
+    required int toUserId,
+    String? reason,
+  }) async {
+    if (!isAuthenticated) return {'success': false, 'error': 'Not authenticated'};
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/contacts/transfer-request'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode({
+          'contactId': contactId,
+          'toUserId': toUserId,
+          'reason': reason ?? '',
+        }),
+      ).timeout(const Duration(seconds: 7));
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      if (response.statusCode == 201) {
+        return {'success': true, 'message': data['message'] ?? 'Transfer request submitted', 'transfer': data['transfer']};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Transfer request failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Cannot connect to server: $e'};
+    }
+  }
+
+  // Fetch transfer requests
+  static Future<List<dynamic>> fetchTransferRequests() async {
+    if (!isAuthenticated) return [];
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/contacts/transfer-requests'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 7));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await forceLogout();
+      }
+    } catch (e) {
+      print('Error fetching transfer requests: $e');
+    }
+    return [];
+  }
+
+  // Respond to transfer request
+  static Future<Map<String, dynamic>> respondToTransferRequest({
+    required int transferId,
+    required String status,
+  }) async {
+    if (!isAuthenticated) return {'success': false, 'error': 'Not authenticated'};
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/api/contacts/transfer-requests/$transferId/respond'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode({
+          'status': status,
+        }),
+      ).timeout(const Duration(seconds: 7));
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message'] ?? 'Responded successfully'};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Failed to respond'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Cannot connect to server: $e'};
+    }
+  }
 }
+

@@ -232,7 +232,8 @@ async function initializeSchema() {
       role VARCHAR(20) DEFAULT 'telecaller',
       status VARCHAR(20) DEFAULT 'offline',
       last_active_at ${timestampType},
-      created_at ${timestampType}
+      created_at ${timestampType},
+      profile_photo ${textType} DEFAULT NULL
     )`,
 
     // Campaigns table
@@ -340,6 +341,14 @@ async function initializeSchema() {
     // Column already exists, ignore
   }
 
+  // Add profile_photo column to users table in main database
+  try {
+    await queryMain('ALTER TABLE users ADD COLUMN profile_photo TEXT');
+    console.log('Added profile_photo column to users table in main database.');
+  } catch (err) {
+    // Column already exists, ignore
+  }
+
   // Add follow_up_started_at column if it doesn't exist in main contacts table
   try {
     const tsType = dbType === 'postgres' ? 'TIMESTAMP' : 'DATETIME';
@@ -349,7 +358,7 @@ async function initializeSchema() {
     // Column already exists, ignore
   }
 
-  // Migrate all dynamic company databases to add current_token column (SQLite only)
+  // Migrate all dynamic company databases to add current_token, profile_photo and lead_transfers (SQLite only)
   try {
     const databasesDir = getDatabasesDir();
     if (dbType === 'sqlite' && fs.existsSync(databasesDir)) {
@@ -364,12 +373,30 @@ async function initializeSchema() {
             });
           });
           await new Promise((resolve) => {
+            compDb.run('ALTER TABLE users ADD COLUMN profile_photo TEXT', [], (err) => {
+              resolve();
+            });
+          });
+          await new Promise((resolve) => {
+            compDb.run(`CREATE TABLE IF NOT EXISTS lead_transfers (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              contact_id INTEGER,
+              from_user_id INTEGER,
+              to_user_id INTEGER,
+              status VARCHAR(20) DEFAULT 'pending',
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`, [], (err) => {
+              resolve();
+            });
+          });
+          await new Promise((resolve) => {
             compDb.run('ALTER TABLE contacts ADD COLUMN follow_up_started_at DATETIME', [], (err) => {
               compDb.close();
               resolve();
             });
           });
-          console.log(`Migrated company database ${file} to add current_token and follow_up_started_at.`);
+          console.log(`Migrated company database ${file} to add current_token, profile_photo, follow_up_started_at and lead_transfers.`);
         }
       }
     }
@@ -497,6 +524,28 @@ async function initializeSchema() {
             } catch (e) {
               // Ignore if already exists
             }
+
+            try {
+              await client.query('ALTER TABLE users ADD COLUMN profile_photo TEXT');
+              console.log(`Added profile_photo to schema ${schemaName}`);
+            } catch (e) {
+              // Ignore if already exists
+            }
+
+            try {
+              await client.query(`CREATE TABLE IF NOT EXISTS lead_transfers (
+                id SERIAL PRIMARY KEY,
+                contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+                from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                status VARCHAR(20) DEFAULT 'pending',
+                reason TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+              )`);
+              console.log(`Created lead_transfers in schema ${schemaName}`);
+            } catch (e) {
+              // Ignore if already exists
+            }
             
             console.log(`Migrated contacts table column types to VARCHAR(50) and VARCHAR(255) in schema: ${schemaName}`);
           } finally {
@@ -542,7 +591,8 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
           last_active_at ${timestampType},
           created_at ${timestampType},
           plain_password VARCHAR(255),
-          current_token TEXT
+          current_token TEXT,
+          profile_photo ${textType} DEFAULT NULL
         )`,
 
         // Campaigns table
@@ -579,6 +629,17 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
           feedback ${textType},
           recording_url ${textType},
           called_at ${timestampType}
+        )`,
+
+        // Lead transfers table
+        `CREATE TABLE IF NOT EXISTS lead_transfers (
+          id ${serialType},
+          contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+          from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          status VARCHAR(20) DEFAULT 'pending',
+          reason ${textType},
+          created_at ${timestampType}
         )`,
 
         // Telecaller sessions table
@@ -651,7 +712,8 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
       last_active_at ${timestampType},
       created_at ${timestampType},
       plain_password VARCHAR(255),
-      current_token TEXT
+      current_token TEXT,
+      profile_photo ${textType} DEFAULT NULL
     )`,
 
     // Campaigns table
@@ -688,6 +750,17 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
       feedback ${textType},
       recording_url ${textType},
       called_at ${timestampType}
+    )`,
+
+    // Lead transfers table
+    `CREATE TABLE IF NOT EXISTS lead_transfers (
+      id ${serialType},
+      contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+      from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      status VARCHAR(20) DEFAULT 'pending',
+      reason ${textType},
+      created_at ${timestampType}
     )`,
 
     // Telecaller sessions table
