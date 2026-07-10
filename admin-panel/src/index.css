@@ -3049,11 +3049,6 @@ input::-ms-clear {
   animation: cardGlowPulse 0.8s ease-in-out;
 }
 
-/* Custom class for icon-only buttons to prevent media query padding overrides */
-.btn-icon,
-button[style*="padding: 0"],
-button[style*="padding:0"],
-button[style*="padding: 0px"],
-button[style*="padding:0px"] {
-  padding: 0 !important;
-}
+
+
+
