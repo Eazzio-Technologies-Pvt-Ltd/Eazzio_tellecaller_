@@ -233,6 +233,17 @@ async function initializeSchema() {
       otp VARCHAR(6) NOT NULL,
       expires_at TIMESTAMP NOT NULL,
       created_at ${timestampType}
+    )`,
+
+    // Call activities table (main database)
+    `CREATE TABLE IF NOT EXISTS call_activities (
+      id ${serialType},
+      lead_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+      telecaller_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      call_type VARCHAR(20) NOT NULL,
+      duration_seconds INTEGER DEFAULT 0,
+      phone_number VARCHAR(50) NOT NULL,
+      timestamp ${timestampType}
     )`
   ];
 
@@ -440,6 +451,18 @@ async function initializeSchema() {
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )`);
           } catch (e) {}
+
+          try {
+            await client.query(`CREATE TABLE IF NOT EXISTS call_activities (
+              id SERIAL PRIMARY KEY,
+              lead_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+              telecaller_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+              call_type VARCHAR(20) NOT NULL,
+              duration_seconds INTEGER DEFAULT 0,
+              phone_number VARCHAR(50) NOT NULL,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`);
+          } catch (e) {}
           
           console.log(`Migrated columns in schema: ${schemaName}`);
         } finally {
@@ -570,6 +593,17 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
         id ${serialType},
         message ${textType} NOT NULL,
         created_at ${timestampType}
+      )`,
+
+      // Call activities table
+      `CREATE TABLE IF NOT EXISTS call_activities (
+        id ${serialType},
+        lead_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+        telecaller_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        call_type VARCHAR(20) NOT NULL,
+        duration_seconds INTEGER DEFAULT 0,
+        phone_number VARCHAR(50) NOT NULL,
+        timestamp ${timestampType}
       )`
     ];
 

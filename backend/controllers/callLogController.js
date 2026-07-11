@@ -520,18 +520,18 @@ exports.getAnalytics = async (req, res) => {
 
     if (parsedId) {
       const callFilter = date ? (isMonth 
-        ? (isPg ? "AND TO_CHAR(called_at + INTERVAL '5 hours 30 minutes', 'YYYY-MM') = $2" : "AND strftime('%Y-%m', called_at, '+5 hours', '+30 minutes') = $2")
-        : (isPg ? "AND (called_at + INTERVAL '5 hours 30 minutes')::date = $2" : "AND date(called_at, '+5 hours', '+30 minutes') = $2")
+        ? (isPg ? "AND TO_CHAR(timestamp + INTERVAL '5 hours 30 minutes', 'YYYY-MM') = $2" : "AND strftime('%Y-%m', timestamp, '+5 hours', '+30 minutes') = $2")
+        : (isPg ? "AND (timestamp + INTERVAL '5 hours 30 minutes')::date = $2" : "AND date(timestamp, '+5 hours', '+30 minutes') = $2")
       ) : '';
 
       let overviewQuery = `
         SELECT
           (SELECT COUNT(*) FROM contacts WHERE assigned_to = $1) as total_contacts,
-          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'connected' AND telecaller_id = $1 ${callFilter}) as connected_calls,
-          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'non-connected' AND telecaller_id = $1 ${callFilter}) as non_connected_calls,
-          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'received' AND telecaller_id = $1 ${callFilter}) as received_calls,
-          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'missed' AND telecaller_id = $1 ${callFilter}) as missed_calls,
-          (SELECT SUM(duration) FROM call_logs WHERE telecaller_id = $1 ${callFilter}) as total_talk_time
+          (SELECT COUNT(*) FROM call_activities WHERE call_type = 'connected' AND telecaller_id = $1 ${callFilter}) as connected_calls,
+          (SELECT COUNT(*) FROM call_activities WHERE call_type = 'non_connected' AND telecaller_id = $1 ${callFilter}) as non_connected_calls,
+          (SELECT COUNT(*) FROM call_activities WHERE call_type = 'received' AND telecaller_id = $1 ${callFilter}) as received_calls,
+          (SELECT COUNT(*) FROM call_activities WHERE call_type = 'missed' AND telecaller_id = $1 ${callFilter}) as missed_calls,
+          (SELECT SUM(duration_seconds) FROM call_activities WHERE telecaller_id = $1 ${callFilter}) as total_talk_time
       `;
       const oParams = [parsedId];
       if (date) oParams.push(date);
@@ -547,10 +547,10 @@ exports.getAnalytics = async (req, res) => {
 
       callTrend = await db.query(`
         SELECT 
-          ${dateGrouping} as call_date,
-          COUNT(CASE WHEN call_status = 'connected' THEN 1 END) as connected,
-          COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed
-        FROM call_logs
+          ${dateGrouping.replace(/called_at/g, 'timestamp')} as call_date,
+          COUNT(CASE WHEN call_type = 'connected' THEN 1 END) as connected,
+          COUNT(CASE WHEN call_type = 'missed' THEN 1 END) as missed
+        FROM call_activities
         WHERE telecaller_id = $1
         GROUP BY call_date
         ORDER BY call_date ASC
@@ -558,22 +558,22 @@ exports.getAnalytics = async (req, res) => {
       `, [parsedId]);
     } else {
       const callFilterGlobal = date ? (isMonth 
-        ? (isPg ? "AND TO_CHAR(called_at + INTERVAL '5 hours 30 minutes', 'YYYY-MM') = $1" : "AND strftime('%Y-%m', called_at, '+5 hours', '+30 minutes') = $1")
-        : (isPg ? "AND (called_at + INTERVAL '5 hours 30 minutes')::date = $1" : "AND date(called_at, '+5 hours', '+30 minutes') = $1")
+        ? (isPg ? "AND TO_CHAR(timestamp + INTERVAL '5 hours 30 minutes', 'YYYY-MM') = $1" : "AND strftime('%Y-%m', timestamp, '+5 hours', '+30 minutes') = $1")
+        : (isPg ? "AND (timestamp + INTERVAL '5 hours 30 minutes')::date = $1" : "AND date(timestamp, '+5 hours', '+30 minutes') = $1")
       ) : '';
       const sumFilterGlobal = date ? (isMonth
-        ? (isPg ? "WHERE TO_CHAR(called_at + INTERVAL '5 hours 30 minutes', 'YYYY-MM') = $1" : "WHERE strftime('%Y-%m', called_at, '+5 hours', '+30 minutes') = $1")
-        : (isPg ? "WHERE (called_at + INTERVAL '5 hours 30 minutes')::date = $1" : "WHERE date(called_at, '+5 hours', '+30 minutes') = $1")
+        ? (isPg ? "WHERE TO_CHAR(timestamp + INTERVAL '5 hours 30 minutes', 'YYYY-MM') = $1" : "WHERE strftime('%Y-%m', timestamp, '+5 hours', '+30 minutes') = $1")
+        : (isPg ? "WHERE (timestamp + INTERVAL '5 hours 30 minutes')::date = $1" : "WHERE date(timestamp, '+5 hours', '+30 minutes') = $1")
       ) : '';
 
       let overviewQuery = `
         SELECT
           (SELECT COUNT(*) FROM contacts) as total_contacts,
-          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'connected' ${callFilterGlobal}) as connected_calls,
-          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'non-connected' ${callFilterGlobal}) as non_connected_calls,
-          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'received' ${callFilterGlobal}) as received_calls,
-          (SELECT COUNT(*) FROM call_logs WHERE call_status = 'missed' ${callFilterGlobal}) as missed_calls,
-          (SELECT SUM(duration) FROM call_logs ${sumFilterGlobal}) as total_talk_time
+          (SELECT COUNT(*) FROM call_activities WHERE call_type = 'connected' ${callFilterGlobal}) as connected_calls,
+          (SELECT COUNT(*) FROM call_activities WHERE call_type = 'non_connected' ${callFilterGlobal}) as non_connected_calls,
+          (SELECT COUNT(*) FROM call_activities WHERE call_type = 'received' ${callFilterGlobal}) as received_calls,
+          (SELECT COUNT(*) FROM call_activities WHERE call_type = 'missed' ${callFilterGlobal}) as missed_calls,
+          (SELECT SUM(duration_seconds) FROM call_activities ${sumFilterGlobal}) as total_talk_time
       `;
       const oParams = [];
       if (date) oParams.push(date);
@@ -585,10 +585,10 @@ exports.getAnalytics = async (req, res) => {
 
       callTrend = await db.query(`
         SELECT 
-          ${dateGrouping} as call_date,
-          COUNT(CASE WHEN call_status = 'connected' THEN 1 END) as connected,
-          COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed
-        FROM call_logs
+          ${dateGrouping.replace(/called_at/g, 'timestamp')} as call_date,
+          COUNT(CASE WHEN call_type = 'connected' THEN 1 END) as connected,
+          COUNT(CASE WHEN call_type = 'missed' THEN 1 END) as missed
+        FROM call_activities
         GROUP BY call_date
         ORDER BY call_date ASC
         LIMIT 7
@@ -617,13 +617,13 @@ exports.getAnalytics = async (req, res) => {
       clSubquery = `
         SELECT 
           telecaller_id,
-          COUNT(CASE WHEN call_status = 'connected' THEN 1 END) as connected_count,
-          COUNT(CASE WHEN call_status = 'non-connected' THEN 1 END) as non_connected_count,
-          COUNT(CASE WHEN call_status = 'received' THEN 1 END) as received_count,
-          COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed_count,
-          COALESCE(SUM(duration), 0) as talk_time
-        FROM call_logs
-        WHERE ${isPg ? "TO_CHAR(called_at + INTERVAL '5 hours 30 minutes', 'YYYY-MM')" : "strftime('%Y-%m', called_at, '+5 hours', '+30 minutes')"} = $1
+          COUNT(CASE WHEN call_type = 'connected' THEN 1 END) as connected_count,
+          COUNT(CASE WHEN call_type = 'non_connected' THEN 1 END) as non_connected_count,
+          COUNT(CASE WHEN call_type = 'received' THEN 1 END) as received_count,
+          COUNT(CASE WHEN call_type = 'missed' THEN 1 END) as missed_count,
+          COALESCE(SUM(duration_seconds), 0) as talk_time
+        FROM call_activities
+        WHERE ${isPg ? "TO_CHAR(timestamp + INTERVAL '5 hours 30 minutes', 'YYYY-MM')" : "strftime('%Y-%m', timestamp, '+5 hours', '+30 minutes')"} = $1
         GROUP BY telecaller_id
       `;
     } else {
@@ -641,13 +641,13 @@ exports.getAnalytics = async (req, res) => {
       clSubquery = `
         SELECT 
           telecaller_id,
-          COUNT(CASE WHEN call_status = 'connected' THEN 1 END) as connected_count,
-          COUNT(CASE WHEN call_status = 'non-connected' THEN 1 END) as non_connected_count,
-          COUNT(CASE WHEN call_status = 'received' THEN 1 END) as received_count,
-          COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed_count,
-          COALESCE(SUM(duration), 0) as talk_time
-        FROM call_logs
-        WHERE ${isPg ? "(called_at + INTERVAL '5 hours 30 minutes')::date" : "date(called_at, '+5 hours', '+30 minutes')"} = $1
+          COUNT(CASE WHEN call_type = 'connected' THEN 1 END) as connected_count,
+          COUNT(CASE WHEN call_type = 'non_connected' THEN 1 END) as non_connected_count,
+          COUNT(CASE WHEN call_type = 'received' THEN 1 END) as received_count,
+          COUNT(CASE WHEN call_type = 'missed' THEN 1 END) as missed_count,
+          COALESCE(SUM(duration_seconds), 0) as talk_time
+        FROM call_activities
+        WHERE ${isPg ? "(timestamp + INTERVAL '5 hours 30 minutes')::date" : "date(timestamp, '+5 hours', '+30 minutes')"} = $1
         GROUP BY telecaller_id
       `;
     }
@@ -751,25 +751,25 @@ exports.getTodayTelemetry = async (req, res) => {
     }
 
     const isPg = db.dbType === 'postgres';
-    const dateFilter = isPg ? "(called_at + INTERVAL '5 hours 30 minutes')::date = $1" : "date(called_at, '+5 hours', '+30 minutes') = $1";
+    const dateFilter = isPg ? "(timestamp + INTERVAL '5 hours 30 minutes')::date = $1" : "date(timestamp, '+5 hours', '+30 minutes') = $1";
     const callsCheck = await db.query(
       `SELECT 
-         COUNT(CASE WHEN call_status = 'connected' THEN 1 END) as connected,
-         COUNT(CASE WHEN call_status = 'non-connected' THEN 1 END) as non_connected,
-         COUNT(CASE WHEN call_status = 'received' THEN 1 END) as received,
-         COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed,
-         COALESCE(SUM(CASE WHEN call_status = 'connected' THEN duration END), 0) as connected_duration,
-         COALESCE(SUM(CASE WHEN call_status = 'non-connected' THEN duration END), 0) as non_connected_duration,
-         COALESCE(SUM(CASE WHEN call_status = 'received' THEN duration END), 0) as received_duration,
-         COALESCE(SUM(CASE WHEN call_status = 'missed' THEN duration END), 0) as missed_duration
-       FROM call_logs 
+         COUNT(CASE WHEN call_type = 'connected' THEN 1 END) as connected,
+         COUNT(CASE WHEN call_type = 'non_connected' THEN 1 END) as non_connected,
+         COUNT(CASE WHEN call_type = 'received' THEN 1 END) as received,
+         COUNT(CASE WHEN call_type = 'missed' THEN 1 END) as missed,
+         COALESCE(SUM(CASE WHEN call_type = 'connected' THEN duration_seconds END), 0) as connected_duration,
+         COALESCE(SUM(CASE WHEN call_type = 'non_connected' THEN duration_seconds END), 0) as non_connected_duration,
+         COALESCE(SUM(CASE WHEN call_type = 'received' THEN duration_seconds END), 0) as received_duration,
+         COALESCE(SUM(CASE WHEN call_type = 'missed' THEN duration_seconds END), 0) as missed_duration
+       FROM call_activities 
        WHERE telecaller_id = $2 AND ${dateFilter}`,
       [today, userId]
     );
 
     const talkTimeCheck = await db.query(
-      `SELECT COALESCE(SUM(duration), 0) as talk_time 
-       FROM call_logs 
+      `SELECT COALESCE(SUM(duration_seconds), 0) as talk_time 
+       FROM call_activities 
        WHERE telecaller_id = $2 AND ${dateFilter}`,
       [today, userId]
     );
@@ -804,6 +804,81 @@ exports.getTodayTelemetry = async (req, res) => {
   } catch (error) {
     console.error('Get today telemetry error:', error);
     res.status(500).json({ error: 'Server error fetching telemetry.' });
+  }
+};
+
+exports.syncCallActivities = async (req, res) => {
+  const userId = req.user.id;
+  const { activities } = req.body;
+
+  if (!activities || !Array.isArray(activities)) {
+    return res.status(400).json({ error: 'Activities array is required.' });
+  }
+
+  try {
+    const contactsRes = await db.query(
+      'SELECT id, phone_number, created_at FROM contacts WHERE assigned_to = $1 ORDER BY created_at DESC',
+      [userId]
+    );
+    const assignedContacts = contactsRes.rows;
+
+    const normalize = (num) => {
+      if (!num) return '';
+      let clean = num.toString().replace(/\D/g, '');
+      if (clean.length === 12 && clean.startsWith('91')) {
+        clean = clean.substring(2);
+      }
+      if (clean.length > 10) {
+        clean = clean.substring(clean.length - 10);
+      }
+      return clean;
+    };
+
+    let syncedCount = 0;
+
+    for (const activity of activities) {
+      const { phoneNumber, callType, durationSeconds, timestamp } = activity;
+      if (!phoneNumber || !callType || !timestamp) continue;
+
+      const normPhone = normalize(phoneNumber);
+      if (!normPhone) continue;
+
+      const match = assignedContacts.find(c => normalize(c.phone_number) === normPhone);
+      if (!match) continue; // Skip personal calls
+
+      const leadId = match.id;
+      const activityTime = new Date(timestamp);
+
+      // Deduplication check: timestamp (within a 5-second window), duration, phoneNumber
+      const targetTimeMs = activityTime.getTime();
+      const existingActivities = await db.query(
+        'SELECT id, timestamp FROM call_activities WHERE telecaller_id = $1 AND phone_number = $2 AND duration_seconds = $3',
+        [userId, phoneNumber, parseInt(durationSeconds || 0)]
+      );
+
+      let isDuplicate = false;
+      for (const row of existingActivities.rows) {
+        const rowTimeMs = new Date(row.timestamp).getTime();
+        if (Math.abs(rowTimeMs - targetTimeMs) < 5000) {
+          isDuplicate = true;
+          break;
+        }
+      }
+
+      if (isDuplicate) continue;
+
+      await db.query(
+        `INSERT INTO call_activities (lead_id, telecaller_id, call_type, duration_seconds, phone_number, timestamp)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [leadId, userId, callType, parseInt(durationSeconds || 0), phoneNumber, activityTime]
+      );
+      syncedCount++;
+    }
+
+    res.status(200).json({ success: true, message: `Successfully synced ${syncedCount} call activities.` });
+  } catch (error) {
+    console.error('Sync call activities error:', error);
+    res.status(500).json({ error: 'Server error syncing call activities.' });
   }
 };
 

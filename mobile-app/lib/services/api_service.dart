@@ -308,6 +308,31 @@ class ApiService {
     return null;
   }
 
+  // Sync call activities to backend
+  static Future<bool> syncCallActivities(List<Map<String, dynamic>> activities) async {
+    if (!isAuthenticated) return false;
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/call-logs/activities'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode({'activities': activities}),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 401) {
+        await forceLogout();
+      }
+      return false;
+    } catch (e) {
+      print('Error syncing call activities: $e');
+      return false;
+    }
+  }
+
   // ── Company Admin Dashboard Client APIs ──
 
   static Future<Map<String, dynamic>> fetchAnalytics({int? telecallerId, String? date}) async {

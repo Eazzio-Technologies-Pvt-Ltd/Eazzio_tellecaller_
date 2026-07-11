@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:call_log/call_log.dart';
+import 'package:phone_state/phone_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:eazzio_telecaller/services/api_service.dart';
@@ -20,7 +22,7 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingObserver {
   final TelemetryService _telemetry = TelemetryService();
   final CallService _callService = CallService();
   int _leadHoldingPeriod = 7;
@@ -29,6 +31,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isSyncing = false;
   List<Map<String, dynamic>> _availableSims = [];
   bool _loadingSims = false;
+  bool _permissionDenied = false;
+  DateTime? _callStartTimestamp;
+  PhoneStateStatus? _lastPhoneState;
+  StreamSubscription? _phoneStateSub;
 
   int _currentTabIndex = 0;
   Map<String, dynamic>? _profileUser;
@@ -306,11 +312,191 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Future<void> _checkCallPermissions() async {
+    final phoneGranted = await Permission.phone.isGranted;
+    final contactsGranted = await Permission.contacts.isGranted;
+
+    if (mounted) {
+      setState(() {
+        _permissionDenied = !phoneGranted || !contactsGranted;
+      });
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkCallPermissions();
+      _syncCallLogs();
+    }
+  }
+
+  Future<void> _requestPermissionsWithRationale() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+
+    bool userAccepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.security, color: Color(0xFF6366F1), size: 28),
+            const SizedBox(width: 10),
+            Text('Permissions Required', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Eazzio Telecaller requires the following permissions to function as a CRM and automate call outcome tracking:',
+              style: TextStyle(color: textColor, fontSize: 14, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            _buildPermissionItem(Icons.call_end_rounded, 'Call Logs', 'To automatically log call outcomes and talk durations to your leads table (Connected, Non-Connected, Received, Missed).'),
+            _buildPermissionItem(Icons.phone_rounded, 'Phone State & Dialer', 'To monitor dial/ring transitions and initiate direct calls via SIM slots.'),
+            _buildPermissionItem(Icons.contacts_rounded, 'Contacts', 'To verify that outgoing/incoming calls correspond to assigned CRM leads.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: subtextColor)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Grant Permissions', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    ) ?? false;
+
+    if (userAccepted) {
+      Map<Permission, PermissionStatus> statuses = await [
+        Permission.phone,
+        Permission.contacts,
+      ].request();
+
+      await _checkCallPermissions();
+      if (!_permissionDenied) {
+        _syncCallLogs();
+      }
+    }
+  }
+
+  Widget _buildPermissionItem(IconData icon, String title, String desc) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: const Color(0xFF6366F1), size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 2),
+                Text(desc, style: TextStyle(color: subtextColor, fontSize: 12, height: 1.3)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPermissionWarningBanner() {
+    final layout = ResponsiveLayout(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF2C1A1A) : const Color(0xFFFEE2E2);
+    final textColor = isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B);
+    final subtextColor = isDark ? const Color(0xFFF87171) : const Color(0xFFB91C1C);
+
+    return InkWell(
+      onTap: _requestPermissionsWithRationale,
+      child: Container(
+        padding: EdgeInsets.all(layout.scale(12.0, 16.0)),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(layout.cardRadius),
+          border: Border.all(
+            color: isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFCA5A5),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: textColor, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Call Tracking Disabled',
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: layout.scale(13.0, 14.0),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Tap to grant Call Log permissions and enable automated tracking.',
+                    style: TextStyle(
+                      color: subtextColor,
+                      fontSize: layout.scale(11.0, 12.0),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: textColor),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _syncCallLogs() async {
     if (_isSyncing || !ApiService.isAuthenticated) return;
     
     // Check if the session is active (working time) and not on break
     if (!_telemetry.isActive || _telemetry.currentState == TelemetryState.onBreak) return;
+
+    final phoneGranted = await Permission.phone.isGranted;
+    final contactsGranted = await Permission.contacts.isGranted;
+
+    if (!phoneGranted || !contactsGranted) {
+      if (mounted) {
+        setState(() {
+          _permissionDenied = true;
+        });
+      }
+      return;
+    } else {
+      if (mounted) {
+        setState(() {
+          _permissionDenied = false;
+        });
+      }
+    }
 
     _isSyncing = true;
     try {
@@ -322,40 +508,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
       
-      // Check Call Log permission first
-      bool hasCallLogPerm = false;
-      try {
-        hasCallLogPerm = await channel.invokeMethod('checkCallLogPermission') ?? false;
-      } catch (e) {
-        print('Error checking native call log permission: $e');
-      }
-      if (!hasCallLogPerm) {
-        _isSyncing = false;
-        return;
-      }
-
-      // Fetch a larger limit of recent call logs to cover the day
-      final List<dynamic>? logs = await channel.invokeMethod('getRecentCallLogs', {'limit': 200});
+      final List<dynamic>? logs = await channel.invokeMethod('getRecentCallLogs', {'limit': 150});
       if (logs == null || logs.isEmpty) {
         _isSyncing = false;
         return;
       }
 
-      final now = DateTime.now();
-      final startOfToday = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+      final prefs = await SharedPreferences.getInstance();
+      final int lastSynced = prefs.getInt('last_synced_call_timestamp') ?? 
+          DateTime.now().subtract(const Duration(days: 1)).millisecondsSinceEpoch;
 
-      int connected = 0;
-      int nonConnected = 0;
-      int received = 0;
-      int missed = 0;
+      final List<Map<String, dynamic>> activitiesToSync = [];
+      int highestTimestamp = lastSynced;
 
       for (final log in logs) {
         if (log is! Map) continue;
+        final int dateMs = log['date'] ?? 0;
+        if (dateMs <= lastSynced) continue;
+
+        if (dateMs > highestTimestamp) {
+          highestTimestamp = dateMs;
+        }
+
         final String rawNumber = log['number'] ?? '';
         final String logNum = rawNumber.replaceAll(RegExp(r'\D'), '');
         if (logNum.isEmpty) continue;
 
-        // Find if this number matches any allotted contact
         final contact = contacts.firstWhere((c) {
           final String cNum = c['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
           return cNum.endsWith(logNum) || logNum.endsWith(cNum);
@@ -363,58 +541,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         if (contact != null) {
           final int type = log['type'] ?? 0;
-          final int duration = log['duration'] ?? 0;
-          final int dateMs = log['date'] ?? 0;
+          int duration = log['duration'] ?? 0;
           final DateTime calledAt = DateTime.fromMillisecondsSinceEpoch(dateMs);
 
           String callStatus = 'missed';
           if (type == 2) {
-            // Outgoing
-            callStatus = duration > 0 ? 'connected' : 'non-connected';
+            callStatus = duration > 0 ? 'connected' : 'non_connected';
           } else if (type == 1) {
-            // Incoming
             callStatus = duration > 0 ? 'received' : 'missed';
           } else if (type == 3 || type == 5) {
-            // Missed or Rejected
             callStatus = 'missed';
           } else {
             continue;
           }
 
-          // Count stats for today matching our allotted contacts
-          if (dateMs >= startOfToday) {
-            if (callStatus == 'connected') {
-              connected++;
-            } else if (callStatus == 'non-connected') {
-              nonConnected++;
-            } else if (callStatus == 'received') {
-              received++;
-            } else if (callStatus == 'missed') {
-              missed++;
+          if (duration == 0) {
+            final lastEnd = prefs.getInt('last_call_end_time') ?? 0;
+            final lastRing = prefs.getInt('last_call_ringing_duration') ?? 0;
+            if ((dateMs - lastEnd).abs() < 30000) {
+              duration = lastRing;
+            } else {
+              duration = 15; // default fallback ring time
             }
           }
 
-          // Sync to server via submitCallLog API. 
-          // The backend will check if it already exists, avoiding duplicates.
-          await ApiService.submitCallLog(
-            contactId: contact['id'],
-            callStatus: callStatus,
-            duration: duration,
-            feedback: 'Automatically synchronized from device call logs.',
-            followUpDate: null,
-            recordingPath: null,
-            calledAt: calledAt.toUtc().toIso8601String(),
-          );
+          activitiesToSync.add({
+            'phoneNumber': rawNumber,
+            'callType': callStatus,
+            'durationSeconds': duration,
+            'timestamp': calledAt.toUtc().toIso8601String(),
+          });
         }
       }
 
-      // Update telemetry counters for today with the real call log data
-      setState(() {
-        _telemetry.connectedCalls = connected;
-        _telemetry.nonConnectedCalls = nonConnected;
-        _telemetry.receivedCalls = received;
-        _telemetry.missedCalls = missed;
-      });
+      if (activitiesToSync.isNotEmpty) {
+        final success = await ApiService.syncCallActivities(activitiesToSync);
+        if (success) {
+          await prefs.setInt('last_synced_call_timestamp', highestTimestamp);
+        }
+      }
+
+      await _telemetry.initializeSessionFromServer();
+      if (mounted) setState(() {});
 
     } catch (e) {
       print('[Sync] Error syncing call logs: $e');
@@ -426,6 +594,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Refresh stats UI every second to update active timer states
     _uiRefreshTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
@@ -440,8 +609,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _telemetry.initializeSessionFromServer();
     }
 
-    // Run first call log sync and start periodic timer
-    _syncCallLogs();
+    _callService.startListening();
+    _phoneStateSub = _callService.callStateStream.listen((status) {
+      if (status == PhoneStateStatus.CALL_STARTED) {
+        _callStartTimestamp = DateTime.now();
+      } else if (status == PhoneStateStatus.CALL_ENDED || status == PhoneStateStatus.NOTHING) {
+        if (_callStartTimestamp != null) {
+          final ringDuration = DateTime.now().difference(_callStartTimestamp!).inSeconds;
+          SharedPreferences.getInstance().then((prefs) {
+            prefs.setInt('last_call_ringing_duration', ringDuration);
+            prefs.setInt('last_call_end_time', DateTime.now().millisecondsSinceEpoch);
+          });
+          _callStartTimestamp = null;
+        }
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) _syncCallLogs();
+        });
+      }
+    });
+
+    _checkCallPermissions().then((_) {
+      if (_permissionDenied) {
+        _requestPermissionsWithRationale();
+      } else {
+        _syncCallLogs();
+      }
+    });
+
     _syncTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
       if (mounted) {
         _syncCallLogs();
@@ -588,6 +782,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     _uiRefreshTimer?.cancel();
     _syncTimer?.cancel();
+    _phoneStateSub?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -2415,6 +2611,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_permissionDenied) _buildPermissionWarningBanner(),
+          if (_permissionDenied) SizedBox(height: layout.spacing),
           _buildSimSelectionCard(),
           SizedBox(height: layout.spacing),
           Container(

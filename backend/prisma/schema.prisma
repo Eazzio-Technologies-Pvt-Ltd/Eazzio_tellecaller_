@@ -53,6 +53,7 @@ model User {
   transfersFrom    LeadTransfer[]      @relation("TransferFromUser")
   transfersTo      LeadTransfer[]      @relation("TransferToUser")
   sessions         TelecallerSession[] @relation("SessionTelecaller")
+  callActivities   CallActivity[]      @relation("TelecallerCallActivities")
 
   @@map("users")
 }
@@ -95,6 +96,7 @@ model Contact {
   assignedUser      User?          @relation("ContactAssignedTo", fields: [assignedTo], references: [id])
   campaign          Campaign?      @relation("CampaignContacts", fields: [campaignId], references: [id], onDelete: Cascade)
   transfers         LeadTransfer[] @relation("ContactTransfers")
+  callActivities    CallActivity[] @relation("LeadCallActivities")
 
   @@map("contacts")
 }
@@ -224,3 +226,18 @@ enum TransferStatus {
 
   @@map("transfer_status")
 }
+
+model CallActivity {
+  id              Int      @id @default(autoincrement())
+  leadId          Int?     @map("lead_id")
+  telecallerId    Int?     @map("telecaller_id")
+  callType        String   @map("call_type") @db.VarChar(20)
+  durationSeconds Int      @default(0) @map("duration_seconds")
+  timestamp       DateTime @default(now()) @map("timestamp")
+  phoneNumber     String   @map("phone_number") @db.VarChar(50)
+  lead            Contact? @relation("LeadCallActivities", fields: [leadId], references: [id], onDelete: Cascade)
+  telecaller      User?    @relation("TelecallerCallActivities", fields: [telecallerId], references: [id])
+
+  @@map("call_activities")
+}
+
