@@ -218,16 +218,30 @@ exports.createCallLog = async (req, res) => {
 exports.recordTelemetryDelta = async (userId) => {
   const today = getTrackingDate();
   try {
-    const userCheck = await db.query('SELECT status, name, last_active_at FROM users WHERE id = $1', [userId]);
+    const isPg = db.dbType === 'postgres';
+    const userSql = isPg
+      ? `SELECT status, name, last_active_at, 
+                COALESCE(EXTRACT(EPOCH FROM (clock_timestamp() - last_active_at))::integer, 0) as db_delta 
+         FROM users WHERE id = $1`
+      : `SELECT status, name, last_active_at FROM users WHERE id = $1`;
+
+    const userCheck = await db.query(userSql, [userId]);
     if (userCheck.rows.length === 0) return;
     const user = userCheck.rows[0];
     const originalStatus = user.status;
+
+    if (originalStatus === 'offline') {
+      // Offline users do not accumulate telemetry metrics
+      await db.query('UPDATE users SET last_active_at = CURRENT_TIMESTAMP WHERE id = $1', [userId]);
+      return;
+    }
+
     const lastActive = user.last_active_at ? new Date(user.last_active_at) : null;
     const now = new Date();
 
     let delta = 0;
     if (lastActive) {
-      delta = Math.floor((now.getTime() - lastActive.getTime()) / 1000);
+      delta = isPg ? (user.db_delta || 0) : Math.floor((now.getTime() - lastActive.getTime()) / 1000);
     }
     if (delta <= 0) return;
 

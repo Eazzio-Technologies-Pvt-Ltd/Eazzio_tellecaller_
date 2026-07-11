@@ -31,6 +31,7 @@ class _CallingScreenState extends State<CallingScreen> {
   // Active Call Statuses
   bool _isDialing = false;
   bool _isCallActive = false;
+  bool _wasConnected = false;
   int _callDurationSeconds = 0;
   Timer? _callDurationTimer;
 
@@ -377,6 +378,7 @@ class _CallingScreenState extends State<CallingScreen> {
 
     setState(() {
       _isDialing = true;
+      _wasConnected = false;
       _showPostCallScreen = false;
       _callDurationSeconds = 0;
       _followUpDate = null;
@@ -386,9 +388,6 @@ class _CallingScreenState extends State<CallingScreen> {
       _response3Controller.clear();
       _detectedCallStatus = 'non-connected';
     });
-
-    // Request state updates
-    _telemetry.setCallingState(true);
 
     // Record dial timestamp so _detectCallOutcome only matches this new call
     _callStartTimestamp = DateTime.now().millisecondsSinceEpoch;
@@ -402,7 +401,6 @@ class _CallingScreenState extends State<CallingScreen> {
       setState(() {
         _isDialing = false;
       });
-      _telemetry.setCallingState(false);
     }
   }
 
@@ -413,7 +411,11 @@ class _CallingScreenState extends State<CallingScreen> {
     setState(() {
       _isDialing = false;
       _isCallActive = true;
+      _wasConnected = true;
     });
+
+    // Request state updates only when call connects
+    _telemetry.setCallingState(true);
 
     // Start Recording Mic audio
     _recorder.startRecording();
@@ -470,18 +472,20 @@ class _CallingScreenState extends State<CallingScreen> {
               // Match phone numbers by comparing last 10 digits to handle country code variations
               if (_phoneNumbersMatch(number, contactPhone)) {
                 setState(() {
-                  _callDurationSeconds = duration; // Sync exact duration from Android call log
+                  if (duration > 0) {
+                    _callDurationSeconds = duration; // Sync exact duration from Android call log
+                  }
                   if (type == 2) {
                     // Outgoing
-                    _detectedCallStatus = duration > 0 ? 'connected' : 'non-connected';
+                    _detectedCallStatus = (duration > 0 || _wasConnected) ? 'connected' : 'non-connected';
                   } else if (type == 1) {
                     // Incoming
-                    _detectedCallStatus = duration > 0 ? 'received' : 'missed';
+                    _detectedCallStatus = (duration > 0 || _wasConnected) ? 'received' : 'missed';
                   } else if (type == 3 || type == 5) {
                     // Missed or Rejected
                     _detectedCallStatus = 'missed';
                   } else {
-                    _detectedCallStatus = duration > 0 ? 'connected' : 'non-connected';
+                    _detectedCallStatus = (duration > 0 || _wasConnected) ? 'connected' : 'non-connected';
                   }
                 });
                 print('[CallLog] Match found on attempt $attempt! Outcome: $_detectedCallStatus, Duration: $_callDurationSeconds');
@@ -494,7 +498,7 @@ class _CallingScreenState extends State<CallingScreen> {
       
       // If we reach here, no matching log entry was found
       setState(() {
-        if (_callDurationSeconds > 0) {
+        if (_wasConnected || _callDurationSeconds > 0) {
           _detectedCallStatus = 'connected';
         } else {
           _detectedCallStatus = 'non-connected';
@@ -1141,10 +1145,6 @@ class _CallingScreenState extends State<CallingScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-
-            // WhatsApp Template Sender
-            _buildWhatsAppSender(contact, layout, isDark, textColor),
             const SizedBox(height: 12),
             TextButton.icon(
               onPressed: _toggleBreakState,
