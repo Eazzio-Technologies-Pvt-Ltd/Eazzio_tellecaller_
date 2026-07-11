@@ -14,16 +14,16 @@ import {
   IndianRupee,
   LifeBuoy,
   Headphones,
-  Shuffle
+  Shuffle,
+  Settings
 } from 'lucide-react';
 
 import Logo from './Logo';
 
 const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, isOpen, onClose, showDemoBanner }) => {
-  const isSuperadmin = user && (user.companyRegNum === null || user.email === 'tellecaller111@eazzio.com');
-  const isDemoUser = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
-
   const [isCompact, setIsCompact] = useState(false);
+  const isSuperadmin = user && user.email === 'tellecaller111@eazzio.com';
+  const isDemoUser = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
 
   useEffect(() => {
     const handleResize = () => {
@@ -52,6 +52,7 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
         { id: 'follow-up-transfers', label: 'Lead Transfers', icon: Shuffle },
         { id: 'call-logs',   label: 'Call Logs',       icon: History },
         { id: 'help-desk',   label: 'Help Desk',       icon: LifeBuoy },
+        { id: 'settings',    label: 'Settings',        icon: Settings },
       ];
 
   const menuItems = rawMenuItems;

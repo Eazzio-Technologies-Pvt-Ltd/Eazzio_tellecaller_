@@ -201,7 +201,7 @@ exports.getAllottedContacts = async (req, res) => {
       `SELECT c.*, camp.name as campaign_name 
        FROM contacts c
        JOIN campaigns camp ON c.campaign_id = camp.id
-       WHERE c.assigned_to = $1 
+       WHERE (c.assigned_to = $1 OR c.added_by = $1)
          AND c.status IN ('pending', 'calling', 'follow_up') 
        ORDER BY c.status DESC, c.follow_up_date ASC, c.id ASC`,
       [userId]
@@ -457,7 +457,10 @@ exports.addLead = async (req, res) => {
       const callerName = duplicate.telecaller_name || 'another telecaller';
       return res.status(409).json({
         error: 'already_exists',
-        message: `This lead was already added by ${callerName}.`
+        message: `Already lead added by ${callerName}`,
+        contactId: duplicate.id,
+        assignedToId: duplicate.assigned_to,
+        telecallerName: callerName
       });
     }
 
@@ -481,36 +484,35 @@ exports.addLead = async (req, res) => {
 
 // Request a lead transfer to another telecaller
 exports.requestTransfer = async (req, res) => {
-  const { contactId, toUserId, reason } = req.body;
-  const fromUserId = req.user.id;
+  const { contactId, reason } = req.body;
+  const fromUserId = req.user.id; // Requester
 
-  if (!contactId || !toUserId) {
-    return res.status(400).json({ error: 'Contact ID and target User ID are required.' });
+  if (!contactId) {
+    return res.status(400).json({ error: 'Contact ID is required.' });
   }
 
   try {
-    // Check if the contact exists and belongs to the logged-in telecaller
-    const contactCheck = await db.query(
-      'SELECT * FROM contacts WHERE id = $1 AND assigned_to = $2',
-      [contactId, fromUserId]
-    );
+    // Find the contact
+    const contactCheck = await db.query('SELECT * FROM contacts WHERE id = $1', [contactId]);
     if (contactCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Contact not found or not assigned to you.' });
+      return res.status(404).json({ error: 'Contact not found.' });
     }
 
-    // Check if target user exists and is a telecaller in the company
-    const userCheck = await db.query(
-      "SELECT * FROM users WHERE id = $1 AND role = 'telecaller'",
-      [toUserId]
-    );
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Target telecaller not found.' });
+    const contact = contactCheck.rows[0];
+    const currentOwnerId = contact.assigned_to;
+
+    if (!currentOwnerId) {
+      return res.status(400).json({ error: 'Contact is not currently assigned to any telecaller.' });
     }
 
-    // Check if there is already a pending transfer request for this contact
+    if (currentOwnerId === fromUserId) {
+      return res.status(400).json({ error: 'Contact is already assigned to you.' });
+    }
+
+    // Check if there is already a pending transfer request for this contact by the requester
     const existingCheck = await db.query(
-      "SELECT * FROM lead_transfers WHERE contact_id = $1 AND status = 'pending'",
-      [contactId]
+      "SELECT * FROM lead_transfers WHERE contact_id = $1 AND from_user_id = $2 AND status = 'pending'",
+      [contactId, fromUserId]
     );
     if (existingCheck.rows.length > 0) {
       return res.status(400).json({ error: 'A pending transfer request already exists for this lead.' });
@@ -519,7 +521,7 @@ exports.requestTransfer = async (req, res) => {
     // Insert the transfer request
     const insertRes = await db.query(
       'INSERT INTO lead_transfers (contact_id, from_user_id, to_user_id, status, reason) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [contactId, fromUserId, toUserId, 'pending', reason || '']
+      [contactId, fromUserId, currentOwnerId, 'pending', reason || 'Request lead transfer']
     );
 
     res.status(201).json({
@@ -613,7 +615,7 @@ exports.respondTransferRequest = async (req, res) => {
     if (status === 'approved') {
       await db.query(
         'UPDATE contacts SET assigned_to = $1 WHERE id = $2',
-        [request.to_user_id, request.contact_id]
+        [request.from_user_id, request.contact_id]
       );
     }
 

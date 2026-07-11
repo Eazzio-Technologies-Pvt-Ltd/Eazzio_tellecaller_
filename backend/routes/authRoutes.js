@@ -54,7 +54,8 @@ router.get('/company-billing', authMiddleware('admin'), authController.getCompan
 router.post('/toggle-call-recording', authMiddleware('admin'), authController.toggleCallRecording);
 router.post('/razorpay-call-recording-order', authMiddleware('admin'), authController.createCallRecordingOrder);
 router.post('/enable-call-recording-with-payment', authMiddleware('admin'), authController.enableCallRecordingWithPayment);
-
-
+router.get('/company-settings', authMiddleware('admin'), authController.getCompanySettings);
+router.post('/company-settings', authMiddleware('admin'), authController.updateCompanySettings);
+router.post('/increment-whatsapp', authMiddleware(), authController.incrementWhatsappCount);
 
 module.exports = router;

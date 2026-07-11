@@ -127,6 +127,44 @@ exports.createCallLog = async (req, res) => {
 
     await db.query(updateSql, params);
 
+    // Update try_count, last_try_date, and response feedback
+    try {
+      const contactCheck = await db.query('SELECT try_count, last_try_date FROM contacts WHERE id = $1', [contactId]);
+      if (contactCheck.rows.length > 0) {
+        const contactRow = contactCheck.rows[0];
+        const todayStr = getTrackingDate(); // YYYY-MM-DD
+        let currentTry = contactRow.try_count || 0;
+        let lastTryDate = contactRow.last_try_date ? getTrackingDate(contactRow.last_try_date) : '';
+        
+        if (lastTryDate !== todayStr) {
+          currentTry = 1;
+        } else {
+          currentTry = currentTry + 1;
+        }
+
+        let respCol = '';
+        if (currentTry === 1) respCol = 'response_1';
+        else if (currentTry === 2) respCol = 'response_2';
+        else if (currentTry === 3) respCol = 'response_3';
+
+        let tryUpdateSql = 'UPDATE contacts SET try_count = $1, last_try_date = CURRENT_DATE';
+        const tryParams = [currentTry];
+
+        if (respCol) {
+          tryUpdateSql += `, ${respCol} = $2`;
+          tryParams.push(feedback || '');
+          tryUpdateSql += ` WHERE id = $3`;
+          tryParams.push(contactId);
+        } else {
+          tryUpdateSql += ` WHERE id = $2`;
+          tryParams.push(contactId);
+        }
+        await db.query(tryUpdateSql, tryParams);
+      }
+    } catch (tryErr) {
+      console.error('Error updating contact try count and responses:', tryErr.message);
+    }
+
     // 4. Increment talk time in the call log's day telecaller session
     const sessionDate = getTrackingDate(calledAt);
     const sessionCheck = await db.query(
@@ -306,6 +344,10 @@ exports.getCallLogs = async (req, res) => {
         cl.*,
         c.name as contact_name,
         c.phone_number as contact_phone,
+        c.try_count,
+        c.response_1,
+        c.response_2,
+        c.response_3,
         u.name as telecaller_name,
         camp.name as campaign_name
       FROM call_logs cl
@@ -586,7 +628,11 @@ exports.getTodayTelemetry = async (req, res) => {
          COUNT(CASE WHEN call_status = 'connected' THEN 1 END) as connected,
          COUNT(CASE WHEN call_status = 'non-connected' THEN 1 END) as non_connected,
          COUNT(CASE WHEN call_status = 'received' THEN 1 END) as received,
-         COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed
+         COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed,
+         COALESCE(SUM(CASE WHEN call_status = 'connected' THEN duration END), 0) as connected_duration,
+         COALESCE(SUM(CASE WHEN call_status = 'non-connected' THEN duration END), 0) as non_connected_duration,
+         COALESCE(SUM(CASE WHEN call_status = 'received' THEN duration END), 0) as received_duration,
+         COALESCE(SUM(CASE WHEN call_status = 'missed' THEN duration END), 0) as missed_duration
        FROM call_logs 
        WHERE telecaller_id = $2 AND ${dateFilter}`,
       [today, userId]
@@ -599,7 +645,10 @@ exports.getTodayTelemetry = async (req, res) => {
       [today, userId]
     );
 
-    const callCounts = callsCheck.rows[0] || { connected: 0, non_connected: 0, received: 0, missed: 0 };
+    const callCounts = callsCheck.rows[0] || { 
+      connected: 0, non_connected: 0, received: 0, missed: 0,
+      connected_duration: 0, non_connected_duration: 0, received_duration: 0, missed_duration: 0
+    };
     const talkTime = parseInt(talkTimeCheck.rows[0].talk_time, 10);
 
     res.json({
@@ -615,6 +664,10 @@ exports.getTodayTelemetry = async (req, res) => {
         nonConnected: parseInt(callCounts.non_connected || 0, 10),
         received: parseInt(callCounts.received || 0, 10),
         missed: parseInt(callCounts.missed || 0, 10),
+        connectedDuration: parseInt(callCounts.connected_duration || 0, 10),
+        nonConnectedDuration: parseInt(callCounts.non_connected_duration || 0, 10),
+        receivedDuration: parseInt(callCounts.received_duration || 0, 10),
+        missedDuration: parseInt(callCounts.missed_duration || 0, 10),
       }
     });
   } catch (error) {

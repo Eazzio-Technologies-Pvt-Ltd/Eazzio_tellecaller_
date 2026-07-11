@@ -99,14 +99,7 @@ if (dbType === 'postgres') {
     console.error('Unexpected error on idle client:', err.message);
   });
 } else {
-  console.log('Database Config: Using SQLite');
-  const sqliteFile = path.resolve(process.env.SQLITE_FILE || path.join(__dirname, '..', 'database.sqlite'));
-  // Ensure directory exists
-  const dir = path.dirname(sqliteFile);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  sqliteDb = new sqlite3.Database(sqliteFile);
+  throw new Error('Database Config Error: SQLite database mode is deprecated and disabled. Please configure DB_TYPE=postgres and set DATABASE_URL.');
 }
 
 /**
@@ -230,6 +223,9 @@ async function initializeSchema() {
       mac_address VARCHAR(255),
       call_recording_enabled INTEGER DEFAULT 0,
       call_recording_end_date ${isPg ? 'TIMESTAMP DEFAULT NULL' : 'DATETIME DEFAULT NULL'},
+      work_time_limit_hours INTEGER DEFAULT 8,
+      talk_time_limit_hours INTEGER DEFAULT 4,
+      proxy_limit_minutes INTEGER DEFAULT 10,
       created_at ${timestampType}
     )`,
 
@@ -268,6 +264,11 @@ async function initializeSchema() {
       last_called_at ${timestampType},
       follow_up_date ${timestampType},
       follow_up_started_at ${timestampType},
+      try_count INTEGER DEFAULT 0,
+      last_try_date ${dateType},
+      response_1 ${textType},
+      response_2 ${textType},
+      response_3 ${textType},
       created_at ${timestampType}
     )`,
 
@@ -292,6 +293,7 @@ async function initializeSchema() {
       total_calling_time INTEGER DEFAULT 0,
       total_idle_time INTEGER DEFAULT 0,
       total_break_time INTEGER DEFAULT 0,
+      whatsapp_messages_count INTEGER DEFAULT 0,
       last_updated_at ${timestampType},
       UNIQUE (telecaller_id, date)
     )`,
@@ -513,16 +515,27 @@ async function initializeSchema() {
   // Migrate contacts table column limits in main database and all dynamic PostgreSQL schemas
   try {
     if (dbType === 'postgres') {
-      // 1. Alter public database contacts table
+      // 1. Alter public database contacts and companies tables
       await queryMain('ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)');
       await queryMain('ALTER TABLE contacts ALTER COLUMN name TYPE VARCHAR(255)');
       try {
         await queryMain('ALTER TABLE contacts ADD COLUMN added_by INTEGER');
-        console.log('Added added_by to public contacts table');
-      } catch (e) {
-        // Ignore if already exists
-      }
-      console.log('Migrated public contacts table column types to VARCHAR(50) and VARCHAR(255).');
+      } catch (e) {}
+
+      // Add new columns to public companies, contacts, and telecaller_sessions
+      try { await queryMain('ALTER TABLE companies ADD COLUMN IF NOT EXISTS work_time_limit_hours INTEGER DEFAULT 8'); } catch(e){}
+      try { await queryMain('ALTER TABLE companies ADD COLUMN IF NOT EXISTS talk_time_limit_hours INTEGER DEFAULT 4'); } catch(e){}
+      try { await queryMain('ALTER TABLE companies ADD COLUMN IF NOT EXISTS proxy_limit_minutes INTEGER DEFAULT 10'); } catch(e){}
+
+      try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS try_count INTEGER DEFAULT 0'); } catch(e){}
+      try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS last_try_date DATE DEFAULT NULL'); } catch(e){}
+      try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_1 TEXT DEFAULT NULL'); } catch(e){}
+      try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_2 TEXT DEFAULT NULL'); } catch(e){}
+      try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_3 TEXT DEFAULT NULL'); } catch(e){}
+
+      try { await queryMain('ALTER TABLE telecaller_sessions ADD COLUMN IF NOT EXISTS whatsapp_messages_count INTEGER DEFAULT 0'); } catch(e){}
+
+      console.log('Migrated public contacts and companies tables.');
 
       // 2. Alter dynamic schemas
       const companiesRes = await queryMain('SELECT reg_num FROM companies');
@@ -537,26 +550,17 @@ async function initializeSchema() {
             await client.query('ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)');
             await client.query('ALTER TABLE contacts ALTER COLUMN name TYPE VARCHAR(255)');
             
-            try {
-              await client.query('ALTER TABLE contacts ADD COLUMN follow_up_started_at TIMESTAMP');
-              console.log(`Added follow_up_started_at to schema ${schemaName}`);
-            } catch (e) {
-              // Ignore if already exists
-            }
+            try { await client.query('ALTER TABLE contacts ADD COLUMN follow_up_started_at TIMESTAMP'); } catch (e) {}
+            try { await client.query('ALTER TABLE contacts ADD COLUMN added_by INTEGER REFERENCES users(id) ON DELETE SET NULL'); } catch (e) {}
+            try { await client.query('ALTER TABLE users ADD COLUMN profile_photo TEXT'); } catch (e) {}
 
-            try {
-              await client.query('ALTER TABLE contacts ADD COLUMN added_by INTEGER REFERENCES users(id) ON DELETE SET NULL');
-              console.log(`Added added_by to contacts table in schema ${schemaName}`);
-            } catch (e) {
-              // Ignore if already exists
-            }
+            try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS try_count INTEGER DEFAULT 0'); } catch(e){}
+            try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS last_try_date DATE DEFAULT NULL'); } catch(e){}
+            try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_1 TEXT DEFAULT NULL'); } catch(e){}
+            try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_2 TEXT DEFAULT NULL'); } catch(e){}
+            try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_3 TEXT DEFAULT NULL'); } catch(e){}
 
-            try {
-              await client.query('ALTER TABLE users ADD COLUMN profile_photo TEXT');
-              console.log(`Added profile_photo to schema ${schemaName}`);
-            } catch (e) {
-              // Ignore if already exists
-            }
+            try { await client.query('ALTER TABLE telecaller_sessions ADD COLUMN IF NOT EXISTS whatsapp_messages_count INTEGER DEFAULT 0'); } catch(e){}
 
             try {
               await client.query(`CREATE TABLE IF NOT EXISTS lead_transfers (
@@ -568,18 +572,51 @@ async function initializeSchema() {
                 reason TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
               )`);
-              console.log(`Created lead_transfers in schema ${schemaName}`);
-            } catch (e) {
-              // Ignore if already exists
-            }
+            } catch (e) {}
             
-            console.log(`Migrated contacts table column types to VARCHAR(50) and VARCHAR(255) in schema: ${schemaName}`);
+            console.log(`Migrated columns in schema: ${schemaName}`);
           } finally {
             client.removeListener('error', errorHandler);
             client.release();
           }
         } catch (schemaErr) {
           console.error(`Failed to migrate schema ${schemaName}:`, schemaErr.message);
+        }
+      }
+    } else {
+      // SQLite local migrations
+      try { await queryMain('ALTER TABLE companies ADD COLUMN work_time_limit_hours INTEGER DEFAULT 8'); } catch(e){}
+      try { await queryMain('ALTER TABLE companies ADD COLUMN talk_time_limit_hours INTEGER DEFAULT 4'); } catch(e){}
+      try { await queryMain('ALTER TABLE companies ADD COLUMN proxy_limit_minutes INTEGER DEFAULT 10'); } catch(e){}
+      try { await queryMain('ALTER TABLE contacts ADD COLUMN try_count INTEGER DEFAULT 0'); } catch(e){}
+      try { await queryMain('ALTER TABLE contacts ADD COLUMN last_try_date DATE DEFAULT NULL'); } catch(e){}
+      try { await queryMain('ALTER TABLE contacts ADD COLUMN response_1 TEXT DEFAULT NULL'); } catch(e){}
+      try { await queryMain('ALTER TABLE contacts ADD COLUMN response_2 TEXT DEFAULT NULL'); } catch(e){}
+      try { await queryMain('ALTER TABLE contacts ADD COLUMN response_3 TEXT DEFAULT NULL'); } catch(e){}
+      try { await queryMain('ALTER TABLE telecaller_sessions ADD COLUMN whatsapp_messages_count INTEGER DEFAULT 0'); } catch(e){}
+
+      const fs = require('fs');
+      const path = require('path');
+      const sqlite3 = require('sqlite3');
+      const databasesDir = getDatabasesDir();
+      if (fs.existsSync(databasesDir)) {
+        const files = fs.readdirSync(databasesDir).filter(f => f.startsWith('company_') && f.endsWith('.sqlite'));
+        for (const file of files) {
+          const compDbPath = path.join(databasesDir, file);
+          const compDb = new sqlite3.Database(compDbPath);
+          await new Promise((resolve) => {
+            compDb.serialize(() => {
+              compDb.run("ALTER TABLE contacts ADD COLUMN try_count INTEGER DEFAULT 0", () => {});
+              compDb.run("ALTER TABLE contacts ADD COLUMN last_try_date DATE DEFAULT NULL", () => {});
+              compDb.run("ALTER TABLE contacts ADD COLUMN response_1 TEXT DEFAULT NULL", () => {});
+              compDb.run("ALTER TABLE contacts ADD COLUMN response_2 TEXT DEFAULT NULL", () => {});
+              compDb.run("ALTER TABLE contacts ADD COLUMN response_3 TEXT DEFAULT NULL", () => {});
+              compDb.run("ALTER TABLE telecaller_sessions ADD COLUMN whatsapp_messages_count INTEGER DEFAULT 0", () => {
+                compDb.close();
+                resolve();
+              });
+            });
+          });
         }
       }
     }
@@ -646,6 +683,11 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
           last_called_at ${timestampType},
           follow_up_date ${timestampType},
           follow_up_started_at ${timestampType},
+          try_count INTEGER DEFAULT 0,
+          last_try_date ${dateType},
+          response_1 ${textType},
+          response_2 ${textType},
+          response_3 ${textType},
           created_at ${timestampType}
         )`,
 
@@ -681,6 +723,7 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
           total_calling_time INTEGER DEFAULT 0,
           total_idle_time INTEGER DEFAULT 0,
           total_break_time INTEGER DEFAULT 0,
+          whatsapp_messages_count INTEGER DEFAULT 0,
           last_updated_at ${timestampType},
           UNIQUE (telecaller_id, date)
         )`,
@@ -768,6 +811,11 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
       last_called_at ${timestampType},
       follow_up_date ${timestampType},
       follow_up_started_at ${timestampType},
+      try_count INTEGER DEFAULT 0,
+      last_try_date ${dateType},
+      response_1 ${textType},
+      response_2 ${textType},
+      response_3 ${textType},
       created_at ${timestampType}
     )`,
 
@@ -803,6 +851,7 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
       total_calling_time INTEGER DEFAULT 0,
       total_idle_time INTEGER DEFAULT 0,
       total_break_time INTEGER DEFAULT 0,
+      whatsapp_messages_count INTEGER DEFAULT 0,
       last_updated_at ${timestampType},
       UNIQUE (telecaller_id, date)
     )`,

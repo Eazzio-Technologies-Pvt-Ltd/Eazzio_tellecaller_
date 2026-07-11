@@ -9,6 +9,7 @@ import 'package:eazzio_telecaller/services/recording_service.dart';
 import 'package:eazzio_telecaller/services/telemetry_service.dart';
 import 'package:eazzio_telecaller/screens/login_screen.dart';
 import 'package:eazzio_telecaller/services/layout_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CallingScreen extends StatefulWidget {
   const CallingScreen({super.key});
@@ -50,16 +51,63 @@ class _CallingScreenState extends State<CallingScreen> {
   Timer? _breakUiTimer;
   Timer? _shiftCheckTimer;
 
+  // Tab & User Details
+  int _selectedTab = 0;
+  Map<String, dynamic>? _profileUser;
+
+  // WhatsApp Templates
+  final List<String> _whatsappTemplates = [
+    "Hello, this is Eazzio Telecaller. We tried calling you.",
+    "Welcome to Eazzio! Let us know when you're free for a quick chat.",
+    "Hi, please call back when you are free.",
+    "Hello, here are the details you requested."
+  ];
+  String _selectedTemplate = "Hello, this is Eazzio Telecaller. We tried calling you.";
+
+  // Response Text Controllers
+  final TextEditingController _response1Controller = TextEditingController();
+  final TextEditingController _response2Controller = TextEditingController();
+  final TextEditingController _response3Controller = TextEditingController();
+
+  List<dynamic> get _activeContacts {
+    final myId = _profileUser?['id'];
+    if (myId == null) return _contacts;
+    
+    if (_selectedTab == 0) {
+      // My Lead: added by myself
+      return _contacts.where((c) => c['added_by'] == myId).toList();
+    } else {
+      // My Workspace: allotted by company admin
+      return _contacts.where((c) => c['added_by'] != myId).toList();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _loadAllottedContacts();
+    _loadProfile().then((_) {
+      _loadAllottedContacts();
+    });
     _checkAndRequestPermissions();
     _shiftCheckTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         _checkShiftCompletion();
       }
     });
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final resp = await ApiService.fetchMe();
+      if (mounted && resp != null) {
+        final userObj = resp['user'] ?? resp;
+        setState(() {
+          _profileUser = userObj is Map<String, dynamic> ? userObj : null;
+        });
+      }
+    } catch (e) {
+      print('Error fetching profile in calling screen: $e');
+    }
   }
 
   Future<void> _checkAndRequestPermissions() async {
@@ -133,6 +181,9 @@ class _CallingScreenState extends State<CallingScreen> {
     _breakUiTimer?.cancel();
     _shiftCheckTimer?.cancel();
     _feedbackController.dispose();
+    _response1Controller.dispose();
+    _response2Controller.dispose();
+    _response3Controller.dispose();
     super.dispose();
   }
 
@@ -195,6 +246,28 @@ class _CallingScreenState extends State<CallingScreen> {
     );
   }
 
+  int _calculateCurrentAttempt(dynamic contact) {
+    if (contact == null) return 1;
+    final lastTryDateStr = contact['last_try_date']?.toString();
+    final todayStr = DateTime.now().toLocal().toString().split(' ')[0]; // YYYY-MM-DD
+    
+    if (lastTryDateStr != null && lastTryDateStr.startsWith(todayStr)) {
+      final dbTryCount = contact['try_count'] ?? 0;
+      if (dbTryCount >= 3) return 3;
+      return dbTryCount + 1;
+    }
+    return 1;
+  }
+
+  void _prepareControllersForCurrentContact() {
+    if (_activeContacts.isEmpty || _currentIndex >= _activeContacts.length) return;
+    final contact = _activeContacts[_currentIndex];
+    
+    _response1Controller.text = contact['response_1']?.toString() ?? '';
+    _response2Controller.text = contact['response_2']?.toString() ?? '';
+    _response3Controller.text = contact['response_3']?.toString() ?? '';
+  }
+
   Future<void> _loadAllottedContacts() async {
     setState(() {
       _isLoading = true;
@@ -208,15 +281,93 @@ class _CallingScreenState extends State<CallingScreen> {
       _isLoading = false;
       if (contacts.isEmpty) {
         _error = "No allotted leads for today. Ask your administrator to assign contacts.";
+      } else {
+        _prepareControllersForCurrentContact();
       }
     });
   }
 
-  // Dial Current Contact
-  void _dialCurrentContact() async {
-    if (_contacts.isEmpty || _currentIndex >= _contacts.length) return;
+  void _dialCurrentContact() {
+    if (_activeContacts.isEmpty || _currentIndex >= _activeContacts.length) return;
     
-    final contact = _contacts[_currentIndex];
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final textColor = isDark ? Colors.white : const Color(0xFF111827);
+        final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+
+        return AlertDialog(
+          backgroundColor: cardColor,
+          title: Text('Call Lead', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+          content: Text('Would you like to dial this SIM number or skip this call?', style: TextStyle(color: textColor)),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _skipCurrentCall();
+              },
+              child: const Text('Skip the call', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _executeDialCurrentContact();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+              child: const Text('Dial', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _skipCurrentCall() {
+    setState(() {
+      _showPostCallScreen = true;
+      _isDialing = false;
+      _isCallActive = false;
+      _detectedCallStatus = 'missed';
+      _feedbackController.text = 'Skipped call';
+      _response1Controller.text = 'Skipped call';
+      _response2Controller.text = 'Skipped call';
+      _response3Controller.text = 'Skipped call';
+    });
+  }
+
+  void _showProxyCallWarning() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF12131A),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 8),
+            Text('Proxy Call Alert', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Warning: Your active call duration has exceeded the company threshold limit of ${_profileUser?["proxyLimitMinutes"] ?? 10} minutes. Please wrap up the call.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Dismiss', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Execute Dial Current Contact
+  void _executeDialCurrentContact() async {
+    if (_activeContacts.isEmpty || _currentIndex >= _activeContacts.length) return;
+    
+    final contact = _activeContacts[_currentIndex];
     final String phoneNumber = contact['phone_number'];
 
     setState(() {
@@ -225,6 +376,9 @@ class _CallingScreenState extends State<CallingScreen> {
       _callDurationSeconds = 0;
       _followUpDate = null;
       _feedbackController.clear();
+      _response1Controller.clear();
+      _response2Controller.clear();
+      _response3Controller.clear();
       _detectedCallStatus = 'non-connected';
     });
 
@@ -258,15 +412,21 @@ class _CallingScreenState extends State<CallingScreen> {
 
     // Start timer for duration UI
     _callDurationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _callDurationSeconds++;
-      });
+      if (mounted) {
+        setState(() {
+          _callDurationSeconds++;
+        });
+        final limitMins = _profileUser?['proxyLimitMinutes'] ?? 10;
+        if (_callDurationSeconds == limitMins * 60) {
+          _showProxyCallWarning();
+        }
+      }
     });
   }
 
   Future<void> _detectCallOutcome() async {
     try {
-      final contact = _contacts[_currentIndex];
+      final contact = _activeContacts[_currentIndex < _activeContacts.length ? _currentIndex : 0];
       final String contactPhone = contact['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
       
       const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
@@ -409,12 +569,20 @@ class _CallingScreenState extends State<CallingScreen> {
   Future<void> _submitAndGoToNext([String? recordingPath]) async {
     _countdownTimer?.cancel();
 
-    if (_contacts.isEmpty || _currentIndex >= _contacts.length) return;
+    if (_activeContacts.isEmpty || _currentIndex >= _activeContacts.length) return;
     
-    final contact = _contacts[_currentIndex];
+    final contact = _activeContacts[_currentIndex];
     final String callStatus = _detectedCallStatus;
     final int duration = _callDurationSeconds;
-    final String feedback = _feedbackController.text.trim();
+    final int currentTry = _calculateCurrentAttempt(contact);
+    // Use the response field of the active try as feedback
+    final String feedback = currentTry == 3
+        ? _response3Controller.text.trim()
+        : currentTry == 2
+            ? _response2Controller.text.trim()
+            : _response1Controller.text.trim().isNotEmpty
+                ? _response1Controller.text.trim()
+                : _feedbackController.text.trim();
     final String? followUp = _followUpDate != null 
         ? _followUpDate!.toIso8601String() 
         : null;
@@ -422,12 +590,16 @@ class _CallingScreenState extends State<CallingScreen> {
     // Track counters in stats
     if (callStatus == 'connected') {
       _telemetry.connectedCalls++;
+      _telemetry.connectedDuration += duration;
     } else if (callStatus == 'non-connected') {
       _telemetry.nonConnectedCalls++;
+      _telemetry.nonConnectedDuration += duration;
     } else if (callStatus == 'received') {
       _telemetry.receivedCalls++;
+      _telemetry.receivedDuration += duration;
     } else if (callStatus == 'missed') {
       _telemetry.missedCalls++;
+      _telemetry.missedDuration += duration;
     }
 
     // Submit log payload asynchronously to avoid UI lagging
@@ -447,9 +619,13 @@ class _CallingScreenState extends State<CallingScreen> {
       _isOnBreak = false;
       _followUpDate = null;
       _feedbackController.clear();
+      _response1Controller.clear();
+      _response2Controller.clear();
+      _response3Controller.clear();
     });
 
-    if (_currentIndex < _contacts.length) {
+    if (_currentIndex < _activeContacts.length) {
+      _prepareControllersForCurrentContact();
       // Auto dial next lead
       _dialCurrentContact();
     } else {
@@ -589,9 +765,60 @@ class _CallingScreenState extends State<CallingScreen> {
       return _buildBreakScreen();
     }
 
-    final contact = _contacts[_currentIndex];
-    final totalLeads = _contacts.length;
-    final progress = (_currentIndex + 1) / totalLeads;
+    if (_activeContacts.isEmpty) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final bgColor = isDark ? const Color(0xFF0A0B10) : Colors.grey[200];
+      final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+      final textColor = isDark ? Colors.white : const Color(0xFF111827);
+      final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+
+      return Scaffold(
+        backgroundColor: bgColor,
+        appBar: AppBar(
+          backgroundColor: cardColor,
+          title: Text('Dialer Workspace', style: TextStyle(color: textColor)),
+        ),
+        body: Column(
+          children: [
+            _buildWorkspaceTabs(isDark),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.phone_disabled_rounded, color: subtextColor, size: 64),
+                      const SizedBox(height: 16),
+                      Text(
+                        _selectedTab == 0
+                            ? 'No leads added by you yet.'
+                            : 'No leads allotted by admin yet.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: textColor, fontSize: 16),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _selectedTab == 0
+                            ? 'Add leads first from the dashboard.'
+                            : 'Ask your administrator to allot contacts.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: subtextColor, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final contact = _activeContacts[_currentIndex < _activeContacts.length ? _currentIndex : 0];
+    final totalLeads = _activeContacts.length;
+    final safeIndex = _currentIndex < totalLeads ? _currentIndex : totalLeads - 1;
+    final progress = (safeIndex + 1) / totalLeads;
 
     final layout = ResponsiveLayout(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -604,39 +831,154 @@ class _CallingScreenState extends State<CallingScreen> {
       appBar: AppBar(
         backgroundColor: cardColor,
         title: Text(
-          'Lead ${_currentIndex + 1} of $totalLeads',
+          'Lead ${safeIndex + 1} of $totalLeads',
           style: TextStyle(color: textColor, fontSize: layout.fontSizeHeading, fontWeight: FontWeight.bold),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(layout.scale(14.0, 20.0)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Progress Bar
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: layout.scale(4.0, 6.0),
-                  backgroundColor: isDark ? const Color(0xFF1E1F29) : const Color(0xFFE5E7EB),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+      body: Column(
+        children: [
+          _buildWorkspaceTabs(isDark),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(layout.scale(14.0, 20.0)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Progress Bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: layout.scale(4.0, 6.0),
+                        backgroundColor: isDark ? const Color(0xFF1E1F29) : const Color(0xFFE5E7EB),
+                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                      ),
+                    ),
+                    SizedBox(height: layout.spacing),
+
+                    if (!_showPostCallScreen) ...[
+                      // Main Contact Call Panel
+                      _buildContactPanel(contact),
+                    ] else ...[
+                      // Post-Call Feedback Panel
+                      _buildPostCallPanel(),
+                    ],
+
+                  ],
                 ),
               ),
-              SizedBox(height: layout.spacing),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-              if (!_showPostCallScreen) ...[
-                // Main Contact Call Panel
-                _buildContactPanel(contact),
-              ] else ...[
-                // Post-Call Feedback Panel
-                _buildPostCallPanel(),
-              ],
+  Widget _buildWorkspaceTabs(bool isDark) {
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final mutedColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
+    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
 
+    return Container(
+      color: cardColor,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    if (_selectedTab != 0) {
+                      setState(() {
+                        _selectedTab = 0;
+                        _currentIndex = 0;
+                        _showPostCallScreen = false;
+                      });
+                      _prepareControllersForCurrentContact();
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: _selectedTab == 0 ? const Color(0xFF6366F1) : Colors.transparent,
+                          width: 2.5,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.person_pin_rounded,
+                          color: _selectedTab == 0 ? const Color(0xFF6366F1) : mutedColor,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'My Lead',
+                          style: TextStyle(
+                            color: _selectedTab == 0 ? const Color(0xFF6366F1) : mutedColor,
+                            fontWeight: _selectedTab == 0 ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Container(width: 1, height: 40, color: borderColor),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    if (_selectedTab != 1) {
+                      setState(() {
+                        _selectedTab = 1;
+                        _currentIndex = 0;
+                        _showPostCallScreen = false;
+                      });
+                      _prepareControllersForCurrentContact();
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: _selectedTab == 1 ? const Color(0xFF10B981) : Colors.transparent,
+                          width: 2.5,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.business_center_rounded,
+                          color: _selectedTab == 1 ? const Color(0xFF10B981) : mutedColor,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'My Workspace',
+                          style: TextStyle(
+                            color: _selectedTab == 1 ? const Color(0xFF10B981) : mutedColor,
+                            fontWeight: _selectedTab == 1 ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
+          Divider(height: 1, color: borderColor),
+        ],
       ),
     );
   }
@@ -739,6 +1081,28 @@ class _CallingScreenState extends State<CallingScreen> {
               ],
             ),
           ] else ...[
+            // Try count chip
+            () {
+              final currentTry = _calculateCurrentAttempt(contact);
+              final tryColor = currentTry == 1
+                  ? const Color(0xFF6366F1)
+                  : currentTry == 2
+                      ? const Color(0xFFF59E0B)
+                      : const Color(0xFFEF4444);
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: tryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: tryColor.withOpacity(0.5)),
+                ),
+                child: Text(
+                  'Try $currentTry of 3 today',
+                  style: TextStyle(color: tryColor, fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              );
+            }(),
+            const SizedBox(height: 12),
             ElevatedButton(
               onPressed: _dialCurrentContact,
               style: ElevatedButton.styleFrom(
@@ -765,7 +1129,67 @@ class _CallingScreenState extends State<CallingScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+
+            // WhatsApp Template Sender
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF25D366).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF25D366).withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.chat_bubble_rounded, color: Color(0xFF25D366), size: 16),
+                      SizedBox(width: 6),
+                      Text('WhatsApp Message', style: TextStyle(color: Color(0xFF25D366), fontWeight: FontWeight.bold, fontSize: 12)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButton<String>(
+                    value: _selectedTemplate,
+                    isExpanded: true,
+                    dropdownColor: isDark ? const Color(0xFF12131A) : Colors.white,
+                    underline: const SizedBox.shrink(),
+                    style: TextStyle(color: textColor, fontSize: 12),
+                    items: _whatsappTemplates.map((t) => DropdownMenuItem(
+                      value: t,
+                      child: Text(t, overflow: TextOverflow.ellipsis, style: TextStyle(color: textColor, fontSize: 12)),
+                    )).toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _selectedTemplate = val);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final phone = contact['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
+                        final msg = Uri.encodeComponent(_selectedTemplate);
+                        final uri = Uri.parse('https://wa.me/$phone?text=$msg');
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          ApiService.incrementWhatsappCount();
+                        }
+                      },
+                      icon: const Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                      label: const Text('Send WhatsApp', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
             TextButton.icon(
               onPressed: _toggleBreakState,
               icon: const Icon(Icons.coffee, color: Color(0xFFA855F7)),
@@ -893,21 +1317,91 @@ class _CallingScreenState extends State<CallingScreen> {
           ),
           SizedBox(height: layout.scale(8.0, 12.0)),
 
-          // Feedback notes
-          Text('CALL NOTES / COMMENTS', style: TextStyle(color: subtextColor, fontSize: layout.fontSizeCaption, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _feedbackController,
-            style: TextStyle(color: textColor),
-            maxLines: 2,
-            decoration: InputDecoration(
-              hintText: 'Enter feedback or details about the call outcome...',
-              hintStyle: TextStyle(color: mutedColor, fontSize: layout.fontSizeBody - 1),
-              filled: true,
-              fillColor: fieldFillColor,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-            ),
-          ),
+          // Response fields by try
+          Builder(builder: (context) {
+            final contact = _activeContacts.isEmpty ? null : _activeContacts[_currentIndex < _activeContacts.length ? _currentIndex : 0];
+            final currentTry = _calculateCurrentAttempt(contact);
+            
+            Widget _buildResponseField(String label, TextEditingController ctrl, bool isReadOnly, bool isActive) {
+              final Color fieldColor = isReadOnly
+                  ? (isDark ? const Color(0xFF1A1C22) : const Color(0xFFEFEFEF))
+                  : (isDark ? const Color(0xFF1E2030) : const Color(0xFFF3F4F6));
+              final borderColor = isActive
+                  ? const Color(0xFF6366F1).withOpacity(0.5)
+                  : Colors.transparent;
+              
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        isReadOnly ? Icons.lock_rounded : Icons.edit_rounded,
+                        color: isReadOnly ? mutedColor : const Color(0xFF6366F1),
+                        size: 12,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: isReadOnly ? mutedColor : subtextColor,
+                          fontSize: layout.fontSizeCaption,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: ctrl,
+                    readOnly: isReadOnly,
+                    style: TextStyle(color: isReadOnly ? mutedColor : textColor, fontSize: 13),
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      hintText: isReadOnly ? 'No response recorded' : 'Enter call notes / feedback...',
+                      hintStyle: TextStyle(color: mutedColor, fontSize: 12),
+                      filled: true,
+                      fillColor: fieldColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: borderColor, width: 1.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: isActive ? const Color(0xFF6366F1) : Colors.transparent, width: 1.5),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildResponseField(
+                  'RESPONSE 1',
+                  _response1Controller,
+                  currentTry > 1 || _response1Controller.text.isNotEmpty && currentTry != 1,
+                  currentTry == 1,
+                ),
+                const SizedBox(height: 10),
+                _buildResponseField(
+                  'RESPONSE 2',
+                  _response2Controller,
+                  currentTry < 2 || (currentTry > 2 && _response2Controller.text.isNotEmpty),
+                  currentTry == 2,
+                ),
+                const SizedBox(height: 10),
+                _buildResponseField(
+                  'RESPONSE 3',
+                  _response3Controller,
+                  currentTry < 3,
+                  currentTry == 3,
+                ),
+              ],
+            );
+          }),
           SizedBox(height: layout.spacing),
 
           // Countdown Timer Section

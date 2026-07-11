@@ -46,6 +46,11 @@ class TelemetryService with WidgetsBindingObserver {
   int nonConnectedCalls = 0;
   int receivedCalls = 0;
 
+  int connectedDuration = 0;
+  int missedDuration = 0;
+  int nonConnectedDuration = 0;
+  int receivedDuration = 0;
+
   int get workingTime => _workingTime;
   int get talkTime => _talkTime;
   int get breakTime => _breakTime;
@@ -112,6 +117,10 @@ class TelemetryService with WidgetsBindingObserver {
         missedCalls = 0;
         nonConnectedCalls = 0;
         receivedCalls = 0;
+        connectedDuration = 0;
+        missedDuration = 0;
+        nonConnectedDuration = 0;
+        receivedDuration = 0;
         _syncWithServer();
       }
 
@@ -159,6 +168,11 @@ class TelemetryService with WidgetsBindingObserver {
         nonConnectedCalls = calls['nonConnected'] ?? 0;
         receivedCalls = calls['received'] ?? 0;
         missedCalls = calls['missed'] ?? 0;
+
+        connectedDuration = calls['connectedDuration'] ?? 0;
+        nonConnectedDuration = calls['nonConnectedDuration'] ?? 0;
+        receivedDuration = calls['receivedDuration'] ?? 0;
+        missedDuration = calls['missedDuration'] ?? 0;
         
         _isInitialized = true;
         print('[TelemetryService] Session initialized from server: workingTime=$_workingTime, talkTime=$_talkTime, breakTime=$_breakTime, idleTime=$_idleTime');
@@ -216,6 +230,10 @@ class TelemetryService with WidgetsBindingObserver {
     missedCalls = 0;
     nonConnectedCalls = 0;
     receivedCalls = 0;
+    connectedDuration = 0;
+    missedDuration = 0;
+    nonConnectedDuration = 0;
+    receivedDuration = 0;
     shiftCompleteShown = false;
   }
 

@@ -315,30 +315,44 @@ const Campaigns = ({ user }) => {
                         </td>
 
                         <td>
-                          <div style={styles.actionsGroup}>
+                          <div style={{ display: 'flex', gap: '8px' }}>
                             {camp.status !== 'completed' && (
                               <button 
-                                className="btn btn-secondary"
-                                style={styles.iconButton}
-                                title={camp.status === 'active' ? 'Pause Campaign' : 'Start Campaign'}
+                                className="btn"
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  border: 'none',
+                                  backgroundColor: camp.status === 'active' ? '#f59e0b' : '#10b981',
+                                  color: '#ffffff',
+                                  transition: 'all 0.2s'
+                                }}
                                 onClick={() => handleStatusChange(camp.id, camp.status)}
                               >
-                                {camp.status === 'active' ? (
-                                  <Pause size={16} color="#fbbf24" />
-                                ) : (
-                                  <Play size={16} color="#10b981" />
-                                )}
+                                {camp.status === 'active' ? 'Hold' : 'Activate'}
                               </button>
                             )}
 
                             {camp.status !== 'completed' && (
                               <button 
-                                className="btn btn-secondary"
-                                style={styles.iconButton}
-                                title="Mark as Completed"
+                                className="btn"
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  border: 'none',
+                                  backgroundColor: '#6366f1',
+                                  color: '#ffffff',
+                                  transition: 'all 0.2s'
+                                }}
                                 onClick={() => handleCompleteCampaign(camp.id)}
                               >
-                                <CheckCircle2 size={16} color="#10b981" />
+                                Mark Completed
                               </button>
                             )}
 

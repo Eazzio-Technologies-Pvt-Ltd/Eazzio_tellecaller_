@@ -652,14 +652,175 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+  void _showCallReportDialog() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final bgColor = isDark ? const Color(0xFF0A0B10) : const Color(0xFFF5F6FC);
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+    final mutedColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: bgColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (_, sc) {
+            return Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Call Report',
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(Icons.close_rounded, color: mutedColor),
+                      ),
+                    ],
+                  ),
+                ),
+                Divider(height: 1, color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB)),
+                Expanded(
+                  child: FutureBuilder<List<dynamic>>(
+                    future: ApiService.fetchCallLogs(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)));
+                      }
+                      final logs = snapshot.data ?? [];
+                      if (logs.isEmpty) {
+                        return Center(
+                          child: Text('No call logs found.', style: TextStyle(color: subtextColor)),
+                        );
+                      }
+                      return ListView.separated(
+                        controller: sc,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        itemCount: logs.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (context, i) {
+                          final log = logs[i];
+                          final callStatus = log['call_status'] ?? 'unknown';
+                          final Color statusColor = callStatus == 'connected'
+                              ? const Color(0xFF10B981)
+                              : callStatus == 'received'
+                                  ? const Color(0xFF38BDF8)
+                                  : callStatus == 'missed'
+                                      ? const Color(0xFFF87171)
+                                      : const Color(0xFFFB923C);
+
+                          final rawDate = log['called_at'] ?? log['created_at'] ?? '';
+                          String dateLabel = '';
+                          try {
+                            dateLabel = DateTime.parse(rawDate).toLocal().toString().split(' ')[0];
+                          } catch (_) {}
+
+                          final int dur = log['duration'] ?? 0;
+                          final int m = dur ~/ 60, s = dur % 60;
+                          final durStr = m > 0 ? '${m}m ${s}s' : '${s}s';
+
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: statusColor.withOpacity(0.3)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      log['contact_name'] ?? log['phone_number'] ?? 'Unknown',
+                                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        callStatus.toUpperCase(),
+                                        style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Icon(Icons.calendar_today_rounded, size: 11, color: mutedColor),
+                                    const SizedBox(width: 4),
+                                    Text(dateLabel, style: TextStyle(color: mutedColor, fontSize: 11)),
+                                    const SizedBox(width: 12),
+                                    Icon(Icons.timer_rounded, size: 11, color: mutedColor),
+                                    const SizedBox(width: 4),
+                                    Text(durStr, style: TextStyle(color: mutedColor, fontSize: 11)),
+                                    if (log['try_number'] != null) ...[
+                                      const SizedBox(width: 12),
+                                      Icon(Icons.repeat_rounded, size: 11, color: mutedColor),
+                                      const SizedBox(width: 4),
+                                      Text('Try ${log['try_number']}', style: TextStyle(color: mutedColor, fontSize: 11)),
+                                    ],
+                                  ],
+                                ),
+                                if ((log['response_1'] ?? log['feedback']) != null) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    log['response_1'] ?? log['feedback'] ?? '',
+                                    style: TextStyle(color: subtextColor, fontSize: 12),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   void _showAddLeadDialog() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+    final borderColor = isDark ? const Color(0xFF2D2F45) : const Color(0xFFE5E7EB);
+
+    // Load existing campaigns
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Color(0xFF6366F1)),
-      ),
+      builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1))),
     );
 
     List<dynamic> campaigns = [];
@@ -668,119 +829,124 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       print('Error fetching campaigns: $e');
     }
+    if (mounted) Navigator.pop(context);
+
+    // ─── STEP 1: Create or Select Campaign ───
+    int? selectedCampaignId;
+    final campNameController = TextEditingController();
+    final campDescController = TextEditingController();
+    bool createNew = campaigns.isEmpty;
 
     if (mounted) {
-      Navigator.pop(context); // Close loading spinner
-    }
-
-    if (campaigns.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No active campaigns found. Please contact admin.')),
-        );
-      }
-      return;
-    }
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF111827);
-    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
-
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    int? selectedCampaignId = campaigns.isNotEmpty ? campaigns[0]['id'] : null;
-
-    if (mounted) {
-      showDialog(
+      await showDialog(
         context: context,
-        builder: (context) => StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
+        barrierDismissible: false,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setS) => AlertDialog(
             backgroundColor: cardColor,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Text(
-              'Add Lead to Campaign',
-              style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            title: Row(
+              children: [
+                const Icon(Icons.campaign_rounded, color: Color(0xFF6366F1), size: 22),
+                const SizedBox(width: 8),
+                Text('My Campaign', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 17)),
+              ],
             ),
-            content: Form(
-              key: formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownButtonFormField<int>(
-                      dropdownColor: cardColor,
-                      value: selectedCampaignId,
-                      decoration: InputDecoration(
-                        labelText: 'Select Campaign',
-                        labelStyle: TextStyle(color: subtextColor, fontSize: 12),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: subtextColor.withOpacity(0.5)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Toggle
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setS(() => createNew = false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: !createNew ? const Color(0xFF6366F1) : Colors.transparent,
+                              borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
+                              border: Border.all(color: const Color(0xFF6366F1)),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text('Use Existing', style: TextStyle(color: !createNew ? Colors.white : const Color(0xFF6366F1), fontWeight: FontWeight.w600, fontSize: 13)),
+                          ),
                         ),
                       ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setS(() => createNew = true),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: createNew ? const Color(0xFF6366F1) : Colors.transparent,
+                              borderRadius: const BorderRadius.horizontal(right: Radius.circular(10)),
+                              border: Border.all(color: const Color(0xFF6366F1)),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text('Create New', style: TextStyle(color: createNew ? Colors.white : const Color(0xFF6366F1), fontWeight: FontWeight.w600, fontSize: 13)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (!createNew && campaigns.isNotEmpty) ...[
+                    Text('Select Campaign', style: TextStyle(color: subtextColor, fontSize: 12, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    ...campaigns.map<Widget>((c) {
+                      final bool sel = selectedCampaignId == c['id'];
+                      return GestureDetector(
+                        onTap: () => setS(() => selectedCampaignId = c['id']),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: sel ? const Color(0xFF6366F1).withOpacity(0.12) : cardColor,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: sel ? const Color(0xFF6366F1) : borderColor),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.radio_button_checked_rounded, size: 16, color: sel ? const Color(0xFF6366F1) : subtextColor),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(c['name'] ?? 'Campaign', style: TextStyle(color: textColor, fontWeight: sel ? FontWeight.bold : FontWeight.normal))),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ] else ...[
+                    TextField(
+                      controller: campNameController,
                       style: TextStyle(color: textColor),
-                      items: campaigns.map<DropdownMenuItem<int>>((camp) {
-                        return DropdownMenuItem<int>(
-                          value: camp['id'],
-                          child: Text(camp['name'] ?? 'Campaign'),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        setDialogState(() {
-                          selectedCampaignId = val;
-                        });
-                      },
-                      validator: (value) => value == null ? 'Campaign is required' : null,
+                      decoration: InputDecoration(
+                        labelText: 'Campaign Name *',
+                        labelStyle: TextStyle(color: subtextColor, fontSize: 13),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: borderColor)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF6366F1))),
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: nameController,
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: campDescController,
                       style: TextStyle(color: textColor),
                       decoration: InputDecoration(
-                        labelText: 'Lead Name',
-                        labelStyle: TextStyle(color: subtextColor, fontSize: 12),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: subtextColor.withOpacity(0.5)),
-                        ),
+                        labelText: 'Description (optional)',
+                        labelStyle: TextStyle(color: subtextColor, fontSize: 13),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: borderColor)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF6366F1))),
                       ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Name is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: phoneController,
-                      style: TextStyle(color: textColor),
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: 'Phone Number',
-                        labelStyle: TextStyle(color: subtextColor, fontSize: 12),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: subtextColor.withOpacity(0.5)),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Phone number is required';
-                        }
-                        final clean = value.replaceAll(RegExp(r'\D'), '');
-                        if (clean.length < 8) {
-                          return 'Enter a valid phone number';
-                        }
-                        return null;
-                      },
                     ),
                   ],
-                ),
+                ],
               ),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(ctx),
                 child: Text('Cancel', style: TextStyle(color: subtextColor)),
               ),
               ElevatedButton(
@@ -789,70 +955,154 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 onPressed: () async {
-                  if (formKey.currentState!.validate()) {
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (ctx) => const Center(
-                        child: CircularProgressIndicator(color: Color(0xFF6366F1)),
-                      ),
-                    );
-
-                    final res = await ApiService.addLead(
-                      campaignId: selectedCampaignId!,
-                      name: nameController.text.trim(),
-                      phoneNumber: phoneController.text.trim(),
-                    );
-
-                    if (mounted) {
-                      Navigator.pop(context); // pop loading
+                  if (createNew) {
+                    final name = campNameController.text.trim();
+                    if (name.isEmpty) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Campaign name is required')));
+                      return;
                     }
-
-                    if (res['success'] == true) {
-                      if (mounted) {
-                        Navigator.pop(context); // pop add dialog
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Lead added successfully.')),
-                        );
-                      }
+                    showDialog(context: ctx, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1))));
+                    final result = await ApiService.createCampaign(name, campDescController.text.trim());
+                    if (mounted) Navigator.pop(ctx); // pop spinner
+                    if (result['success'] == true) {
+                      selectedCampaignId = result['campaign']['id'];
+                      Navigator.pop(ctx);
                     } else {
-                      if (mounted) {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            backgroundColor: cardColor,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            title: Row(
-                              children: [
-                                const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
-                                const SizedBox(width: 8),
-                                Text('Conflict Detected', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16)),
-                              ],
-                            ),
-                            content: Text(
-                              res['error'] ?? 'Lead could not be added.',
-                              style: TextStyle(color: textColor, fontSize: 14),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('OK', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
+                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(result['error'] ?? 'Failed to create campaign')));
                     }
+                  } else {
+                    if (selectedCampaignId == null) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Please select a campaign')));
+                      return;
+                    }
+                    Navigator.pop(ctx);
                   }
                 },
-                child: const Text('Add Lead', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text(createNew ? 'Create & Continue' : 'Continue', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
         ),
       );
     }
+
+    if (selectedCampaignId == null || !mounted) return;
+
+    // ─── STEP 2: Add Lead ───
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          title: Row(
+            children: [
+              const Icon(Icons.person_add_alt_1_rounded, color: Color(0xFF10B981), size: 22),
+              const SizedBox(width: 8),
+              Text('Add Lead', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 17)),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameController,
+                    style: TextStyle(color: textColor),
+                    decoration: InputDecoration(
+                      labelText: 'Lead Name',
+                      labelStyle: TextStyle(color: subtextColor, fontSize: 13),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: borderColor)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF10B981))),
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: phoneController,
+                    style: TextStyle(color: textColor),
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: 'Phone Number',
+                      labelStyle: TextStyle(color: subtextColor, fontSize: 13),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: borderColor)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF10B981))),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Phone is required';
+                      if (v.replaceAll(RegExp(r'\D'), '').length < 8) return 'Enter valid phone number';
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: TextStyle(color: subtextColor)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                showDialog(context: ctx, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF10B981))));
+                final res = await ApiService.addLead(
+                  campaignId: selectedCampaignId!,
+                  name: nameController.text.trim(),
+                  phoneNumber: phoneController.text.trim(),
+                );
+                if (mounted) Navigator.pop(ctx); // pop spinner
+                if (res['success'] == true) {
+                  if (mounted) {
+                    Navigator.pop(ctx);
+                    _loadLeadManagerData();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('✅ Lead added to your campaign!'), backgroundColor: Color(0xFF10B981)),
+                    );
+                  }
+                } else {
+                  if (mounted) {
+                    showDialog(
+                      context: ctx,
+                      builder: (_) => AlertDialog(
+                        backgroundColor: cardColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        title: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+                            const SizedBox(width: 8),
+                            Text('Conflict Detected', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                          ],
+                        ),
+                        content: Text(res['error'] ?? 'Lead could not be added.', style: TextStyle(color: textColor, fontSize: 14)),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold))),
+                        ],
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Add Lead', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
+
 
   Future<void> _loadProfileData() async {
     setState(() {
@@ -1381,7 +1631,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             indicatorColor: const Color(0xFF6366F1),
             labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             tabs: const [
-              Tab(text: 'Added Leads'),
+              Tab(text: 'My Leads'),
               Tab(text: 'Follow Ups'),
               Tab(text: 'Transfers'),
               Tab(text: 'All Leads'),
@@ -1439,6 +1689,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final String campaign = lead['campaign_name'] ?? 'General';
         final String status = lead['status'] ?? 'pending';
 
+        final String latestFeedback = (() {
+          if (lead['response_3'] != null && lead['response_3'].toString().trim().isNotEmpty) {
+            return lead['response_3'].toString().trim();
+          }
+          if (lead['response_2'] != null && lead['response_2'].toString().trim().isNotEmpty) {
+            return lead['response_2'].toString().trim();
+          }
+          if (lead['response_1'] != null && lead['response_1'].toString().trim().isNotEmpty) {
+            return lead['response_1'].toString().trim();
+          }
+          return '';
+        })();
+
         String followUpTime = '';
         if (showFollowUpInfo && lead['follow_up_date'] != null) {
           try {
@@ -1453,6 +1716,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           } catch (_) {
             followUpTime = lead['follow_up_date'].toString();
           }
+        }
+
+        dynamic incomingRequest;
+        try {
+          incomingRequest = _transferRequests.firstWhere(
+            (t) => t['contact_id'] == lead['id'] && t['status'] == 'pending' && t['to_user_id'] == (_profileUser?['id'] ?? -1),
+            orElse: () => null,
+          );
+        } catch (_) {
+          incomingRequest = null;
         }
 
         return Card(
@@ -1540,21 +1813,73 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       if (showFollowUpInfo && followUpTime.isNotEmpty) ...[
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.alarm_on_rounded, size: 14, color: Color(0xFFA855F7)),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Follow Up: $followUpTime',
-                              style: const TextStyle(color: Color(0xFFA855F7), fontSize: 12, fontWeight: FontWeight.w600),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E1E28) : const Color(0xFFF9F5FF),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(0xFFA855F7).withOpacity(isDark ? 0.3 : 0.15),
                             ),
-                          ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.alarm_on_rounded, size: 14, color: Color(0xFFA855F7)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Follow Up: $followUpTime',
+                                    style: const TextStyle(color: Color(0xFFA855F7), fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              if (latestFeedback.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.notes_rounded, size: 14, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'Feedback: $latestFeedback',
+                                        style: TextStyle(
+                                          color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF4B5563),
+                                          fontSize: 12,
+                                          height: 1.3,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ],
                     ],
                   ),
                 ),
-                if (showTransferBtn)
+                if (incomingRequest != null) ...[
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 28),
+                        tooltip: 'Accept Transfer',
+                        onPressed: () => _respondToTransfer(incomingRequest['id'], 'approved'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.cancel_outlined, color: Colors.red, size: 28),
+                        tooltip: 'Reject Transfer',
+                        onPressed: () => _respondToTransfer(incomingRequest['id'], 'rejected'),
+                      ),
+                    ],
+                  ),
+                ] else if (showTransferBtn)
                   IconButton(
                     icon: const Icon(Icons.swap_horiz_rounded, color: Color(0xFF6366F1)),
                     tooltip: 'Transfer Lead',
@@ -2085,6 +2410,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 Divider(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB), height: 1),
                 ListTile(
+                  leading: const Icon(Icons.bar_chart_rounded, color: Color(0xFF10B981)),
+                  title: Text(
+                    'Call Report',
+                    style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                  ),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                  ),
+                  onTap: _showCallReportDialog,
+                ),
+                Divider(color: isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB), height: 1),
+                ListTile(
                   leading: const Icon(Icons.power_settings_new_rounded, color: Colors.redAccent),
                   title: Text(
                     'Log Out',
@@ -2167,14 +2505,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ),
                         SizedBox(height: layout.scale(8.0, 12.0)),
-                        _buildTimerCard(
-                          title: 'Break Time',
-                          value: _formatDuration(_telemetry.breakTime),
-                          target: '2h',
-                          progress: _telemetry.breakTime / 7200,
-                          valueColor: const Color(0xFFA855F7),
-                          icon: Icons.coffee_rounded,
-                          context: context,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildTimerCard(
+                                title: 'Break Time',
+                                value: _formatDuration(_telemetry.breakTime),
+                                target: '2h',
+                                progress: _telemetry.breakTime / 7200,
+                                valueColor: const Color(0xFFA855F7),
+                                icon: Icons.coffee_rounded,
+                                context: context,
+                              ),
+                            ),
+                            SizedBox(width: layout.scale(8.0, 12.0)),
+                            Expanded(
+                              child: _buildTimerCard(
+                                title: 'Idle Time',
+                                value: _formatDuration(_telemetry.idleTime),
+                                target: '—',
+                                progress: null,
+                                valueColor: const Color(0xFFF59E0B),
+                                icon: Icons.hourglass_empty_rounded,
+                                context: context,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -2200,6 +2556,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: _buildCallCounter(
                                     label: 'Connected',
                                     count: _telemetry.connectedCalls,
+                                    durationSeconds: _telemetry.connectedDuration,
                                     baseColor: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
                                     badgeBgColor: isDark ? const Color(0x1A34D399) : const Color(0xFFE6F4EA),
                                     icon: Icons.phone_callback_rounded,
@@ -2212,6 +2569,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: _buildCallCounter(
                                     label: 'Non-Connected',
                                     count: _telemetry.nonConnectedCalls,
+                                    durationSeconds: _telemetry.nonConnectedDuration,
                                     baseColor: isDark ? const Color(0xFFFB923C) : const Color(0xFFD97706),
                                     badgeBgColor: isDark ? const Color(0x1AFB923C) : const Color(0xFFFEF3C7),
                                     icon: Icons.phone_paused_rounded,
@@ -2228,6 +2586,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: _buildCallCounter(
                                     label: 'Received',
                                     count: _telemetry.receivedCalls,
+                                    durationSeconds: _telemetry.receivedDuration,
                                     baseColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
                                     badgeBgColor: isDark ? const Color(0x1A38BDF8) : const Color(0xFFE0F2FE),
                                     icon: Icons.call_received_rounded,
@@ -2240,6 +2599,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: _buildCallCounter(
                                     label: 'Missed',
                                     count: _telemetry.missedCalls,
+                                    durationSeconds: _telemetry.missedDuration,
                                     baseColor: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
                                     badgeBgColor: isDark ? const Color(0x1AF87171) : const Color(0xFFFEE2E2),
                                     icon: Icons.call_missed_rounded,
@@ -2255,52 +2615,116 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const Spacer(),
                     SizedBox(height: layout.spacing),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF6366F1), Color(0xFF7C3AED)],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.circular(layout.cardRadius),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6366F1).withOpacity(0.3),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: _handleSessionToggle,
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(vertical: layout.scale(12.0, 16.0)),
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(layout.cardRadius),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _telemetry.isActive ? Icons.play_arrow_rounded : Icons.play_circle_filled_rounded,
-                              color: Colors.white,
-                              size: layout.scale(20.0, 24.0),
+                    // ── Start / Break / End Controls ──
+                    Row(
+                      children: [
+                        // START button
+                        Expanded(
+                          flex: 3,
+                          child: Container(
+                            height: layout.scale(52.0, 60.0),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF6366F1).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(layout.cardRadius),
+                              border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.5)),
                             ),
-                            SizedBox(width: layout.scale(6.0, 8.0)),
-                            Text(
-                              _telemetry.isActive ? 'Open Calling Workspace' : 'Start Calling Session',
-                              style: TextStyle(
-                                fontSize: layout.fontSizeHeading,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                _telemetry.startSession();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const CallingScreen()),
+                                );
+                              },
+                              icon: Icon(Icons.play_circle_filled_rounded, size: layout.scale(18.0, 20.0), color: const Color(0xFF6366F1)),
+                              label: Text(
+                                'Start',
+                                style: TextStyle(fontSize: layout.fontSizeHeading, fontWeight: FontWeight.bold, color: const Color(0xFF6366F1)),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(layout.cardRadius)),
+                                padding: EdgeInsets.symmetric(vertical: layout.scale(12.0, 14.0)),
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                        SizedBox(width: layout.scale(8.0, 10.0)),
+
+                        // BREAK button
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            height: layout.scale(52.0, 60.0),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFA855F7).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(layout.cardRadius),
+                              border: Border.all(color: const Color(0xFFA855F7).withOpacity(0.5)),
+                            ),
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                _telemetry.setBreakState(true);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('☕ Break started — timer is running'),
+                                    backgroundColor: Color(0xFFA855F7),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              icon: Icon(Icons.coffee_rounded, size: layout.scale(16.0, 18.0), color: const Color(0xFFA855F7)),
+                              label: Text(
+                                'Break',
+                                style: TextStyle(fontSize: layout.fontSizeBody, fontWeight: FontWeight.bold, color: const Color(0xFFA855F7)),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(layout.cardRadius)),
+                                padding: EdgeInsets.symmetric(vertical: layout.scale(12.0, 14.0)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: layout.scale(8.0, 10.0)),
+
+                        // END button
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            height: layout.scale(52.0, 60.0),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444).withOpacity(0.10),
+                              borderRadius: BorderRadius.circular(layout.cardRadius),
+                              border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.4)),
+                            ),
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                await _telemetry.stopSession();
+                                ApiService.logout();
+                                if (mounted) {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                  );
+                                }
+                              },
+                              icon: Icon(Icons.power_settings_new_rounded, size: layout.scale(16.0, 18.0), color: const Color(0xFFEF4444)),
+                              label: Text(
+                                'End',
+                                style: TextStyle(fontSize: layout.fontSizeBody, fontWeight: FontWeight.bold, color: const Color(0xFFEF4444)),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(layout.cardRadius)),
+                                padding: EdgeInsets.symmetric(vertical: layout.scale(12.0, 14.0)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -2338,110 +2762,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
             fontSize: layout.fontSizeTitle,
           ),
         ),
-        actions: _currentTabIndex == 0
+        actions: _currentTabIndex == 1
             ? [
-                Container(
-                  margin: EdgeInsets.only(right: layout.scale(12.0, 16.0)),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF222435) : const Color(0xFFE2E8F0),
-                      width: 1.5,
-                    ),
-                    color: cardColor,
-                  ),
-                  child: Theme(
-                    data: Theme.of(context).copyWith(
-                      cardColor: cardColor,
-                    ),
-                    child: PopupMenuButton<String>(
-                      icon: Icon(
-                        Icons.settings,
-                        color: isDark ? Colors.white : const Color(0xFF64748B),
-                        size: layout.scale(18.0, 20.0),
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: BoxConstraints(
-                        minWidth: layout.scale(36.0, 40.0),
-                        minHeight: layout.scale(36.0, 40.0),
-                      ),
-                      onSelected: (val) async {
-                        if (val == 'theme') {
-                          final prefs = await SharedPreferences.getInstance();
-                          if (themeNotifier.value == ThemeMode.dark) {
-                            themeNotifier.value = ThemeMode.light;
-                            await prefs.setBool('is_light_theme', true);
-                          } else {
-                            themeNotifier.value = ThemeMode.dark;
-                            await prefs.setBool('is_light_theme', false);
-                          }
-                          setState(() {});
-                        } else if (val == 'add_lead') {
-                          _showAddLeadDialog();
-                        } else if (val == 'logout') {
-                          _handleLogout();
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'theme',
-                          child: Row(
-                            children: [
-                              Icon(
-                                themeNotifier.value == ThemeMode.dark ? Icons.light_mode_rounded : Icons.dark_mode_outlined,
-                                color: isDark ? Colors.amber : const Color(0xFF64748B),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                themeNotifier.value == ThemeMode.dark ? 'Light Mode' : 'Dark Mode',
-                                style: TextStyle(color: textColor),
-                              ),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'add_lead',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.person_add_alt_1_rounded, color: Colors.blue),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Add Lead',
-                                style: TextStyle(color: textColor),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuDivider(),
-                        PopupMenuItem(
-                          value: 'logout',
-                          child: const Row(
-                            children: [
-                              Icon(Icons.power_settings_new_rounded, color: Colors.red),
-                              const SizedBox(width: 10),
-                              Text('Logout', style: TextStyle(color: Colors.red)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.person_add_alt_1_rounded, color: Color(0xFF6366F1)),
+                  tooltip: 'Add Lead',
+                  onPressed: _showAddLeadDialog,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, color: Color(0xFF6366F1)),
+                  tooltip: 'Refresh',
+                  onPressed: _loadLeadManagerData,
                 ),
               ]
-            : (_currentTabIndex == 1
-                ? [
-                    IconButton(
-                      icon: const Icon(Icons.person_add_alt_1_rounded, color: Color(0xFF6366F1)),
-                      tooltip: 'Add Lead',
-                      onPressed: _showAddLeadDialog,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.refresh_rounded, color: Color(0xFF6366F1)),
-                      tooltip: 'Refresh',
-                      onPressed: _loadLeadManagerData,
-                    ),
-                  ]
-                : null),
+            : null,
       ),
       body: SafeArea(
         child: _buildActiveTab(layout, isDark),
@@ -2509,7 +2843,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required String title,
     required String value,
     required String target,
-    required double progress,
+    required double? progress,
     required Color valueColor,
     required IconData icon,
     required BuildContext context,
@@ -2620,15 +2954,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   SizedBox(height: layout.scale(8.0, 12.0)),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: LinearProgressIndicator(
-                      value: progress.clamp(0.0, 1.0),
-                      minHeight: 2,
-                      backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFEEF2FF),
-                      valueColor: AlwaysStoppedAnimation<Color>(valueColor),
+                  if (progress != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: progress.clamp(0.0, 1.0),
+                        minHeight: 2,
+                        backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFEEF2FF),
+                        valueColor: AlwaysStoppedAnimation<Color>(valueColor),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -2641,6 +2976,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildCallCounter({
     required String label,
     required int count,
+    required int durationSeconds,
     required Color baseColor,
     required Color badgeBgColor,
     required IconData icon,
@@ -2716,8 +3052,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            'Duration: ${_formatTelemetryDuration(durationSeconds)}',
+            style: TextStyle(
+              color: baseColor.withOpacity(0.7),
+              fontSize: layout.scale(10.0, 11.0),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  String _formatTelemetryDuration(int seconds) {
+    if (seconds <= 0) return '0s';
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    if (m > 0) {
+      return '${m}m ${s}s';
+    }
+    return '${s}s';
   }
 }

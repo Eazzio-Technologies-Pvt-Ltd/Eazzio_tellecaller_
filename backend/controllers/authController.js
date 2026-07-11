@@ -584,7 +584,7 @@ exports.getMe = async (req, res) => {
     
     // Case 1: Company Admin (details stored in companies table in master database)
     if (regNum && req.user.role === 'admin') {
-      const compRes = await db.queryMain('SELECT id, name, admin_email, reg_num, edit_count, subscription_end, plan_type, no_of_telecallers, call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1', [regNum]);
+      const compRes = await db.queryMain('SELECT id, name, admin_email, reg_num, edit_count, subscription_end, plan_type, no_of_telecallers, call_recording_enabled, call_recording_end_date, work_time_limit_hours, talk_time_limit_hours, proxy_limit_minutes FROM companies WHERE reg_num = $1', [regNum]);
       if (compRes.rows.length === 0) {
         return res.status(404).json({ error: 'Company admin not found.' });
       }
@@ -601,7 +601,10 @@ exports.getMe = async (req, res) => {
         planType: company.plan_type || 'monthly',
         noOfTelecallers: company.no_of_telecallers || 0,
         callRecordingEndDate: company.call_recording_end_date || null,
-        callRecordingEnabled: false
+        callRecordingEnabled: false,
+        workTimeLimitHours: company.work_time_limit_hours !== undefined && company.work_time_limit_hours !== null ? company.work_time_limit_hours : 8,
+        talkTimeLimitHours: company.talk_time_limit_hours !== undefined && company.talk_time_limit_hours !== null ? company.talk_time_limit_hours : 4,
+        proxyLimitMinutes: company.proxy_limit_minutes !== undefined && company.proxy_limit_minutes !== null ? company.proxy_limit_minutes : 10
       };
       
       if (company.call_recording_enabled === 1 && user.callRecordingEndDate) {
@@ -635,6 +638,22 @@ exports.getMe = async (req, res) => {
     }
     const user = result.rows[0];
     user.companyRegNum = regNum !== undefined ? regNum : null;
+
+    let workTimeLimitHours = 8;
+    let talkTimeLimitHours = 4;
+    let proxyLimitMinutes = 10;
+    if (regNum) {
+      const compRes = await db.queryMain('SELECT work_time_limit_hours, talk_time_limit_hours, proxy_limit_minutes FROM companies WHERE reg_num = $1', [regNum]);
+      if (compRes.rows.length > 0) {
+        const company = compRes.rows[0];
+        workTimeLimitHours = company.work_time_limit_hours !== undefined && company.work_time_limit_hours !== null ? company.work_time_limit_hours : 8;
+        talkTimeLimitHours = company.talk_time_limit_hours !== undefined && company.talk_time_limit_hours !== null ? company.talk_time_limit_hours : 4;
+        proxyLimitMinutes = company.proxy_limit_minutes !== undefined && company.proxy_limit_minutes !== null ? company.proxy_limit_minutes : 10;
+      }
+    }
+    user.workTimeLimitHours = workTimeLimitHours;
+    user.talkTimeLimitHours = talkTimeLimitHours;
+    user.proxyLimitMinutes = proxyLimitMinutes;
 
     res.json(user);
   } catch (error) {
@@ -1936,5 +1955,92 @@ exports.changePassword = async (req, res) => {
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ error: 'Server error changing password.' });
+  }
+};
+
+exports.getCompanySettings = async (req, res) => {
+  const regNum = req.user.companyRegNum;
+  if (!regNum) {
+    return res.status(403).json({ error: 'Access forbidden. Not associated with a company.' });
+  }
+
+  try {
+    const compRes = await db.queryMain(
+      'SELECT work_time_limit_hours, talk_time_limit_hours, proxy_limit_minutes FROM companies WHERE reg_num = $1',
+      [regNum]
+    );
+    if (compRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Company not found.' });
+    }
+    const company = compRes.rows[0];
+    res.json({
+      workTimeLimitHours: company.work_time_limit_hours !== undefined && company.work_time_limit_hours !== null ? company.work_time_limit_hours : 8,
+      talkTimeLimitHours: company.talk_time_limit_hours !== undefined && company.talk_time_limit_hours !== null ? company.talk_time_limit_hours : 4,
+      proxyLimitMinutes: company.proxy_limit_minutes !== undefined && company.proxy_limit_minutes !== null ? company.proxy_limit_minutes : 10
+    });
+  } catch (error) {
+    console.error('Get company settings error:', error);
+    res.status(500).json({ error: 'Server error retrieving company settings.' });
+  }
+};
+
+exports.updateCompanySettings = async (req, res) => {
+  const regNum = req.user.companyRegNum;
+  const { workTimeLimitHours, talkTimeLimitHours, proxyLimitMinutes } = req.body;
+
+  if (!regNum) {
+    return res.status(403).json({ error: 'Access forbidden. Not associated with a company.' });
+  }
+
+  try {
+    await db.queryMain(
+      `UPDATE companies 
+       SET work_time_limit_hours = $1, talk_time_limit_hours = $2, proxy_limit_minutes = $3 
+       WHERE reg_num = $4`,
+      [
+        parseInt(workTimeLimitHours !== undefined && workTimeLimitHours !== null ? workTimeLimitHours : 8),
+        parseInt(talkTimeLimitHours !== undefined && talkTimeLimitHours !== null ? talkTimeLimitHours : 4),
+        parseInt(proxyLimitMinutes !== undefined && proxyLimitMinutes !== null ? proxyLimitMinutes : 10),
+        regNum
+      ]
+    );
+    res.json({ success: true, message: 'Company settings updated successfully.' });
+  } catch (error) {
+    console.error('Update company settings error:', error);
+    res.status(500).json({ error: 'Server error updating company settings.' });
+  }
+};
+
+exports.incrementWhatsappCount = async (req, res) => {
+  const userId = req.user.id;
+  const regNum = req.user.companyRegNum;
+
+  if (!regNum) {
+    return res.status(403).json({ error: 'Access forbidden. Not associated with a company.' });
+  }
+
+  try {
+    const todayStr = getTrackingDate(); // YYYY-MM-DD
+    const sessionCheck = await db.query(
+      'SELECT id FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
+      [userId, todayStr]
+    );
+
+    if (sessionCheck.rows.length === 0) {
+      await db.query(
+        'INSERT INTO telecaller_sessions (telecaller_id, date, whatsapp_messages_count) VALUES ($1, $2, 1)',
+        [userId, todayStr]
+      );
+    } else {
+      await db.query(
+        'UPDATE telecaller_sessions SET whatsapp_messages_count = whatsapp_messages_count + 1 WHERE telecaller_id = $1 AND date = $2',
+        [userId, todayStr]
+      );
+    }
+
+    res.json({ success: true, message: 'WhatsApp message count incremented.' });
+  } catch (error) {
+    console.error('Increment WhatsApp count error:', error);
+    res.status(500).json({ error: 'Server error incrementing WhatsApp count.' });
   }
 };

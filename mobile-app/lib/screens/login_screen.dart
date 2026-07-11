@@ -34,6 +34,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
+    _companyRegController.text = 'EAZ-';
+    _companyRegController.addListener(() {
+      if (!_companyRegController.text.startsWith('EAZ-')) {
+        _companyRegController.value = const TextEditingValue(
+          text: 'EAZ-',
+          selection: TextSelection.collapsed(offset: 4),
+        );
+      }
+    });
 
     _animationController = AnimationController(
       vsync: this,
@@ -128,6 +137,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_role', role);
+        if (result['user'] != null && result['user']['id'] != null) {
+          await prefs.setInt('user_id', result['user']['id']);
+        }
 
         if (role == 'telecaller') {
           TelemetryService().startSession();
@@ -774,7 +786,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                           ),
                                         ),
                                         validator: (value) {
-                                          if (value == null || value.trim().isEmpty) {
+                                          if (value == null || value.trim().isEmpty || value.trim() == 'EAZ-') {
                                             return 'Please enter Company Registration Code';
                                           }
                                           if (!value.trim().toUpperCase().startsWith('EAZ-')) {

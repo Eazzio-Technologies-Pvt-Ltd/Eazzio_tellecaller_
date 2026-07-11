@@ -549,7 +549,7 @@ const Telecallers = () => {
         )}
 
         <div style={{ marginLeft: 'auto', alignSelf: 'flex-end', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span>Showing stats for <strong>{filterType === 'date' ? filterDate : filterMonth}</strong> (daily reset at 12:00 AM)</span>
+          <span>Showing stats for <strong>{filterType === 'date' ? filterDate : filterMonth}</strong> (daily reset at 12:00 PM)</span>
           <button 
             className="btn btn-secondary"
             onClick={fetchTelecallers}
@@ -584,14 +584,15 @@ const Telecallers = () => {
                   <th>Current Status</th>
                   <th>Today's Talk Time</th>
                   <th>Active Work Time</th>
-                  <th>Break Taken (Idle)</th>
+                  <th>Break Taken</th>
+                  <th>Idle Time</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {callers.length === 0 ? (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan="8" style={{ textAlign: 'center', color: '#6b7280' }}>
                       No telecallers registered yet. Click the register button to add one.
                     </td>
                   </tr>
@@ -610,9 +611,8 @@ const Telecallers = () => {
                         {formatDuration(caller.calling_time)}
                       </td>
                       <td>{formatDuration(caller.working_time)}</td>
-                      <td style={{ color: 'var(--text-secondary)' }}>
-                        Break: {formatDuration(caller.break_time)} <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>(Idle: {formatDuration(caller.idle_time)})</span>
-                      </td>
+                      <td>{formatDuration(caller.break_time)}</td>
+                      <td>{formatDuration(caller.idle_time)}</td>
                       <td>
                         <div style={{ display: 'flex', gap: '4px' }}>
                           <button 

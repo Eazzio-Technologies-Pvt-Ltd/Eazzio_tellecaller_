@@ -902,5 +902,25 @@ class ApiService {
       return {'success': false, 'error': 'Cannot connect to server: $e'};
     }
   }
+
+  // Increment WhatsApp count
+  static Future<Map<String, dynamic>> incrementWhatsappCount() async {
+    if (!isAuthenticated) return {'success': false, 'error': 'Not authenticated'};
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/auth/increment-whatsapp'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 7));
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': 'WhatsApp count incremented'};
+      }
+    } catch (e) {
+      print('Error incrementing WhatsApp count: $e');
+    }
+    return {'success': false, 'error': 'Failed to increment WhatsApp count'};
+  }
 }
 

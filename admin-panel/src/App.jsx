@@ -14,6 +14,7 @@ import BillingPage from './pages/BillingPage';
 import HelpDesk from './pages/HelpDesk';
 import SupportTickets from './pages/SupportTickets';
 import FollowUpTransfers from './pages/FollowUpTransfers';
+import Settings from './pages/Settings';
 import { Mail, Lock, LogIn, AlertCircle, Menu, X, ShieldCheck, ArrowLeft, RefreshCw, Phone, Users, TrendingUp, Shield, Zap, Building2, Eye, EyeOff, Briefcase, Tag } from 'lucide-react';
 import Logo from './components/Logo';
 
@@ -713,6 +714,8 @@ const App = () => {
         return <BillingPage theme={theme} user={user} setToken={setToken} setUser={setUser} />;
       case 'help-desk':
         return <HelpDesk user={user} />;
+      case 'settings':
+        return <Settings user={user} />;
       default:
         return <Dashboard setActiveTab={setActiveTab} theme={theme} user={user} />;
     }

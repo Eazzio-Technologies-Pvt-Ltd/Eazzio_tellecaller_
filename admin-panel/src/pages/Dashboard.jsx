@@ -901,19 +901,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
               </span>
             )}
           </button>
-          <button 
-            className="dashboard-action-icon-btn"
-            style={{
-              ...styles.headerActionBtn,
-              backgroundColor: showSettings ? 'rgba(124, 58, 237, 0.12)' : 'var(--bg-card)',
-              borderColor: showSettings ? 'var(--color-primary)' : 'var(--border-color)',
-              color: showSettings ? 'var(--color-secondary)' : 'var(--text-secondary)'
-            }} 
-            onClick={() => { setShowSettings(!showSettings); setShowNotifications(false); }}
-            title="Settings"
-          >
-            <Settings size={18} />
-          </button>
+
 
           {/* Notifications Popover */}
           {showNotifications && (
@@ -1781,57 +1769,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
 
       <div style={{ height: '2rem' }}></div>
 
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="modal-overlay" onClick={() => setShowSettings(false)}>
-          <div className="modal-content" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Settings size={22} color="var(--color-primary)" />
-              Operational Settings
-            </h2>
-            <form onSubmit={handleSaveSettings}>
-              <div className="form-group">
-                <label>Dialing Interval / Delay (seconds)</label>
-                <input 
-                  type="number" 
-                  value={dialDelay} 
-                  onChange={(e) => setDialDelay(e.target.value)} 
-                  min="1"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Max Retry Attempts</label>
-                <input 
-                  type="number" 
-                  value={maxRetries} 
-                  onChange={(e) => setMaxRetries(e.target.value)} 
-                  min="1"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Daily Call Limit per Telecaller</label>
-                <input 
-                  type="number" 
-                  value={recordingLimit} 
-                  onChange={(e) => setRecordingLimit(e.target.value)} 
-                  min="10"
-                  required
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowSettings(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Save Settings
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
         </>
       )}
 

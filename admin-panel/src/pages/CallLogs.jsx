@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import API_BASE_URL from '../config/api';
-import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock, Calendar, Clock, Activity } from 'lucide-react';
+import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock, Calendar, Clock, Activity, FileDown } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 const CallLogs = ({ user, setActiveTab }) => {
   const [logs, setLogs] = useState([]);
@@ -46,6 +48,57 @@ const CallLogs = ({ user, setActiveTab }) => {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const generatePDFReport = () => {
+    const doc = new jsPDF();
+    doc.setFont("helvetica", "bold");
+    doc.text("Eazzio Telecaller System - Call Analytics Report", 14, 15);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
+
+    const tableColumn = [
+      "Called At",
+      "Campaign",
+      "Lead Name",
+      "Phone",
+      "Status",
+      "Duration",
+      "Telecaller",
+      "Response 1",
+      "Response 2",
+      "Response 3"
+    ];
+    
+    const tableRows = [];
+
+    filteredLogs.forEach(log => {
+      const logData = [
+        parseDbDate(log.called_at).toLocaleString(),
+        log.campaign_name || '-',
+        log.contact_name || '-',
+        log.contact_phone || '-',
+        log.call_status || '-',
+        log.call_status === 'connected' || log.call_status === 'received' ? `${log.duration}s` : '-',
+        log.telecaller_name || '-',
+        log.response_1 || '-',
+        log.response_2 || '-',
+        log.response_3 || '-'
+      ];
+      tableRows.push(logData);
+    });
+
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 28,
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [99, 102, 241] } // Indigo header
+    });
+
+    doc.save(`call_report_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const fetchLogs = async () => {
@@ -479,6 +532,31 @@ const CallLogs = ({ user, setActiveTab }) => {
               </select>
             </div>
           </div>
+
+          {/* Export PDF Report Button */}
+          <div style={{ ...styles.filterGroup, minWidth: '150px', justifyContent: 'flex-end', display: 'flex', alignItems: 'flex-end' }}>
+            <button
+              onClick={generatePDFReport}
+              className="btn btn-primary"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                height: '42px',
+                width: '100%',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: 'var(--color-primary, #6366f1)',
+                color: '#ffffff'
+              }}
+            >
+              <FileDown size={16} /> Export PDF
+            </button>
+          </div>
         </div>
 
         {/* Custom Date Range Pickers (conditional) */}
@@ -546,13 +624,16 @@ const CallLogs = ({ user, setActiveTab }) => {
                   <th>Talk Time</th>
                   <th>Assigned Telecaller</th>
                   <th>Feedback Comments</th>
+                  <th>Response 1</th>
+                  <th>Response 2</th>
+                  <th>Response 3</th>
                   <th>Audio Recording</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLogs.length === 0 ? (
                   <tr>
-                    <td colSpan="9" style={{ textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan="12" style={{ textAlign: 'center', color: '#6b7280' }}>
                       No call records matching your search queries.
                     </td>
                   </tr>
@@ -577,6 +658,9 @@ const CallLogs = ({ user, setActiveTab }) => {
                       <td style={{ color: 'var(--text-secondary)', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.feedback}>
                         {log.feedback || <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>None</span>}
                       </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{log.response_1 || '-'}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{log.response_2 || '-'}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{log.response_3 || '-'}</td>
                       <td>
                         {log.recording_url ? (
                           <button
