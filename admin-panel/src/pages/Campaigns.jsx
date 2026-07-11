@@ -210,7 +210,7 @@ const Campaigns = ({ user }) => {
 
   const handleCompleteCampaign = async (campaignId) => {
     try {
-      const response = await fetch(`/api/campaigns/${campaignId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/api/campaigns/${campaignId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

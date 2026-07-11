@@ -67,6 +67,13 @@ exports.updateCampaignStatus = async (req, res) => {
       return res.status(404).json({ error: 'Campaign not found.' });
     }
 
+    if (status === 'completed') {
+      await db.query(
+        'UPDATE contacts SET assigned_to = NULL WHERE campaign_id = $1',
+        [campaignId]
+      );
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Update campaign status error:', error);

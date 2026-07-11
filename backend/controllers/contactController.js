@@ -202,6 +202,7 @@ exports.getAllottedContacts = async (req, res) => {
        FROM contacts c
        JOIN campaigns camp ON c.campaign_id = camp.id
        WHERE (c.assigned_to = $1 OR c.added_by = $1)
+         AND camp.status = 'active'
          AND c.status IN ('pending', 'calling', 'follow_up') 
        ORDER BY c.status DESC, c.follow_up_date ASC, c.id ASC`,
       [userId]
