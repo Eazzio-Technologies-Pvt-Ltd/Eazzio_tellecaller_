@@ -65,7 +65,7 @@ module.exports = (roles = []) => {
           if (compCheck.rows.length > 0) {
             const company = compCheck.rows[0];
 
-            // Auto-heal missing sqlite files/tables on demand
+            // Auto-heal missing tenant database schemas on demand
             await db.ensureCompanySchema(
               req.user.companyRegNum,
               company.name,

@@ -282,7 +282,7 @@ exports.login = async (req, res) => {
   }
 };
 
-// Register a new company and provision its isolated SQLite database
+// Register a new company and provision its isolated database schema
 exports.registerCompany = async (req, res) => {
   const { name, nature, noOfTelecallers, email, password } = req.body;
 
@@ -391,7 +391,7 @@ exports.registerDemoCompany = async (req, res) => {
     const now = new Date();
     const expiry = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
     
-    // SQLite/Postgres format (YYYY-MM-DD HH:MM:SS)
+    // Postgres format (YYYY-MM-DD HH:MM:SS)
     const formattedExpiry = expiry.toISOString().replace('T', ' ').substring(0, 19);
 
     // Insert company into master db
@@ -736,15 +736,13 @@ exports.getTelecallers = async (req, res) => {
   }
 };
 
-// Delete Company and its isolated SQLite database (Superadmin only)
+// Delete Company and its isolated database (Superadmin only)
 exports.deleteCompany = async (req, res) => {
   if (req.user.companyRegNum !== null) {
     return res.status(403).json({ error: 'Access forbidden. Only super administrators can delete companies.' });
   }
 
   const { id } = req.params;
-  const fs = require('fs');
-  const path = require('path');
 
   try {
     const compResult = await db.queryMain('SELECT reg_num, name FROM companies WHERE id = $1', [id]);
@@ -754,21 +752,20 @@ exports.deleteCompany = async (req, res) => {
 
     const { reg_num, name } = compResult.rows[0];
 
-    // 1. Close cached connection first (to release handles)
-    db.closeCompanyConnection(reg_num);
-
-    // 2. Delete SQLite database file
-    const dbPath = path.resolve(db.getDatabasesDir(), `company_${reg_num}.sqlite`);
+    // 1. Drop Postgres Schema
     try {
-      if (fs.existsSync(dbPath)) {
-        fs.unlinkSync(dbPath);
-        console.log(`[Database] Deleted company database file: ${dbPath}`);
+      const client = await db.pgPool.connect();
+      try {
+        await client.query(`DROP SCHEMA IF EXISTS "company_${reg_num}" CASCADE`);
+        console.log(`[Database] Dropped Postgres schema company_${reg_num}`);
+      } finally {
+        client.release();
       }
-    } catch (fileErr) {
-      console.warn(`[Database] Could not delete SQLite file: ${fileErr.message}`);
+    } catch (pgErr) {
+      console.error(`[Database] Failed to drop schema company_${reg_num}:`, pgErr.message);
     }
 
-    // 3. Delete from master companies table
+    // 2. Delete from master companies table
     await db.queryMain('DELETE FROM companies WHERE id = $1', [id]);
 
     res.json({ message: `Company '${name}' and its database deleted successfully.` });
@@ -1297,28 +1294,15 @@ exports.renewSubscriptionWithPayment = async (req, res) => {
         }
       }
 
-      // Rename the SQLite database file (demo → normal)
-      if (db.dbType === 'sqlite') {
-        const pathModule = require('path');
-        const fs = require('fs');
-        const databasesDir = db.getDatabasesDir();
-        const oldFile = pathModule.join(databasesDir, `company_${oldRegNum}.sqlite`);
-        const newFile = pathModule.join(databasesDir, `company_${finalRegNum}.sqlite`);
-        if (fs.existsSync(oldFile)) {
-          db.closeCompanyConnection(oldRegNum);
-          fs.renameSync(oldFile, newFile);
-          console.log(`[Database] Renamed company database from ${oldRegNum} to ${finalRegNum}`);
-        }
-      } else if (db.dbType === 'postgres') {
-        const oldSchema = `company_${oldRegNum}`;
-        const newSchema = `company_${finalRegNum}`;
-        const client = await db.pgPool.connect();
-        try {
-          await client.query(`ALTER SCHEMA "${oldSchema}" RENAME TO "${newSchema}"`);
-          console.log(`[Database] Renamed PostgreSQL schema from ${oldSchema} to ${newSchema}`);
-        } finally {
-          client.release();
-        }
+      // Rename the PostgreSQL schema (demo → normal)
+      const oldSchema = `company_${oldRegNum}`;
+      const newSchema = `company_${finalRegNum}`;
+      const client = await db.pgPool.connect();
+      try {
+        await client.query(`ALTER SCHEMA "${oldSchema}" RENAME TO "${newSchema}"`);
+        console.log(`[Database] Renamed PostgreSQL schema from ${oldSchema} to ${newSchema}`);
+      } finally {
+        client.release();
       }
 
       // Update company in master DB — change reg_num + plan data in one query

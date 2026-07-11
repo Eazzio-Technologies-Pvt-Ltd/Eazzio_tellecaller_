@@ -1,6 +1,5 @@
 const pg = require('pg');
 const { Pool } = pg;
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const { AsyncLocalStorage } = require('async_hooks');
@@ -16,139 +15,63 @@ pg.types.setTypeParser(1114, function(stringValue) {
   return new Date(stringValue);
 });
 
-const dbType = process.env.DB_TYPE || 'postgres';
+const dbType = 'postgres';
 let pgPool = null;
-let sqliteDb = null;
 
 // AsyncLocalStorage to hold company registration code context
 const dbStorage = new AsyncLocalStorage();
 
-// Cache for company-specific SQLite database connections
-const companyConnections = {};
-
 // Helper to resolve company-specific databases directory (dynamic persistent storage support)
 function getDatabasesDir() {
-  const baseDir = process.env.SQLITE_FILE 
-    ? path.dirname(path.resolve(process.env.SQLITE_FILE)) 
-    : path.join(__dirname, '..');
-  return path.join(baseDir, 'databases');
+  return path.join(__dirname, '..', 'databases');
 }
 
-// Helper to get active database connection based on AsyncLocalStorage context
-function getActiveDb() {
-  const store = dbStorage.getStore();
-  if (store && store.companyRegNum && dbType === 'sqlite') {
-    const regNum = store.companyRegNum;
-    if (!companyConnections[regNum]) {
-      const sqliteFile = path.join(getDatabasesDir(), `company_${regNum}.sqlite`);
-      const dir = path.dirname(sqliteFile);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      companyConnections[regNum] = new sqlite3.Database(sqliteFile);
-      console.log(`[Database] Opened connection to company database: company_${regNum}.sqlite`);
+console.log('Database Config: Using PostgreSQL');
+const connectionString = process.env.DATABASE_URL || process.env.NEON_DB_URL;
+if (connectionString) {
+  pgPool = new Pool({
+    connectionString,
+    ssl: {
+      rejectUnauthorized: false
     }
-    return companyConnections[regNum];
-  }
-  return sqliteDb;
-}
-
-// Promise wrappers for SQLite taking the connection explicitly
-const sqliteRun = (dbConn, sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    dbConn.run(sql, params, function (err) {
-      if (err) reject(err);
-      else resolve({ rows: [], lastID: this.lastID, changes: this.changes });
-    });
-  });
-};
-
-const sqliteAll = (dbConn, sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    dbConn.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve({ rows });
-    });
-  });
-};
-
-if (dbType === 'postgres') {
-  console.log('Database Config: Using PostgreSQL');
-  const connectionString = process.env.DATABASE_URL || process.env.NEON_DB_URL;
-  if (connectionString) {
-    pgPool = new Pool({
-      connectionString,
-      ssl: {
-        rejectUnauthorized: false
-      }
-    });
-  } else {
-    pgPool = new Pool({
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      ssl: {
-        rejectUnauthorized: false
-      }
-    });
-  }
-  
-  pgPool.on('error', (err) => {
-    console.error('Unexpected error on idle client:', err.message);
   });
 } else {
-  throw new Error('Database Config Error: SQLite database mode is deprecated and disabled. Please configure DB_TYPE=postgres and set DATABASE_URL.');
+  pgPool = new Pool({
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    ssl: {
+      rejectUnauthorized: false
+    }
+  });
 }
+
+pgPool.on('error', (err) => {
+  console.error('Unexpected error on idle client:', err.message);
+});
 
 /**
  * Executes a query with arguments on the tenant database (resolved dynamically).
  * Uses PostgreSQL ($1, $2) parameter syntax.
- * Automatically translates parameters to SQLite syntax (?) if needed.
  */
 async function query(text, params = []) {
-  if (dbType === 'postgres') {
-    const store = dbStorage.getStore();
-    const client = await pgPool.connect();
-    const errorHandler = (err) => { console.error('Database client error:', err.message); };
-    client.on('error', errorHandler);
-    try {
-      if (store && store.companyRegNum) {
-        const schemaName = `company_${store.companyRegNum}`;
-        await client.query(`SET search_path TO "${schemaName}", "public"`);
-      } else {
-        await client.query('SET search_path TO "public"');
-      }
-      return await client.query(text, params);
-    } finally {
-      client.removeListener('error', errorHandler);
-      client.release();
-    }
-  } else {
-    const dbConn = getActiveDb();
-    // Translate $1, $2 -> ? for SQLite with parameter replication
-    const matches = text.match(/\$\d+/g);
-    let sqliteText = text;
-    let sqliteParams = params;
-    if (matches) {
-      sqliteParams = [];
-      sqliteText = text.replace(/\$\d+/g, (match) => {
-        const index = parseInt(match.substring(1), 10) - 1;
-        sqliteParams.push(params[index]);
-        return '?';
-      });
-    }
-    
-    // Determine whether to use run or all
-    const cleanText = sqliteText.trim().toLowerCase();
-    const isSelect = cleanText.startsWith('select') || cleanText.startsWith('with') || cleanText.includes('returning');
-    
-    if (isSelect) {
-      return await sqliteAll(dbConn, sqliteText, sqliteParams);
+  const store = dbStorage.getStore();
+  const client = await pgPool.connect();
+  const errorHandler = (err) => { console.error('Database client error:', err.message); };
+  client.on('error', errorHandler);
+  try {
+    if (store && store.companyRegNum) {
+      const schemaName = `company_${store.companyRegNum}`;
+      await client.query(`SET search_path TO "${schemaName}", "public"`);
     } else {
-      return await sqliteRun(dbConn, sqliteText, sqliteParams);
+      await client.query('SET search_path TO "public"');
     }
+    return await client.query(text, params);
+  } finally {
+    client.removeListener('error', errorHandler);
+    client.release();
   }
 }
 
@@ -156,38 +79,15 @@ async function query(text, params = []) {
  * Executes a query specifically on the main database (bypassing tenant routing).
  */
 async function queryMain(text, params = []) {
-  if (dbType === 'postgres') {
-    const client = await pgPool.connect();
-    const errorHandler = (err) => { console.error('Database client error in queryMain:', err.message); };
-    client.on('error', errorHandler);
-    try {
-      await client.query('SET search_path TO "public"');
-      return await client.query(text, params);
-    } finally {
-      client.removeListener('error', errorHandler);
-      client.release();
-    }
-  } else {
-    // Translate $1, $2 -> ? for SQLite with parameter replication
-    const matches = text.match(/\$\d+/g);
-    let sqliteText = text;
-    let sqliteParams = params;
-    if (matches) {
-      sqliteParams = [];
-      sqliteText = text.replace(/\$\d+/g, (match) => {
-        const index = parseInt(match.substring(1), 10) - 1;
-        sqliteParams.push(params[index]);
-        return '?';
-      });
-    }
-    const cleanText = sqliteText.trim().toLowerCase();
-    const isSelect = cleanText.startsWith('select') || cleanText.startsWith('with') || cleanText.includes('returning');
-    
-    if (isSelect) {
-      return await sqliteAll(sqliteDb, sqliteText, sqliteParams);
-    } else {
-      return await sqliteRun(sqliteDb, sqliteText, sqliteParams);
-    }
+  const client = await pgPool.connect();
+  const errorHandler = (err) => { console.error('Database client error in queryMain:', err.message); };
+  client.on('error', errorHandler);
+  try {
+    await client.query('SET search_path TO "public"');
+    return await client.query(text, params);
+  } finally {
+    client.removeListener('error', errorHandler);
+    client.release();
   }
 }
 
@@ -197,12 +97,10 @@ async function queryMain(text, params = []) {
 async function initializeSchema() {
   console.log('Initializing database schema...');
 
-  const isPg = dbType === 'postgres';
-  const serialType = isPg ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
-  const textType = isPg ? 'TEXT' : 'TEXT';
-  const timestampType = isPg ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' : 'DATETIME DEFAULT CURRENT_TIMESTAMP';
-  const currentTimestamp = isPg ? 'CURRENT_TIMESTAMP' : "datetime('now')";
-  const dateType = isPg ? 'DATE DEFAULT CURRENT_DATE' : "DATE DEFAULT (date('now'))";
+  const serialType = 'SERIAL PRIMARY KEY';
+  const textType = 'TEXT';
+  const timestampType = 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP';
+  const dateType = 'DATE DEFAULT CURRENT_DATE';
 
   const schemas = [
     // Companies table (Master Database Only)
@@ -217,12 +115,12 @@ async function initializeSchema() {
       admin_plain_password VARCHAR(255) NOT NULL,
       price_per_telecaller INTEGER DEFAULT 59,
       plan_type VARCHAR(20) DEFAULT 'monthly',
-      subscription_start ${isPg ? 'TIMESTAMP DEFAULT NULL' : 'DATETIME DEFAULT NULL'},
-      subscription_end ${isPg ? 'TIMESTAMP DEFAULT NULL' : 'DATETIME DEFAULT NULL'},
+      subscription_start TIMESTAMP DEFAULT NULL,
+      subscription_end TIMESTAMP DEFAULT NULL,
       edit_count INTEGER DEFAULT 0,
       mac_address VARCHAR(255),
       call_recording_enabled INTEGER DEFAULT 0,
-      call_recording_end_date ${isPg ? 'TIMESTAMP DEFAULT NULL' : 'DATETIME DEFAULT NULL'},
+      call_recording_end_date TIMESTAMP DEFAULT NULL,
       work_time_limit_hours INTEGER DEFAULT 8,
       talk_time_limit_hours INTEGER DEFAULT 4,
       proxy_limit_minutes INTEGER DEFAULT 10,
@@ -324,7 +222,7 @@ async function initializeSchema() {
       id ${serialType},
       email VARCHAR(100) NOT NULL,
       otp VARCHAR(6) NOT NULL,
-      expires_at ${isPg ? 'TIMESTAMP' : 'DATETIME'} NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
       created_at ${timestampType}
     )`
   ];
@@ -364,57 +262,10 @@ async function initializeSchema() {
 
   // Add follow_up_started_at column if it doesn't exist in main contacts table
   try {
-    const tsType = dbType === 'postgres' ? 'TIMESTAMP' : 'DATETIME';
-    await queryMain(`ALTER TABLE contacts ADD COLUMN follow_up_started_at ${tsType}`);
+    await queryMain('ALTER TABLE contacts ADD COLUMN follow_up_started_at TIMESTAMP');
     console.log('Added follow_up_started_at column to contacts table in main db.');
   } catch (err) {
     // Column already exists, ignore
-  }
-
-  // Migrate all dynamic company databases to add current_token, profile_photo and lead_transfers (SQLite only)
-  try {
-    const databasesDir = getDatabasesDir();
-    if (dbType === 'sqlite' && fs.existsSync(databasesDir)) {
-      const files = fs.readdirSync(databasesDir);
-      for (const file of files) {
-        if (file.startsWith('company_') && file.endsWith('.sqlite')) {
-          const sqliteFile = path.join(databasesDir, file);
-          const compDb = new sqlite3.Database(sqliteFile);
-          await new Promise((resolve) => {
-            compDb.run('ALTER TABLE users ADD COLUMN current_token TEXT', [], (err) => {
-              resolve();
-            });
-          });
-          await new Promise((resolve) => {
-            compDb.run('ALTER TABLE users ADD COLUMN profile_photo TEXT', [], (err) => {
-              resolve();
-            });
-          });
-          await new Promise((resolve) => {
-            compDb.run(`CREATE TABLE IF NOT EXISTS lead_transfers (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              contact_id INTEGER,
-              from_user_id INTEGER,
-              to_user_id INTEGER,
-              status VARCHAR(20) DEFAULT 'pending',
-              reason TEXT,
-              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )`, [], (err) => {
-              resolve();
-            });
-          });
-          await new Promise((resolve) => {
-            compDb.run('ALTER TABLE contacts ADD COLUMN follow_up_started_at DATETIME', [], (err) => {
-              compDb.close();
-              resolve();
-            });
-          });
-          console.log(`Migrated company database ${file} to add current_token, profile_photo, follow_up_started_at and lead_transfers.`);
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Error migrating dynamic company databases:', err);
   }
 
   // Add edit_count column if it doesn't exist in companies table
@@ -431,11 +282,11 @@ async function initializeSchema() {
     console.log('Added plan_type column to companies table.');
   } catch (err) { /* already exists */ }
   try {
-    await queryMain('ALTER TABLE companies ADD COLUMN subscription_start DATETIME');
+    await queryMain('ALTER TABLE companies ADD COLUMN subscription_start TIMESTAMP');
     console.log('Added subscription_start column to companies table.');
   } catch (err) { /* already exists */ }
   try {
-    await queryMain('ALTER TABLE companies ADD COLUMN subscription_end DATETIME');
+    await queryMain('ALTER TABLE companies ADD COLUMN subscription_end TIMESTAMP');
     console.log('Added subscription_end column to companies table.');
   } catch (err) { /* already exists */ }
   try {
@@ -447,8 +298,7 @@ async function initializeSchema() {
     console.log('Added call_recording_enabled column to companies table.');
   } catch (err) { /* already exists */ }
   try {
-    const tsType = dbType === 'postgres' ? 'TIMESTAMP' : 'DATETIME';
-    await queryMain(`ALTER TABLE companies ADD COLUMN call_recording_end_date ${tsType}`);
+    await queryMain('ALTER TABLE companies ADD COLUMN call_recording_end_date TIMESTAMP');
     console.log('Added call_recording_end_date column to companies table.');
   } catch (err) { /* already exists */ }
 
@@ -514,110 +364,72 @@ async function initializeSchema() {
 
   // Migrate contacts table column limits in main database and all dynamic PostgreSQL schemas
   try {
-    if (dbType === 'postgres') {
-      // 1. Alter public database contacts and companies tables
-      await queryMain('ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)');
-      await queryMain('ALTER TABLE contacts ALTER COLUMN name TYPE VARCHAR(255)');
+    // 1. Alter public database contacts and companies tables
+    await queryMain('ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)');
+    await queryMain('ALTER TABLE contacts ALTER COLUMN name TYPE VARCHAR(255)');
+    try {
+      await queryMain('ALTER TABLE contacts ADD COLUMN added_by INTEGER');
+    } catch (e) {}
+
+    // Add new columns to public companies, contacts, and telecaller_sessions
+    try { await queryMain('ALTER TABLE companies ADD COLUMN IF NOT EXISTS work_time_limit_hours INTEGER DEFAULT 8'); } catch(e){}
+    try { await queryMain('ALTER TABLE companies ADD COLUMN IF NOT EXISTS talk_time_limit_hours INTEGER DEFAULT 4'); } catch(e){}
+    try { await queryMain('ALTER TABLE companies ADD COLUMN IF NOT EXISTS proxy_limit_minutes INTEGER DEFAULT 10'); } catch(e){}
+
+    try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS try_count INTEGER DEFAULT 0'); } catch(e){}
+    try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS last_try_date DATE DEFAULT NULL'); } catch(e){}
+    try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_1 TEXT DEFAULT NULL'); } catch(e){}
+    try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_2 TEXT DEFAULT NULL'); } catch(e){}
+    try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_3 TEXT DEFAULT NULL'); } catch(e){}
+
+    try { await queryMain('ALTER TABLE telecaller_sessions ADD COLUMN IF NOT EXISTS whatsapp_messages_count INTEGER DEFAULT 0'); } catch(e){}
+
+    console.log('Migrated public contacts and companies tables.');
+
+    // 2. Alter dynamic schemas
+    const companiesRes = await queryMain('SELECT reg_num FROM companies');
+    for (const row of companiesRes.rows) {
+      const schemaName = `company_${row.reg_num}`;
       try {
-        await queryMain('ALTER TABLE contacts ADD COLUMN added_by INTEGER');
-      } catch (e) {}
-
-      // Add new columns to public companies, contacts, and telecaller_sessions
-      try { await queryMain('ALTER TABLE companies ADD COLUMN IF NOT EXISTS work_time_limit_hours INTEGER DEFAULT 8'); } catch(e){}
-      try { await queryMain('ALTER TABLE companies ADD COLUMN IF NOT EXISTS talk_time_limit_hours INTEGER DEFAULT 4'); } catch(e){}
-      try { await queryMain('ALTER TABLE companies ADD COLUMN IF NOT EXISTS proxy_limit_minutes INTEGER DEFAULT 10'); } catch(e){}
-
-      try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS try_count INTEGER DEFAULT 0'); } catch(e){}
-      try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS last_try_date DATE DEFAULT NULL'); } catch(e){}
-      try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_1 TEXT DEFAULT NULL'); } catch(e){}
-      try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_2 TEXT DEFAULT NULL'); } catch(e){}
-      try { await queryMain('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_3 TEXT DEFAULT NULL'); } catch(e){}
-
-      try { await queryMain('ALTER TABLE telecaller_sessions ADD COLUMN IF NOT EXISTS whatsapp_messages_count INTEGER DEFAULT 0'); } catch(e){}
-
-      console.log('Migrated public contacts and companies tables.');
-
-      // 2. Alter dynamic schemas
-      const companiesRes = await queryMain('SELECT reg_num FROM companies');
-      for (const row of companiesRes.rows) {
-        const schemaName = `company_${row.reg_num}`;
+        const client = await pgPool.connect();
+        const errorHandler = (err) => { console.error('Database client error in migration check:', err.message); };
+        client.on('error', errorHandler);
         try {
-          const client = await pgPool.connect();
-          const errorHandler = (err) => { console.error('Database client error in migration check:', err.message); };
-          client.on('error', errorHandler);
+          await client.query(`SET search_path TO "${schemaName}"`);
+          await client.query('ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)');
+          await client.query('ALTER TABLE contacts ALTER COLUMN name TYPE VARCHAR(255)');
+          
+          try { await client.query('ALTER TABLE contacts ADD COLUMN follow_up_started_at TIMESTAMP'); } catch (e) {}
+          try { await client.query('ALTER TABLE contacts ADD COLUMN added_by INTEGER REFERENCES users(id) ON DELETE SET NULL'); } catch (e) {}
+          try { await client.query('ALTER TABLE users ADD COLUMN profile_photo TEXT'); } catch (e) {}
+
+          try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS try_count INTEGER DEFAULT 0'); } catch(e){}
+          try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS last_try_date DATE DEFAULT NULL'); } catch(e){}
+          try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_1 TEXT DEFAULT NULL'); } catch(e){}
+          try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_2 TEXT DEFAULT NULL'); } catch(e){}
+          try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_3 TEXT DEFAULT NULL'); } catch(e){}
+
+          try { await client.query('ALTER TABLE telecaller_sessions ADD COLUMN IF NOT EXISTS whatsapp_messages_count INTEGER DEFAULT 0'); } catch(e){}
+
           try {
-            await client.query(`SET search_path TO "${schemaName}"`);
-            await client.query('ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)');
-            await client.query('ALTER TABLE contacts ALTER COLUMN name TYPE VARCHAR(255)');
-            
-            try { await client.query('ALTER TABLE contacts ADD COLUMN follow_up_started_at TIMESTAMP'); } catch (e) {}
-            try { await client.query('ALTER TABLE contacts ADD COLUMN added_by INTEGER REFERENCES users(id) ON DELETE SET NULL'); } catch (e) {}
-            try { await client.query('ALTER TABLE users ADD COLUMN profile_photo TEXT'); } catch (e) {}
-
-            try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS try_count INTEGER DEFAULT 0'); } catch(e){}
-            try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS last_try_date DATE DEFAULT NULL'); } catch(e){}
-            try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_1 TEXT DEFAULT NULL'); } catch(e){}
-            try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_2 TEXT DEFAULT NULL'); } catch(e){}
-            try { await client.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_3 TEXT DEFAULT NULL'); } catch(e){}
-
-            try { await client.query('ALTER TABLE telecaller_sessions ADD COLUMN IF NOT EXISTS whatsapp_messages_count INTEGER DEFAULT 0'); } catch(e){}
-
-            try {
-              await client.query(`CREATE TABLE IF NOT EXISTS lead_transfers (
-                id SERIAL PRIMARY KEY,
-                contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
-                from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                status VARCHAR(20) DEFAULT 'pending',
-                reason TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-              )`);
-            } catch (e) {}
-            
-            console.log(`Migrated columns in schema: ${schemaName}`);
-          } finally {
-            client.removeListener('error', errorHandler);
-            client.release();
-          }
-        } catch (schemaErr) {
-          console.error(`Failed to migrate schema ${schemaName}:`, schemaErr.message);
+            await client.query(`CREATE TABLE IF NOT EXISTS lead_transfers (
+              id SERIAL PRIMARY KEY,
+              contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+              from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+              to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+              status VARCHAR(20) DEFAULT 'pending',
+              reason TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`);
+          } catch (e) {}
+          
+          console.log(`Migrated columns in schema: ${schemaName}`);
+        } finally {
+          client.removeListener('error', errorHandler);
+          client.release();
         }
-      }
-    } else {
-      // SQLite local migrations
-      try { await queryMain('ALTER TABLE companies ADD COLUMN work_time_limit_hours INTEGER DEFAULT 8'); } catch(e){}
-      try { await queryMain('ALTER TABLE companies ADD COLUMN talk_time_limit_hours INTEGER DEFAULT 4'); } catch(e){}
-      try { await queryMain('ALTER TABLE companies ADD COLUMN proxy_limit_minutes INTEGER DEFAULT 10'); } catch(e){}
-      try { await queryMain('ALTER TABLE contacts ADD COLUMN try_count INTEGER DEFAULT 0'); } catch(e){}
-      try { await queryMain('ALTER TABLE contacts ADD COLUMN last_try_date DATE DEFAULT NULL'); } catch(e){}
-      try { await queryMain('ALTER TABLE contacts ADD COLUMN response_1 TEXT DEFAULT NULL'); } catch(e){}
-      try { await queryMain('ALTER TABLE contacts ADD COLUMN response_2 TEXT DEFAULT NULL'); } catch(e){}
-      try { await queryMain('ALTER TABLE contacts ADD COLUMN response_3 TEXT DEFAULT NULL'); } catch(e){}
-      try { await queryMain('ALTER TABLE telecaller_sessions ADD COLUMN whatsapp_messages_count INTEGER DEFAULT 0'); } catch(e){}
-
-      const fs = require('fs');
-      const path = require('path');
-      const sqlite3 = require('sqlite3');
-      const databasesDir = getDatabasesDir();
-      if (fs.existsSync(databasesDir)) {
-        const files = fs.readdirSync(databasesDir).filter(f => f.startsWith('company_') && f.endsWith('.sqlite'));
-        for (const file of files) {
-          const compDbPath = path.join(databasesDir, file);
-          const compDb = new sqlite3.Database(compDbPath);
-          await new Promise((resolve) => {
-            compDb.serialize(() => {
-              compDb.run("ALTER TABLE contacts ADD COLUMN try_count INTEGER DEFAULT 0", () => {});
-              compDb.run("ALTER TABLE contacts ADD COLUMN last_try_date DATE DEFAULT NULL", () => {});
-              compDb.run("ALTER TABLE contacts ADD COLUMN response_1 TEXT DEFAULT NULL", () => {});
-              compDb.run("ALTER TABLE contacts ADD COLUMN response_2 TEXT DEFAULT NULL", () => {});
-              compDb.run("ALTER TABLE contacts ADD COLUMN response_3 TEXT DEFAULT NULL", () => {});
-              compDb.run("ALTER TABLE telecaller_sessions ADD COLUMN whatsapp_messages_count INTEGER DEFAULT 0", () => {
-                compDb.close();
-                resolve();
-              });
-            });
-          });
-        }
+      } catch (schemaErr) {
+        console.error(`Failed to migrate schema ${schemaName}:`, schemaErr.message);
       }
     }
   } catch (migrationErr) {
@@ -628,346 +440,163 @@ async function initializeSchema() {
 }
 
 /**
- * Initializes schema and sets up tables inside a new SQLite file for a newly registered company.
+ * Initializes schema and sets up tables inside a new schema for a newly registered company.
  */
 async function initializeCompanySchema(regNum, companyName, adminEmail, adminPasswordHash, adminPlainPassword) {
-  if (dbType === 'postgres') {
-    const schemaName = `company_${regNum}`;
-    const client = await pgPool.connect();
-    const errorHandler = (err) => { console.error('Database client error in initializeCompanySchema:', err.message); };
-    client.on('error', errorHandler);
-    try {
-      await client.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
-      await client.query(`SET search_path TO "${schemaName}"`);
-      
-      const serialType = 'SERIAL PRIMARY KEY';
-      const textType = 'TEXT';
-      const timestampType = 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP';
-      const dateType = 'DATE DEFAULT CURRENT_DATE';
+  const schemaName = `company_${regNum}`;
+  const client = await pgPool.connect();
+  const errorHandler = (err) => { console.error('Database client error in initializeCompanySchema:', err.message); };
+  client.on('error', errorHandler);
+  try {
+    await client.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
+    await client.query(`SET search_path TO "${schemaName}"`);
+    
+    const serialType = 'SERIAL PRIMARY KEY';
+    const textType = 'TEXT';
+    const timestampType = 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP';
+    const dateType = 'DATE DEFAULT CURRENT_DATE';
 
-      const schemas = [
-        // Users table
-        `CREATE TABLE IF NOT EXISTS users (
-          id ${serialType},
-          name VARCHAR(100) NOT NULL,
-          email VARCHAR(100) UNIQUE NOT NULL,
-          password_hash VARCHAR(255) NOT NULL,
-          role VARCHAR(20) DEFAULT 'telecaller',
-          status VARCHAR(20) DEFAULT 'offline',
-          last_active_at ${timestampType},
-          created_at ${timestampType},
-          plain_password VARCHAR(255),
-          current_token TEXT,
-          profile_photo ${textType} DEFAULT NULL
-        )`,
+    const schemas = [
+      // Users table
+      `CREATE TABLE IF NOT EXISTS users (
+        id ${serialType},
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(20) DEFAULT 'telecaller',
+        status VARCHAR(20) DEFAULT 'offline',
+        last_active_at ${timestampType},
+        created_at ${timestampType},
+        plain_password VARCHAR(255),
+        current_token TEXT,
+        profile_photo ${textType} DEFAULT NULL
+      )`,
 
-        // Campaigns table
-        `CREATE TABLE IF NOT EXISTS campaigns (
-          id ${serialType},
-          name VARCHAR(100) NOT NULL,
-          description ${textType},
-          status VARCHAR(20) DEFAULT 'pending',
-          created_by INTEGER REFERENCES users(id),
-          created_at ${timestampType}
-        )`,
+      // Campaigns table
+      `CREATE TABLE IF NOT EXISTS campaigns (
+        id ${serialType},
+        name VARCHAR(100) NOT NULL,
+        description ${textType},
+        status VARCHAR(20) DEFAULT 'pending',
+        created_by INTEGER REFERENCES users(id),
+        created_at ${timestampType}
+      )`,
 
-        // Contacts table
-        `CREATE TABLE IF NOT EXISTS contacts (
-          id ${serialType},
-          campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
-          name VARCHAR(255) NOT NULL,
-          phone_number VARCHAR(50) NOT NULL,
-          status VARCHAR(20) DEFAULT 'pending',
-          assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
-          added_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-          last_called_at ${timestampType},
-          follow_up_date ${timestampType},
-          follow_up_started_at ${timestampType},
-          try_count INTEGER DEFAULT 0,
-          last_try_date ${dateType},
-          response_1 ${textType},
-          response_2 ${textType},
-          response_3 ${textType},
-          created_at ${timestampType}
-        )`,
+      // Contacts table
+      `CREATE TABLE IF NOT EXISTS contacts (
+        id ${serialType},
+        campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        phone_number VARCHAR(50) NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        added_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        last_called_at ${timestampType},
+        follow_up_date ${timestampType},
+        follow_up_started_at ${timestampType},
+        try_count INTEGER DEFAULT 0,
+        last_try_date ${dateType},
+        response_1 ${textType},
+        response_2 ${textType},
+        response_3 ${textType},
+        created_at ${timestampType}
+      )`,
 
-        // Call logs table
-        `CREATE TABLE IF NOT EXISTS call_logs (
-          id ${serialType},
-          contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
-          telecaller_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-          call_status VARCHAR(20) NOT NULL,
-          duration INTEGER DEFAULT 0,
-          feedback ${textType},
-          recording_url ${textType},
-          called_at ${timestampType}
-        )`,
+      // Call logs table
+      `CREATE TABLE IF NOT EXISTS call_logs (
+        id ${serialType},
+        contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+        telecaller_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        call_status VARCHAR(20) NOT NULL,
+        duration INTEGER DEFAULT 0,
+        feedback ${textType},
+        recording_url ${textType},
+        called_at ${timestampType}
+      )`,
 
-        // Lead transfers table
-        `CREATE TABLE IF NOT EXISTS lead_transfers (
-          id ${serialType},
-          contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
-          from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-          to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-          status VARCHAR(20) DEFAULT 'pending',
-          reason ${textType},
-          created_at ${timestampType}
-        )`,
+      // Lead transfers table
+      `CREATE TABLE IF NOT EXISTS lead_transfers (
+        id ${serialType},
+        contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+        from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        reason ${textType},
+        created_at ${timestampType}
+      )`,
 
-        // Telecaller sessions table
-        `CREATE TABLE IF NOT EXISTS telecaller_sessions (
-          id ${serialType},
-          telecaller_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-          date ${dateType},
-          total_working_time INTEGER DEFAULT 0,
-          total_calling_time INTEGER DEFAULT 0,
-          total_idle_time INTEGER DEFAULT 0,
-          total_break_time INTEGER DEFAULT 0,
-          whatsapp_messages_count INTEGER DEFAULT 0,
-          last_updated_at ${timestampType},
-          UNIQUE (telecaller_id, date)
-        )`,
+      // Telecaller sessions table
+      `CREATE TABLE IF NOT EXISTS telecaller_sessions (
+        id ${serialType},
+        telecaller_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        date ${dateType},
+        total_working_time INTEGER DEFAULT 0,
+        total_calling_time INTEGER DEFAULT 0,
+        total_idle_time INTEGER DEFAULT 0,
+        total_break_time INTEGER DEFAULT 0,
+        whatsapp_messages_count INTEGER DEFAULT 0,
+        last_updated_at ${timestampType},
+        UNIQUE (telecaller_id, date)
+      )`,
 
-        // Admin notifications table
-        `CREATE TABLE IF NOT EXISTS admin_notifications (
-          id ${serialType},
-          message ${textType} NOT NULL,
-          created_at ${timestampType}
-        )`
-      ];
+      // Admin notifications table
+      `CREATE TABLE IF NOT EXISTS admin_notifications (
+        id ${serialType},
+        message ${textType} NOT NULL,
+        created_at ${timestampType}
+      )`
+    ];
 
-      for (const sql of schemas) {
-        await client.query(sql);
-      }
-
-      console.log(`[Database] Inserting admin user into schema "${schemaName}":`, {
-        name: companyName + ' Admin',
-        email: adminEmail,
-        plainPassword: adminPlainPassword
-      });
-
-      const insertRes = await client.query(
-        'INSERT INTO users (name, email, password_hash, plain_password, role) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (email) DO NOTHING',
-        [companyName + ' Admin', adminEmail, adminPasswordHash, adminPlainPassword, 'admin']
-      );
-
-      console.log(`[Database] Insert result: rowCount = ${insertRes.rowCount}`);
-
-      console.log(`[Database] Company PostgreSQL schema "${schemaName}" initialized successfully.`);
-    } finally {
-      client.removeListener('error', errorHandler);
-      client.release();
+    for (const sql of schemas) {
+      await client.query(sql);
     }
-    return;
-  }
 
-  const sqliteFile = path.join(getDatabasesDir(), `company_${regNum}.sqlite`);
-  const dir = path.dirname(sqliteFile);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  const compDb = new sqlite3.Database(sqliteFile);
-
-  const serialType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
-  const textType = 'TEXT';
-  const timestampType = 'DATETIME DEFAULT CURRENT_TIMESTAMP';
-  const dateType = "DATE DEFAULT (date('now'))";
-
-  const schemas = [
-    // Users table
-    `CREATE TABLE IF NOT EXISTS users (
-      id ${serialType},
-      name VARCHAR(100) NOT NULL,
-      email VARCHAR(100) UNIQUE NOT NULL,
-      password_hash VARCHAR(255) NOT NULL,
-      role VARCHAR(20) DEFAULT 'telecaller',
-      status VARCHAR(20) DEFAULT 'offline',
-      last_active_at ${timestampType},
-      created_at ${timestampType},
-      plain_password VARCHAR(255),
-      current_token TEXT,
-      profile_photo ${textType} DEFAULT NULL
-    )`,
-
-    // Campaigns table
-    `CREATE TABLE IF NOT EXISTS campaigns (
-      id ${serialType},
-      name VARCHAR(100) NOT NULL,
-      description ${textType},
-      status VARCHAR(20) DEFAULT 'pending',
-      created_by INTEGER REFERENCES users(id),
-      created_at ${timestampType}
-    )`,
-
-    // Contacts table
-    `CREATE TABLE IF NOT EXISTS contacts (
-      id ${serialType},
-      campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
-      name VARCHAR(255) NOT NULL,
-      phone_number VARCHAR(50) NOT NULL,
-      status VARCHAR(20) DEFAULT 'pending',
-      assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      last_called_at ${timestampType},
-      follow_up_date ${timestampType},
-      follow_up_started_at ${timestampType},
-      try_count INTEGER DEFAULT 0,
-      last_try_date ${dateType},
-      response_1 ${textType},
-      response_2 ${textType},
-      response_3 ${textType},
-      created_at ${timestampType}
-    )`,
-
-    // Call logs table
-    `CREATE TABLE IF NOT EXISTS call_logs (
-      id ${serialType},
-      contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
-      telecaller_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      call_status VARCHAR(20) NOT NULL,
-      duration INTEGER DEFAULT 0,
-      feedback ${textType},
-      recording_url ${textType},
-      called_at ${timestampType}
-    )`,
-
-    // Lead transfers table
-    `CREATE TABLE IF NOT EXISTS lead_transfers (
-      id ${serialType},
-      contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
-      from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      status VARCHAR(20) DEFAULT 'pending',
-      reason ${textType},
-      created_at ${timestampType}
-    )`,
-
-    // Telecaller sessions table
-    `CREATE TABLE IF NOT EXISTS telecaller_sessions (
-      id ${serialType},
-      telecaller_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      date ${dateType},
-      total_working_time INTEGER DEFAULT 0,
-      total_calling_time INTEGER DEFAULT 0,
-      total_idle_time INTEGER DEFAULT 0,
-      total_break_time INTEGER DEFAULT 0,
-      whatsapp_messages_count INTEGER DEFAULT 0,
-      last_updated_at ${timestampType},
-      UNIQUE (telecaller_id, date)
-    )`,
-
-    // Admin notifications table
-    `CREATE TABLE IF NOT EXISTS admin_notifications (
-      id ${serialType},
-      message ${textType} NOT NULL,
-      created_at ${timestampType}
-    )`
-  ];
-
-  const runSql = (dbConn, sql, params = []) => {
-    return new Promise((resolve, reject) => {
-      dbConn.run(sql, params, (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
+    console.log(`[Database] Inserting admin user into schema "${schemaName}":`, {
+      name: companyName + ' Admin',
+      email: adminEmail,
+      plainPassword: adminPlainPassword
     });
-  };
 
-  for (const sql of schemas) {
-    await runSql(compDb, sql);
+    const insertRes = await client.query(
+      'INSERT INTO users (name, email, password_hash, plain_password, role) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (email) DO NOTHING',
+      [companyName + ' Admin', adminEmail, adminPasswordHash, adminPlainPassword, 'admin']
+    );
+
+    console.log(`[Database] Insert result: rowCount = ${insertRes.rowCount}`);
+    console.log(`[Database] Company PostgreSQL schema "${schemaName}" initialized successfully.`);
+  } finally {
+    client.removeListener('error', errorHandler);
+    client.release();
   }
-
-  // Create default admin user in the company database
-  await runSql(
-    compDb,
-    'INSERT OR IGNORE INTO users (name, email, password_hash, plain_password, role) VALUES (?, ?, ?, ?, ?)',
-    [companyName + ' Admin', adminEmail, adminPasswordHash, adminPlainPassword, 'admin']
-      );
-
-  await new Promise((resolve) => compDb.close(resolve));
-  console.log(`[Database] Company database schema initialized successfully for: ${regNum}`);
 }
 
 /**
  * Ensures the company database is created and fully provisioned.
- * Automatically runs dynamic schema creation if database exists but has no tables.
  */
 async function ensureCompanySchema(regNum, companyName, adminEmail, adminPasswordHash, adminPlainPassword) {
-  if (dbType === 'sqlite') {
-    const sqliteFile = path.join(getDatabasesDir(), `company_${regNum}.sqlite`);
-    let needsInit = !fs.existsSync(sqliteFile);
-    if (!needsInit) {
-      const tables = await new Promise((resolve) => {
-        const compDb = new sqlite3.Database(sqliteFile, sqlite3.OPEN_READONLY, (err) => {
-          if (err) return resolve([]);
-          compDb.all("SELECT name FROM sqlite_master WHERE type='table' AND name='users'", (err, rows) => {
-            compDb.close();
-            if (err || !rows) return resolve([]);
-            resolve(rows);
-          });
-        });
-      });
-      if (tables.length === 0) {
-        needsInit = true;
-      }
-    }
-
-    if (needsInit) {
-      console.log(`[Database] Auto-initializing missing SQLite schema for company ${regNum}...`);
-      // Close active cached connection if it exists to avoid locking conflicts
-      if (companyConnections[regNum]) {
-        try { companyConnections[regNum].close(); } catch(e){}
-        delete companyConnections[regNum];
-      }
-      await initializeCompanySchema(regNum, companyName, adminEmail, adminPasswordHash, adminPlainPassword);
-    }
-  }
+  await initializeCompanySchema(regNum, companyName, adminEmail, adminPasswordHash, adminPlainPassword);
 }
 
 /**
- * Helper to fetch the number of telecallers inside a company's SQLite database file.
+ * Helper to fetch the number of telecallers inside a company's database schema.
  */
 async function getCompanyTelecallerCount(regNum) {
-  if (dbType === 'postgres') {
-    const schemaName = `company_${regNum}`;
-    const client = await pgPool.connect();
-    const errorHandler = (err) => { console.error('Database client error in getCompanyTelecallerCount:', err.message); };
-    client.on('error', errorHandler);
-    try {
-      await client.query(`SET search_path TO "${schemaName}"`);
-      const res = await client.query("SELECT COUNT(*) as count FROM users WHERE role = 'telecaller'");
-      return parseInt(res.rows[0].count) || 0;
-    } finally {
-      client.removeListener('error', errorHandler);
-      client.release();
-    }
+  const schemaName = `company_${regNum}`;
+  const client = await pgPool.connect();
+  const errorHandler = (err) => { console.error('Database client error in getCompanyTelecallerCount:', err.message); };
+  client.on('error', errorHandler);
+  try {
+    await client.query(`SET search_path TO "${schemaName}"`);
+    const res = await client.query("SELECT COUNT(*) as count FROM users WHERE role = 'telecaller'");
+    return parseInt(res.rows[0].count) || 0;
+  } finally {
+    client.removeListener('error', errorHandler);
+    client.release();
   }
-
-  const sqliteFile = path.join(getDatabasesDir(), `company_${regNum}.sqlite`);
-  if (!fs.existsSync(sqliteFile)) return 0;
-  
-  return new Promise((resolve) => {
-    const compDb = new sqlite3.Database(sqliteFile, sqlite3.OPEN_READONLY, (err) => {
-      if (err) return resolve(0);
-      compDb.get("SELECT COUNT(*) as count FROM users WHERE role = 'telecaller'", (err, row) => {
-        compDb.close();
-        if (err || !row) return resolve(0);
-        resolve(row.count);
-      });
-    });
-  });
 }
 
 function closeCompanyConnection(regNum) {
-  if (companyConnections[regNum]) {
-    try {
-      companyConnections[regNum].close();
-      delete companyConnections[regNum];
-      console.log(`[Database] Closed cached connection for ${regNum}`);
-    } catch (err) {
-      console.error(`Error closing database for ${regNum}:`, err);
-    }
-  }
+  // Deprecated: SQLite only, no-op for Postgres
 }
 
 function parseSafeDate(dateInput) {

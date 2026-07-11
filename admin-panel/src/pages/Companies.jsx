@@ -473,7 +473,7 @@ const Companies = () => {
                 {telecallersLoading ? (
                   <div style={styles.modalLoader}>
                     <div style={styles.spinner} />
-                    <span style={{ marginLeft: 10 }}>Accessing company sqlite tenant database...</span>
+                    <span style={{ marginLeft: 10 }}>Accessing company tenant database...</span>
                   </div>
                 ) : telecallersError ? (
                   <div style={styles.modalError}>

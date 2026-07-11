@@ -354,7 +354,7 @@ exports.getFollowUpOverdueContacts = async (req, res) => {
     `;
     const result = await db.query(sql);
 
-    // Filter in JS for maximum compatibility between SQLite and PostgreSQL date representations
+    // Filter in JS for maximum compatibility of date representations
     const overdueContacts = result.rows.filter(contact => {
       let dateVal;
       const val = contact.follow_up_started_at;

@@ -26,6 +26,9 @@ model Company {
   macAddress           String?   @map("mac_address") @db.VarChar(255)
   callRecordingEnabled Int       @default(0) @map("call_recording_enabled")
   callRecordingEndDate DateTime? @map("call_recording_end_date")
+  workTimeLimitHours   Int       @default(8) @map("work_time_limit_hours")
+  talkTimeLimitHours   Int       @default(4) @map("talk_time_limit_hours")
+  proxyLimitMinutes    Int       @default(10) @map("proxy_limit_minutes")
   payments             Payment[]
 
   @@map("companies")
@@ -79,6 +82,11 @@ model Contact {
   createdAt         DateTime       @default(now()) @map("created_at")
   followUpStartedAt DateTime?      @map("follow_up_started_at")
   addedBy           Int?           @map("added_by")
+  tryCount          Int?           @default(0) @map("try_count")
+  lastTryDate        DateTime?      @map("last_try_date") @db.Date
+  response1          String?        @map("response_1")
+  response2          String?        @map("response_2")
+  response3          String?        @map("response_3")
   isStale           Boolean        @default(false) @map("is_stale")
   lastFollowUpAt    DateTime?      @map("last_follow_up_at")
   staleSince        DateTime?      @map("stale_since")
@@ -129,6 +137,7 @@ model TelecallerSession {
   totalCallingTime Int       @default(0) @map("total_calling_time")
   totalIdleTime    Int       @default(0) @map("total_idle_time")
   totalBreakTime   Int       @default(0) @map("total_break_time")
+  whatsappMessagesCount Int  @default(0) @map("whatsapp_messages_count")
   lastUpdatedAt    DateTime? @default(now()) @map("last_updated_at")
   telecaller       User      @relation("SessionTelecaller", fields: [telecallerId], references: [id], onDelete: Cascade)
 

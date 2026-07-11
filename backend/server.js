@@ -135,48 +135,27 @@ async function checkOfflineTelecallers() {
 // Background job to clean up expired demo companies (5 minutes life duration)
 async function cleanupDemoCompanies() {
   try {
-    const isPg = db.dbType === 'postgres';
-    const checkSql = isPg
-      ? `SELECT reg_num FROM companies WHERE reg_num LIKE 'EAZ-DEMO-%' AND subscription_end < NOW()`
-      : `SELECT reg_num FROM companies WHERE reg_num LIKE 'EAZ-DEMO-%' AND subscription_end < datetime('now')`;
-      
+    const checkSql = `SELECT reg_num FROM companies WHERE reg_num LIKE 'EAZ-DEMO-%' AND subscription_end < NOW()`;
     const result = await db.queryMain(checkSql);
     
     for (const row of result.rows) {
       const regNum = row.reg_num;
       console.log(`[DemoMonitor] Demo company ${regNum} expired. Initiating database cleanup.`);
       
-      // 1. Close active cached database connection to release sqlite file lock
-      db.closeCompanyConnection(regNum);
-      
-      // 2. Delete database file (for SQLite)
-      if (db.dbType === 'sqlite') {
-        const databasesDir = db.getDatabasesDir();
-        const sqliteFile = path.join(databasesDir, `company_${regNum}.sqlite`);
-        if (fs.existsSync(sqliteFile)) {
-          try {
-            fs.unlinkSync(sqliteFile);
-            console.log(`[DemoMonitor] Deleted company database file: ${sqliteFile}`);
-          } catch (err) {
-            console.error(`[DemoMonitor] Failed to delete file ${sqliteFile}:`, err.message);
-          }
-        }
-      } else {
-        // For Postgres, drop schema
+      // 1. Drop company schema in PostgreSQL
+      try {
+        const client = await db.pgPool.connect();
         try {
-          const client = await db.pgPool.connect();
-          try {
-            await client.query(`DROP SCHEMA IF EXISTS "company_${regNum}" CASCADE`);
-            console.log(`[DemoMonitor] Dropped Postgres schema company_${regNum}`);
-          } finally {
-            client.release();
-          }
-        } catch (pgErr) {
-          console.error(`[DemoMonitor] Failed to drop schema company_${regNum}:`, pgErr.message);
+          await client.query(`DROP SCHEMA IF EXISTS "company_${regNum}" CASCADE`);
+          console.log(`[DemoMonitor] Dropped Postgres schema company_${regNum}`);
+        } finally {
+          client.release();
         }
+      } catch (pgErr) {
+        console.error(`[DemoMonitor] Failed to drop schema company_${regNum}:`, pgErr.message);
       }
       
-      // 3. Delete company record from main database
+      // 2. Delete company record from main database
       await db.queryMain('DELETE FROM companies WHERE reg_num = $1', [regNum]);
       console.log(`[DemoMonitor] Successfully deleted company ${regNum} record from master DB.`);
     }

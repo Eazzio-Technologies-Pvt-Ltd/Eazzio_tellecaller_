@@ -59,6 +59,9 @@ async function setupPublicSchema(client) {
       mac_address VARCHAR(255),
       call_recording_enabled INTEGER DEFAULT 0,
       call_recording_end_date TIMESTAMP DEFAULT NULL,
+      work_time_limit_hours INTEGER DEFAULT 8,
+      talk_time_limit_hours INTEGER DEFAULT 4,
+      proxy_limit_minutes INTEGER DEFAULT 10,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `, 'companies table');
@@ -116,9 +119,15 @@ async function setupPublicSchema(client) {
       phone_number VARCHAR(50) NOT NULL,
       status VARCHAR(20) DEFAULT 'pending',
       assigned_to INTEGER,
+      added_by INTEGER,
       last_called_at TIMESTAMP,
       follow_up_date TIMESTAMP,
       follow_up_started_at TIMESTAMP,
+      try_count INTEGER DEFAULT 0,
+      last_try_date DATE DEFAULT NULL,
+      response_1 TEXT,
+      response_2 TEXT,
+      response_3 TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `, 'contacts table (public)');
@@ -132,12 +141,21 @@ async function setupPublicSchema(client) {
     ["ALTER TABLE companies ADD COLUMN IF NOT EXISTS mac_address VARCHAR(255)", 'companies.mac_address'],
     ["ALTER TABLE companies ADD COLUMN IF NOT EXISTS call_recording_enabled INTEGER DEFAULT 0", 'companies.call_recording_enabled'],
     ["ALTER TABLE companies ADD COLUMN IF NOT EXISTS call_recording_end_date TIMESTAMP", 'companies.call_recording_end_date'],
+    ["ALTER TABLE companies ADD COLUMN IF NOT EXISTS work_time_limit_hours INTEGER DEFAULT 8", 'companies.work_time_limit_hours'],
+    ["ALTER TABLE companies ADD COLUMN IF NOT EXISTS talk_time_limit_hours INTEGER DEFAULT 4", 'companies.talk_time_limit_hours'],
+    ["ALTER TABLE companies ADD COLUMN IF NOT EXISTS proxy_limit_minutes INTEGER DEFAULT 10", 'companies.proxy_limit_minutes'],
     ["ALTER TABLE users ADD COLUMN IF NOT EXISTS plain_password VARCHAR(255)", 'users.plain_password'],
     ["ALTER TABLE users ADD COLUMN IF NOT EXISTS current_token TEXT", 'users.current_token'],
     ["ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo TEXT", 'users.profile_photo'],
     ["ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS image_url VARCHAR(255)", 'support_tickets.image_url'],
     ["ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP", 'support_tickets.resolved_at'],
     ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS follow_up_started_at TIMESTAMP", 'contacts.follow_up_started_at'],
+    ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS added_by INTEGER", 'contacts.added_by'],
+    ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS try_count INTEGER DEFAULT 0", 'contacts.try_count'],
+    ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS last_try_date DATE DEFAULT NULL", 'contacts.last_try_date'],
+    ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_1 TEXT", 'contacts.response_1'],
+    ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_2 TEXT", 'contacts.response_2'],
+    ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_3 TEXT", 'contacts.response_3'],
     ["ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)", 'contacts.phone_number → VARCHAR(50)'],
     ["ALTER TABLE contacts ALTER COLUMN name TYPE VARCHAR(255)", 'contacts.name → VARCHAR(255)'],
   ];
@@ -195,9 +213,15 @@ async function setupCompanySchema(client, schemaName) {
       phone_number VARCHAR(50) NOT NULL,
       status VARCHAR(20) DEFAULT 'pending',
       assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      added_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
       last_called_at TIMESTAMP,
       follow_up_date TIMESTAMP,
       follow_up_started_at TIMESTAMP,
+      try_count INTEGER DEFAULT 0,
+      last_try_date DATE DEFAULT NULL,
+      response_1 TEXT,
+      response_2 TEXT,
+      response_3 TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `, 'contacts');
@@ -239,6 +263,7 @@ async function setupCompanySchema(client, schemaName) {
       total_calling_time INTEGER DEFAULT 0,
       total_idle_time INTEGER DEFAULT 0,
       total_break_time INTEGER DEFAULT 0,
+      whatsapp_messages_count INTEGER DEFAULT 0,
       last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE (telecaller_id, date)
     )
@@ -259,10 +284,17 @@ async function setupCompanySchema(client, schemaName) {
     ["ALTER TABLE users ADD COLUMN IF NOT EXISTS current_token TEXT", 'users.current_token'],
     ["ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo TEXT DEFAULT NULL", 'users.profile_photo'],
     ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS follow_up_started_at TIMESTAMP", 'contacts.follow_up_started_at'],
+    ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS added_by INTEGER REFERENCES users(id) ON DELETE SET NULL", 'contacts.added_by'],
+    ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS try_count INTEGER DEFAULT 0", 'contacts.try_count'],
+    ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS last_try_date DATE DEFAULT NULL", 'contacts.last_try_date'],
+    ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_1 TEXT", 'contacts.response_1'],
+    ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_2 TEXT", 'contacts.response_2'],
+    ["ALTER TABLE contacts ADD COLUMN IF NOT EXISTS response_3 TEXT", 'contacts.response_3'],
     ["ALTER TABLE contacts ALTER COLUMN phone_number TYPE VARCHAR(50)", 'contacts.phone_number → VARCHAR(50)'],
     ["ALTER TABLE contacts ALTER COLUMN name TYPE VARCHAR(255)", 'contacts.name → VARCHAR(255)'],
     ["ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS recording_url TEXT", 'call_logs.recording_url'],
     ["ALTER TABLE telecaller_sessions ADD COLUMN IF NOT EXISTS total_idle_time INTEGER DEFAULT 0", 'telecaller_sessions.total_idle_time'],
+    ["ALTER TABLE telecaller_sessions ADD COLUMN IF NOT EXISTS whatsapp_messages_count INTEGER DEFAULT 0", 'telecaller_sessions.whatsapp_messages_count'],
   ];
 
   for (const [sql, tag] of tenantAlters) {
@@ -287,13 +319,28 @@ async function main() {
     const companiesRes = await client.query('SELECT reg_num, name, admin_email, admin_password_hash, admin_plain_password FROM companies');
     const companies = companiesRes.rows;
 
-    if (companies.length === 0) {
-      console.log('\n⚠  No companies found in public.companies — skipping tenant schema setup.');
-      console.log('   Register a company first, then re-run this script.');
+    // 3. Scan for any other existing company schemas in the database catalog to ensure they are also updated
+    const schemasRes = await client.query(`
+      SELECT schema_name 
+      FROM information_schema.schemata 
+      WHERE schema_name LIKE 'company_%'
+    `);
+    const existingSchemas = schemasRes.rows.map(r => r.schema_name);
+
+    // Combine both sets of schemas to provision
+    const schemasToProvision = new Set();
+    for (const company of companies) {
+      schemasToProvision.add(`company_${company.reg_num}`);
+    }
+    for (const schemaName of existingSchemas) {
+      schemasToProvision.add(schemaName);
+    }
+
+    if (schemasToProvision.size === 0) {
+      console.log('\n⚠  No company schemas found — skipping tenant schema setup.');
     } else {
-      console.log(`\nFound ${companies.length} company/companies → provisioning tenant schemas...`);
-      for (const company of companies) {
-        const schemaName = `company_${company.reg_num}`;
+      console.log(`\nFound ${schemasToProvision.size} company tenant schema(s) → provisioning...`);
+      for (const schemaName of schemasToProvision) {
         await setupCompanySchema(client, schemaName);
       }
     }
