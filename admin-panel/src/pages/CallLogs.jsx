@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import API_BASE_URL from '../config/api';
-import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock, Calendar, Clock, Activity, FileDown } from 'lucide-react';
+import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock, Calendar, Clock, Activity, FileDown, User } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
 const CallLogs = ({ user, setActiveTab }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTelecallerId, setSelectedTelecallerId] = useState('all');
   const [activeRecordingUrl, setActiveRecordingUrl] = useState(null);
   const [recordingEnabled, setRecordingEnabled] = useState(user?.callRecordingEnabled || false);
   const [recordingEndDate, setRecordingEndDate] = useState(user?.callRecordingEndDate || null);
@@ -233,17 +233,18 @@ const CallLogs = ({ user, setActiveTab }) => {
 
   const todayStats = getTodayStats();
 
-  const filteredLogs = logs.filter(log => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch = (
-      log.contact_name?.toLowerCase().includes(term) ||
-      log.contact_phone?.includes(term) ||
-      log.telecaller_name?.toLowerCase().includes(term) ||
-      log.campaign_name?.toLowerCase().includes(term) ||
-      log.feedback?.toLowerCase().includes(term)
-    );
+  const uniqueTelecallers = Array.from(
+    new Map(
+      logs
+        .filter(log => log.telecaller_id && log.telecaller_name)
+        .map(log => [log.telecaller_id, log.telecaller_name])
+    ).entries()
+  ).map(([id, name]) => ({ id, name }));
 
-    if (!matchesSearch) return false;
+  const filteredLogs = logs.filter(log => {
+    if (selectedTelecallerId !== 'all') {
+      if (String(log.telecaller_id) !== String(selectedTelecallerId)) return false;
+    }
 
     // Timing filter
     const logDate = parseDbDate(log.called_at);
@@ -479,18 +480,21 @@ const CallLogs = ({ user, setActiveTab }) => {
       {/* Search & Filters Panel */}
       <div className="glass-card" style={styles.filterPanel}>
         <div style={styles.filterRow}>
-          {/* Text Search */}
+          {/* Select Telecaller Dropdown */}
           <div style={{ ...styles.filterGroup, flex: 2 }}>
-            <label style={styles.filterLabel}>Search Logs</label>
-            <div style={styles.searchContainer}>
-              <Search size={16} style={styles.searchIconInside} />
-              <input
-                type="text"
-                placeholder="Search by caller, lead, phone, campaign, feedback..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={styles.filterInputSearch}
-              />
+            <label style={styles.filterLabel}>Select Telecaller</label>
+            <div style={{ position: 'relative' }}>
+              <User size={16} style={styles.selectIcon} />
+              <select
+                value={selectedTelecallerId}
+                onChange={(e) => setSelectedTelecallerId(e.target.value)}
+                style={styles.filterSelect}
+              >
+                <option value="all">All Telecallers</option>
+                {uniqueTelecallers.map(tc => (
+                  <option key={tc.id} value={tc.id}>{tc.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -554,7 +558,7 @@ const CallLogs = ({ user, setActiveTab }) => {
                 color: '#ffffff'
               }}
             >
-              <FileDown size={16} /> Export PDF
+              <FileDown size={16} /> Generate Report
             </button>
           </div>
         </div>

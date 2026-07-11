@@ -549,7 +549,7 @@ const Telecallers = () => {
         )}
 
         <div style={{ marginLeft: 'auto', alignSelf: 'flex-end', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span>Showing stats for <strong>{filterType === 'date' ? filterDate : filterMonth}</strong> (daily reset at 12:00 PM)</span>
+          <span>Showing stats for <strong>{filterType === 'date' ? filterDate : filterMonth}</strong>{filterType === 'date' && ' (daily reset at 12:00 PM)'}</span>
           <button 
             className="btn btn-secondary"
             onClick={fetchTelecallers}
@@ -582,7 +582,7 @@ const Telecallers = () => {
                   <th>Name</th>
                   <th>Mobile Number</th>
                   <th>Current Status</th>
-                  <th>Today's Talk Time</th>
+                  <th>{filterType === 'date' ? "Today's Talk Time" : "Monthly Talk Time"}</th>
                   <th>Active Work Time</th>
                   <th>Break Taken</th>
                   <th>Idle Time</th>

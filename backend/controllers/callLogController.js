@@ -515,7 +515,7 @@ exports.getAnalytics = async (req, res) => {
           COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed_count,
           COALESCE(SUM(duration), 0) as talk_time
         FROM call_logs
-        WHERE ${isPg ? "TO_CHAR(called_at - INTERVAL '6 hours 30 minutes', 'YYYY-MM')" : "strftime('%Y-%m', called_at, '-6 hours', '-30 minutes')"} = $1
+        WHERE ${isPg ? "TO_CHAR(called_at + INTERVAL '5 hours 30 minutes', 'YYYY-MM')" : "strftime('%Y-%m', called_at, '+5 hours', '+30 minutes')"} = $1
         GROUP BY telecaller_id
       `;
     } else {
