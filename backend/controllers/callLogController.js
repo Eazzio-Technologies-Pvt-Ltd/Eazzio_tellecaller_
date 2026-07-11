@@ -149,29 +149,31 @@ exports.createCallLog = async (req, res) => {
         let lastTryDate = contactRow.last_try_date ? getTrackingDate(contactRow.last_try_date) : '';
         
         if (lastTryDate !== todayStr) {
-          currentTry = 1;
+          // New day - reset try count to 1 and clear older response fields
+          await db.query(
+            "UPDATE contacts SET try_count = 1, last_try_date = CURRENT_DATE, response_1 = $1, response_2 = '', response_3 = '' WHERE id = $2",
+            [feedback || '', contactId]
+          );
         } else {
           currentTry = currentTry + 1;
+          let respCol = '';
+          if (currentTry === 2) respCol = 'response_2';
+          else if (currentTry === 3) respCol = 'response_3';
+
+          let tryUpdateSql = 'UPDATE contacts SET try_count = $1, last_try_date = CURRENT_DATE';
+          const tryParams = [currentTry];
+
+          if (respCol) {
+            tryUpdateSql += `, ${respCol} = $2`;
+            tryParams.push(feedback || '');
+            tryUpdateSql += ` WHERE id = $3`;
+            tryParams.push(contactId);
+          } else {
+            tryUpdateSql += ` WHERE id = $2`;
+            tryParams.push(contactId);
+          }
+          await db.query(tryUpdateSql, tryParams);
         }
-
-        let respCol = '';
-        if (currentTry === 1) respCol = 'response_1';
-        else if (currentTry === 2) respCol = 'response_2';
-        else if (currentTry === 3) respCol = 'response_3';
-
-        let tryUpdateSql = 'UPDATE contacts SET try_count = $1, last_try_date = CURRENT_DATE';
-        const tryParams = [currentTry];
-
-        if (respCol) {
-          tryUpdateSql += `, ${respCol} = $2`;
-          tryParams.push(feedback || '');
-          tryUpdateSql += ` WHERE id = $3`;
-          tryParams.push(contactId);
-        } else {
-          tryUpdateSql += ` WHERE id = $2`;
-          tryParams.push(contactId);
-        }
-        await db.query(tryUpdateSql, tryParams);
       }
     } catch (tryErr) {
       console.error('Error updating contact try count and responses:', tryErr.message);

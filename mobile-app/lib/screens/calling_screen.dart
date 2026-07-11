@@ -267,10 +267,22 @@ class _CallingScreenState extends State<CallingScreen> {
   void _prepareControllersForCurrentContact() {
     if (_activeContacts.isEmpty || _currentIndex >= _activeContacts.length) return;
     final contact = _activeContacts[_currentIndex];
+    final currentTry = _calculateCurrentAttempt(contact);
     
-    _response1Controller.text = contact['response_1']?.toString() ?? '';
-    _response2Controller.text = contact['response_2']?.toString() ?? '';
-    _response3Controller.text = contact['response_3']?.toString() ?? '';
+    // Check if it's a new day to reset response inputs
+    final lastTryDateStr = contact['last_try_date']?.toString();
+    final todayStr = DateTime.now().toLocal().toString().split(' ')[0];
+    final isNewDay = lastTryDateStr == null || !lastTryDateStr.startsWith(todayStr);
+
+    if (isNewDay) {
+      _response1Controller.text = '';
+      _response2Controller.text = '';
+      _response3Controller.text = '';
+    } else {
+      _response1Controller.text = (currentTry > 1) ? (contact['response_1']?.toString() ?? '') : '';
+      _response2Controller.text = (currentTry > 2) ? (contact['response_2']?.toString() ?? '') : '';
+      _response3Controller.text = (currentTry > 3) ? (contact['response_3']?.toString() ?? '') : '';
+    }
   }
 
   Future<void> _loadAllottedContacts() async {
