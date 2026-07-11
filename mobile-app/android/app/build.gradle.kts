@@ -13,6 +13,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -53,4 +54,8 @@ configurations.all {
         force("androidx.activity:activity:1.9.3")
         force("androidx.activity:activity-ktx:1.9.3")
     }
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
