@@ -245,14 +245,30 @@ class TelemetryService with WidgetsBindingObserver {
     shiftCompleteShown = false;
   }
 
-  // Sync session timer data
+  // Sync session timer data — applies server-corrected values back to local counters
   Future<void> _syncWithServer() async {
     if (!ApiService.isAuthenticated || !_isInitialized) return;
-    await ApiService.syncTelemetry(
+    final serverValues = await ApiService.syncTelemetry(
       workingTime: _workingTime,
       idleTime: _idleTime,
       breakTime: _breakTime,
       callingTime: _talkTime,
     );
+    // FIX 3: Apply server-corrected values if they differ by >2s (server always wins)
+    if (serverValues != null) {
+      const int toleranceSeconds = 2;
+      final int sWork  = (serverValues['workingTime'] as num?)?.toInt() ?? _workingTime;
+      final int sTalk  = (serverValues['talkTime']    as num?)?.toInt() ?? _talkTime;
+      final int sIdle  = (serverValues['idleTime']    as num?)?.toInt() ?? _idleTime;
+      final int sBreak = (serverValues['breakTime']   as num?)?.toInt() ?? _breakTime;
+      bool corrected = false;
+      if ((sWork  - _workingTime).abs() > toleranceSeconds) { _workingTime = sWork;  corrected = true; }
+      if ((sTalk  - _talkTime).abs()    > toleranceSeconds) { _talkTime    = sTalk;  corrected = true; }
+      if ((sIdle  - _idleTime).abs()    > toleranceSeconds) { _idleTime    = sIdle;  corrected = true; }
+      if ((sBreak - _breakTime).abs()   > toleranceSeconds) { _breakTime   = sBreak; corrected = true; }
+      if (corrected) {
+        print('[TelemetryService] Server correction applied: W=$_workingTime T=$_talkTime I=$_idleTime B=$_breakTime');
+      }
+    }
   }
 }

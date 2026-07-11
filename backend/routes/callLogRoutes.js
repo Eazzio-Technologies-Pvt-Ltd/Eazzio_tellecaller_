@@ -29,7 +29,7 @@ router.post('/telemetry/sync', authMiddleware('telecaller'), callLogController.s
 router.get('/telemetry/today', authMiddleware('telecaller'), callLogController.getTodayTelemetry);
 
 // Admin reporting and logs list
-router.get('/', authMiddleware('admin'), callLogController.getCallLogs);
+router.get('/', authMiddleware(['admin', 'telecaller']), callLogController.getCallLogs);
 router.get('/analytics', authMiddleware('admin'), callLogController.getAnalytics);
 
 module.exports = router;

@@ -313,29 +313,31 @@ exports.syncTelemetry = async (req, res) => {
     const clientCallingTime = parseInt(req.body.callingTime || 0, 10);
     const hasClientData = clientWorkingTime > 0 || clientIdleTime > 0 || clientBreakTime > 0 || clientCallingTime > 0;
 
-    // Record server-side delta since last active timestamp
+    // Record server-side delta since last active timestamp (wall-clock source of truth)
     await exports.recordTelemetryDelta(userId);
+
+    const today = getTrackingDate();
+    let finalWorking = 0, finalIdle = 0, finalBreak = 0, finalCalling = 0;
 
     // If client sent cumulative values, reconcile by taking max(server, client) for each metric
     if (hasClientData) {
-      const today = getTrackingDate();
       const sessionCheck = await db.query(
         'SELECT * FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
         [userId, today]
       );
       if (sessionCheck.rows.length > 0) {
         const current = sessionCheck.rows[0];
-        const reconciledWorking = Math.max(parseInt(current.total_working_time || 0, 10), clientWorkingTime);
-        const reconciledIdle = Math.max(parseInt(current.total_idle_time || 0, 10), clientIdleTime);
-        const reconciledBreak = Math.max(parseInt(current.total_break_time || 0, 10), clientBreakTime);
-        const reconciledCalling = Math.max(parseInt(current.total_calling_time || 0, 10), clientCallingTime);
+        finalWorking  = Math.max(parseInt(current.total_working_time  || 0, 10), clientWorkingTime);
+        finalIdle     = Math.max(parseInt(current.total_idle_time     || 0, 10), clientIdleTime);
+        finalBreak    = Math.max(parseInt(current.total_break_time    || 0, 10), clientBreakTime);
+        finalCalling  = Math.max(parseInt(current.total_calling_time  || 0, 10), clientCallingTime);
         await db.query(
           `UPDATE telecaller_sessions
            SET total_working_time = $1, total_idle_time = $2, total_break_time = $3, total_calling_time = $4, last_updated_at = CURRENT_TIMESTAMP
            WHERE telecaller_id = $5 AND date = $6`,
-          [reconciledWorking, reconciledIdle, reconciledBreak, reconciledCalling, userId, today]
+          [finalWorking, finalIdle, finalBreak, finalCalling, userId, today]
         );
-        console.log(`[TelemetryReconcile] User ${userId} | Client: W${clientWorkingTime}s I${clientIdleTime}s B${clientBreakTime}s C${clientCallingTime}s | Reconciled: W${reconciledWorking}s I${reconciledIdle}s B${reconciledBreak}s C${reconciledCalling}s`);
+        console.log(`[TelemetryReconcile] User ${userId} | Client: W${clientWorkingTime}s I${clientIdleTime}s B${clientBreakTime}s C${clientCallingTime}s | Server (final): W${finalWorking}s I${finalIdle}s B${finalBreak}s C${finalCalling}s`);
       } else {
         // No session yet — create one with client values
         try {
@@ -344,7 +346,33 @@ exports.syncTelemetry = async (req, res) => {
              VALUES ($1, $2, $3, $4, $5, $6)`,
             [userId, today, clientWorkingTime, clientIdleTime, clientBreakTime, clientCallingTime]
           );
-        } catch (insErr) { /* row may have been inserted by recordTelemetryDelta above, ignore */ }
+          finalWorking = clientWorkingTime; finalIdle = clientIdleTime;
+          finalBreak = clientBreakTime; finalCalling = clientCallingTime;
+        } catch (insErr) {
+          // Row inserted by recordTelemetryDelta above, re-read it
+          const reread = await db.query(
+            'SELECT * FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
+            [userId, today]
+          );
+          if (reread.rows.length > 0) {
+            finalWorking  = parseInt(reread.rows[0].total_working_time  || 0, 10);
+            finalIdle     = parseInt(reread.rows[0].total_idle_time     || 0, 10);
+            finalBreak    = parseInt(reread.rows[0].total_break_time    || 0, 10);
+            finalCalling  = parseInt(reread.rows[0].total_calling_time  || 0, 10);
+          }
+        }
+      }
+    } else {
+      // No client data — just read server values to return
+      const sessionCheck = await db.query(
+        'SELECT * FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
+        [userId, today]
+      );
+      if (sessionCheck.rows.length > 0) {
+        finalWorking  = parseInt(sessionCheck.rows[0].total_working_time  || 0, 10);
+        finalIdle     = parseInt(sessionCheck.rows[0].total_idle_time     || 0, 10);
+        finalBreak    = parseInt(sessionCheck.rows[0].total_break_time    || 0, 10);
+        finalCalling  = parseInt(sessionCheck.rows[0].total_calling_time  || 0, 10);
       }
     }
 
@@ -358,7 +386,6 @@ exports.syncTelemetry = async (req, res) => {
           'UPDATE users SET status = $1, last_active_at = CURRENT_TIMESTAMP WHERE id = $2',
           ['online', userId]
         );
-        // Log online notification
         try {
           const notificationController = require('./notificationController');
           await notificationController.createNotification(
@@ -376,19 +403,33 @@ exports.syncTelemetry = async (req, res) => {
       }
     }
 
-    res.json({ success: true });
+    // ── FIX 1: Return server-side corrected values so mobile can reconcile local counters ──
+    res.json({
+      success: true,
+      serverValues: {
+        workingTime: finalWorking,
+        talkTime:    finalCalling,
+        idleTime:    finalIdle,
+        breakTime:   finalBreak,
+      }
+    });
   } catch (error) {
     console.error('Sync telemetry error:', error);
     res.status(500).json({ error: 'Server error syncing telemetry.' });
   }
 };
 
-// Fetch call logs for Admin (filters: user, search, dates)
+// Fetch call logs for Admin/Telecaller (filters: user, search, dates)
 exports.getCallLogs = async (req, res) => {
   try {
     const { telecallerId, date, contactId } = req.query;
-    const parsedId = telecallerId ? parseInt(telecallerId, 10) : null;
+    let parsedId = telecallerId ? parseInt(telecallerId, 10) : null;
     const parsedContactId = contactId ? parseInt(contactId, 10) : null;
+
+    // Enforce scoping if requester is a telecaller
+    if (req.user && req.user.role === 'telecaller') {
+      parsedId = req.user.id;
+    }
 
     let queryText = `
       SELECT 
@@ -656,6 +697,9 @@ exports.getTodayTelemetry = async (req, res) => {
   const today = getTrackingDate();
 
   try {
+    // ── FIX 2: Flush any pending wall-clock delta before reading so values are always current ──
+    await exports.recordTelemetryDelta(userId);
+
     const sessionCheck = await db.query(
       'SELECT * FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
       [userId, today]

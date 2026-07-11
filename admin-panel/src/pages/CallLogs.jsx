@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import API_BASE_URL from '../config/api';
 import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock, Calendar, Clock, Activity, FileDown, User } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const CallLogs = ({ user, setActiveTab }) => {
   const [logs, setLogs] = useState([]);
@@ -51,54 +51,87 @@ const CallLogs = ({ user, setActiveTab }) => {
   };
 
   const generatePDFReport = () => {
-    const doc = new jsPDF();
-    doc.setFont("helvetica", "bold");
-    doc.text("Eazzio Telecaller System - Call Analytics Report", 14, 15);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
+    try {
+      const doc = new jsPDF();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("Eazzio Telecaller System - Call Analytics Report", 14, 15);
+      
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 21);
 
-    const tableColumn = [
-      "Called At",
-      "Campaign",
-      "Lead Name",
-      "Phone",
-      "Status",
-      "Duration",
-      "Telecaller",
-      "Response 1",
-      "Response 2",
-      "Response 3"
-    ];
-    
-    const tableRows = [];
+      // Selected Telecaller
+      const tcName = selectedTelecallerId === 'all'
+        ? 'All Telecallers'
+        : (uniqueTelecallers.find(tc => String(tc.id) === String(selectedTelecallerId))?.name || 'Unknown');
+      doc.text(`Telecaller: ${tcName}`, 14, 27);
 
-    filteredLogs.forEach(log => {
-      const logData = [
-        parseDbDate(log.called_at).toLocaleString(),
-        log.campaign_name || '-',
-        log.contact_name || '-',
-        log.contact_phone || '-',
-        log.call_status || '-',
-        log.call_status === 'connected' || log.call_status === 'received' ? `${log.duration}s` : '-',
-        log.telecaller_name || '-',
-        log.response_1 || '-',
-        log.response_2 || '-',
-        log.response_3 || '-'
+      // Time Period
+      let timeLabel = '';
+      if (timeFilter === 'all') timeLabel = 'All Time';
+      else if (timeFilter === 'today') timeLabel = 'Today';
+      else if (timeFilter === 'yesterday') timeLabel = 'Yesterday';
+      else if (timeFilter === 'week') timeLabel = 'Last 7 Days';
+      else if (timeFilter === 'month') timeLabel = 'Last 30 Days';
+      else if (timeFilter === 'custom') {
+        timeLabel = `Custom Range: ${startDate || 'Any'} to ${endDate || 'Any'}`;
+      }
+      doc.text(`Time Period: ${timeLabel}`, 14, 33);
+
+      // Duration Filter
+      let durLabel = 'All Durations';
+      if (durationFilter === 'connected') durLabel = 'Connected Only';
+      else if (durationFilter === 'short') durLabel = 'Short (< 1 min)';
+      else if (durationFilter === 'medium') durLabel = 'Medium (1 - 5 mins)';
+      else if (durationFilter === 'long') durLabel = 'Long (> 5 mins)';
+      doc.text(`Duration: ${durLabel}`, 14, 39);
+
+      const tableColumn = [
+        "Called At",
+        "Campaign",
+        "Lead Name",
+        "Phone",
+        "Status",
+        "Duration",
+        "Telecaller",
+        "Response 1",
+        "Response 2",
+        "Response 3"
       ];
-      tableRows.push(logData);
-    });
+      
+      const tableRows = [];
 
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: 28,
-      theme: 'grid',
-      styles: { fontSize: 7, cellPadding: 2 },
-      headStyles: { fillColor: [99, 102, 241] } // Indigo header
-    });
+      filteredLogs.forEach(log => {
+        const logData = [
+          parseDbDate(log.called_at).toLocaleString(),
+          log.campaign_name || '-',
+          log.contact_name || '-',
+          log.contact_phone || '-',
+          log.call_status || '-',
+          log.call_status === 'connected' || log.call_status === 'received' ? `${log.duration}s` : '-',
+          log.telecaller_name || '-',
+          log.response_1 || '-',
+          log.response_2 || '-',
+          log.response_3 || '-'
+        ];
+        tableRows.push(logData);
+      });
 
-    doc.save(`call_report_${new Date().toISOString().split('T')[0]}.pdf`);
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 45,
+        theme: 'grid',
+        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: { fillColor: [99, 102, 241] } // Indigo header
+      });
+
+      doc.save(`call_report_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (e) {
+      console.error("PDF generation failed:", e);
+      alert(`Could not generate PDF: ${e.message}`);
+    }
   };
 
   const fetchLogs = async () => {

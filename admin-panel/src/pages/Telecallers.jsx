@@ -75,6 +75,9 @@ const Telecallers = () => {
 
   useEffect(() => {
     fetchTelecallers();
+    // FIX 4: Auto-poll every 15s so admin panel shows live timer values without manual refresh
+    const pollInterval = setInterval(fetchTelecallers, 15000);
+    return () => clearInterval(pollInterval);
   }, [filterType, filterDate, filterMonth]);
 
   const handleAddCaller = async (e) => {

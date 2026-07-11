@@ -737,6 +737,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           final int m = dur ~/ 60, s = dur % 60;
                           final durStr = m > 0 ? '${m}m ${s}s' : '${s}s';
 
+                          final contactName = log['contact_name'] ?? 'Unknown Lead';
+                          final contactPhone = log['contact_phone'] ?? log['phone_number'] ?? '-';
+                          final campaignName = log['campaign_name'] ?? 'Direct Call';
+
+                          final List<String> feedbackItems = [];
+                          if (log['response_1'] != null && log['response_1'].toString().trim().isNotEmpty) {
+                            feedbackItems.add('Response 1: ${log['response_1']}');
+                          }
+                          if (log['response_2'] != null && log['response_2'].toString().trim().isNotEmpty) {
+                            feedbackItems.add('Response 2: ${log['response_2']}');
+                          }
+                          if (log['response_3'] != null && log['response_3'].toString().trim().isNotEmpty) {
+                            feedbackItems.add('Response 3: ${log['response_3']}');
+                          }
+                          if (log['feedback'] != null && log['feedback'].toString().trim().isNotEmpty) {
+                            if (!feedbackItems.any((item) => item.contains(log['feedback']))) {
+                              feedbackItems.add('Feedback: ${log['feedback']}');
+                            }
+                          }
+
                           return Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -750,10 +770,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      log['contact_name'] ?? log['phone_number'] ?? 'Unknown',
-                                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
+                                    Expanded(
+                                      child: Text(
+                                        contactName,
+                                        style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
+                                    const SizedBox(width: 8),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
@@ -763,6 +787,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       child: Text(
                                         callStatus.toUpperCase(),
                                         style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(Icons.phone, size: 12, color: subtextColor),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      contactPhone,
+                                      style: TextStyle(color: subtextColor, fontSize: 12, fontWeight: FontWeight.w500),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Icon(Icons.campaign, size: 12, color: subtextColor),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        campaignName,
+                                        style: TextStyle(color: subtextColor, fontSize: 12),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
@@ -785,13 +830,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ],
                                   ],
                                 ),
-                                if ((log['response_1'] ?? log['feedback']) != null) ...[
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    log['response_1'] ?? log['feedback'] ?? '',
-                                    style: TextStyle(color: subtextColor, fontSize: 12),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                                if (feedbackItems.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF1E202C) : const Color(0xFFF9FAFB),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: feedbackItems.map((item) => Padding(
+                                        padding: const EdgeInsets.only(bottom: 2.0),
+                                        child: Text(
+                                          item,
+                                          style: TextStyle(color: textColor.withOpacity(0.9), fontSize: 11),
+                                        ),
+                                      )).toList(),
+                                    ),
                                   ),
                                 ],
                               ],

@@ -250,14 +250,14 @@ class ApiService {
     }
   }
 
-  // Sync session telemetry stats
-  static Future<bool> syncTelemetry({
+  // Sync session telemetry stats — returns server-corrected values or null on failure
+  static Future<Map<String, dynamic>?> syncTelemetry({
     required int workingTime,
     required int idleTime,
     required int breakTime,
     required int callingTime,
   }) async {
-    if (!isAuthenticated) return false;
+    if (!isAuthenticated) return null;
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/api/call-logs/telemetry/sync'),
@@ -274,14 +274,16 @@ class ApiService {
       ).timeout(const Duration(seconds: 5));
       
       if (response.statusCode == 200) {
-        return true;
+        final data = jsonDecode(response.body);
+        // Return serverValues map so caller can reconcile local counters
+        return data['serverValues'] as Map<String, dynamic>?;
       } else if (response.statusCode == 401) {
         await forceLogout();
       }
-      return false;
+      return null;
     } catch (e) {
       print('Telemetry sync error: $e');
-      return false;
+      return null;
     }
   }
 

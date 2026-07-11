@@ -334,6 +334,7 @@ class _CallingScreenState extends State<CallingScreen> {
       _isDialing = false;
       _isCallActive = false;
       _detectedCallStatus = 'missed';
+      _callDurationSeconds = 0; // Ensure skipped call duration is exactly 0
       _feedbackController.text = 'Skipped call';
       _response1Controller.text = 'Skipped call';
       _response2Controller.text = 'Skipped call';
@@ -493,14 +494,19 @@ class _CallingScreenState extends State<CallingScreen> {
       
       // If we reach here, no matching log entry was found
       setState(() {
-        _detectedCallStatus = 'non-connected';
-        // Keep _callDurationSeconds as measured by our internal timer (fallback)
+        if (_callDurationSeconds > 0) {
+          _detectedCallStatus = 'connected';
+        } else {
+          _detectedCallStatus = 'non-connected';
+          _callDurationSeconds = 0;
+        }
       });
-      print('[CallLog] No matching recent call log found. Defaulting to non-connected.');
+      print('[CallLog] No matching recent call log found. Defaulting to $_detectedCallStatus.');
     } catch (e) {
       print('[CallLog] Error retrieving recent call logs: $e');
       setState(() {
         _detectedCallStatus = 'non-connected';
+        _callDurationSeconds = 0;
       });
     }
   }
@@ -526,24 +532,15 @@ class _CallingScreenState extends State<CallingScreen> {
     // Auto-detect call outcome from call logs
     await _detectCallOutcome();
 
-    if (_detectedCallStatus == 'connected' || _detectedCallStatus == 'missed') {
-      setState(() {
-        _isCallActive = false;
-        _isDialing = false;
-        _showPostCallScreen = false;
-      });
-      await _submitAndGoToNext(recPath);
-    } else {
-      setState(() {
-        _isCallActive = false;
-        _isDialing = false;
-        _showPostCallScreen = true;
-        _countdownSeconds = 30;
-      });
+    setState(() {
+      _isCallActive = false;
+      _isDialing = false;
+      _showPostCallScreen = true;
+      _countdownSeconds = 30;
+    });
 
-      // Start the 30 second auto dial countdown
-      _startCountdown(recPath);
-    }
+    // Start the 30 second auto dial countdown
+    _startCountdown(recPath);
   }
 
   void _startCountdown(String? recordingPath) {
@@ -587,7 +584,8 @@ class _CallingScreenState extends State<CallingScreen> {
     
     final contact = _activeContacts[_currentIndex];
     final String callStatus = _detectedCallStatus;
-    final int duration = _callDurationSeconds;
+    // Enforce 0 duration for missed/non-connected calls per rule
+    final int duration = (callStatus == 'missed' || callStatus == 'non-connected') ? 0 : _callDurationSeconds;
     final int currentTry = _calculateCurrentAttempt(contact);
     // Use the response field of the active try as feedback
     final String feedback = currentTry == 3
@@ -1146,80 +1144,7 @@ class _CallingScreenState extends State<CallingScreen> {
             const SizedBox(height: 12),
 
             // WhatsApp Template Sender
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF25D366).withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF25D366).withOpacity(0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.chat_bubble_rounded, color: Color(0xFF25D366), size: 16),
-                      SizedBox(width: 6),
-                      Text('WhatsApp Message', style: TextStyle(color: Color(0xFF25D366), fontWeight: FontWeight.bold, fontSize: 12)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButton<String>(
-                    value: _selectedTemplate,
-                    isExpanded: true,
-                    dropdownColor: isDark ? const Color(0xFF12131A) : Colors.white,
-                    underline: const SizedBox.shrink(),
-                    style: TextStyle(color: textColor, fontSize: 12),
-                    items: _whatsappTemplates.map((t) => DropdownMenuItem(
-                      value: t,
-                      child: Text(t, overflow: TextOverflow.ellipsis, style: TextStyle(color: textColor, fontSize: 12)),
-                    )).toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedTemplate = val);
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final rawPhone = contact['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
-                        // Prepend India country code (91) if number has exactly 10 digits
-                        final phone = rawPhone.length == 10 ? '91$rawPhone' : rawPhone;
-                        final msg = Uri.encodeComponent(_selectedTemplate);
-                        // Try wa.me deep link first, bypass canLaunchUrl (unreliable on Android 11+)
-                        final waUri = Uri.parse('https://wa.me/$phone?text=$msg');
-                        bool launched = false;
-                        try {
-                          launched = await launchUrl(waUri, mode: LaunchMode.externalApplication);
-                        } catch (_) {}
-                        if (!launched) {
-                          // Fallback: direct whatsapp:// deep link
-                          final fallbackUri = Uri.parse('whatsapp://send?phone=$phone&text=$msg');
-                          try {
-                            await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
-                          } catch (e) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('WhatsApp is not installed on this device.')),
-                              );
-                            }
-                          }
-                        }
-                        ApiService.incrementWhatsappCount();
-                      },
-                      icon: const Icon(Icons.send_rounded, size: 16, color: Colors.white),
-                      label: const Text('Send WhatsApp', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF25D366),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildWhatsAppSender(contact, layout, isDark, textColor),
             const SizedBox(height: 12),
             TextButton.icon(
               onPressed: _toggleBreakState,
@@ -1239,7 +1164,86 @@ class _CallingScreenState extends State<CallingScreen> {
     );
   }
 
+  Widget _buildWhatsAppSender(dynamic contact, ResponsiveLayout layout, bool isDark, Color textColor) {
+    if (contact == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF25D366).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF25D366).withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.chat_bubble_rounded, color: Color(0xFF25D366), size: 16),
+              SizedBox(width: 6),
+              Text('WhatsApp Message', style: TextStyle(color: Color(0xFF25D366), fontWeight: FontWeight.bold, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          DropdownButton<String>(
+            value: _selectedTemplate,
+            isExpanded: true,
+            dropdownColor: isDark ? const Color(0xFF12131A) : Colors.white,
+            underline: const SizedBox.shrink(),
+            style: TextStyle(color: textColor, fontSize: 12),
+            items: _whatsappTemplates.map((t) => DropdownMenuItem(
+              value: t,
+              child: Text(t, overflow: TextOverflow.ellipsis, style: TextStyle(color: textColor, fontSize: 12)),
+            )).toList(),
+            onChanged: (val) {
+              if (val != null) setState(() => _selectedTemplate = val);
+            },
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final rawPhone = contact['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
+                // Prepend India country code (91) if number has exactly 10 digits
+                final phone = rawPhone.length == 10 ? '91$rawPhone' : rawPhone;
+                final msg = Uri.encodeComponent(_selectedTemplate);
+                // Try wa.me deep link first, bypass canLaunchUrl
+                final waUri = Uri.parse('https://wa.me/$phone?text=$msg');
+                bool launched = false;
+                try {
+                  launched = await launchUrl(waUri, mode: LaunchMode.externalApplication);
+                } catch (_) {}
+                if (!launched) {
+                  // Fallback: direct whatsapp:// deep link
+                  final fallbackUri = Uri.parse('whatsapp://send?phone=$phone&text=$msg');
+                  try {
+                    await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('WhatsApp is not installed on this device.')),
+                      );
+                    }
+                  }
+                }
+                ApiService.incrementWhatsappCount();
+              },
+              icon: const Icon(Icons.send_rounded, size: 16, color: Colors.white),
+              label: const Text('Send WhatsApp', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF25D366),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPostCallPanel() {
+    final contact = _activeContacts.isEmpty ? null : _activeContacts[_currentIndex < _activeContacts.length ? _currentIndex : 0];
     final layout = ResponsiveLayout(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
@@ -1433,6 +1437,10 @@ class _CallingScreenState extends State<CallingScreen> {
               ],
             );
           }),
+          SizedBox(height: layout.spacing),
+
+          // WhatsApp Template Sender in Post-Call Feedback
+          _buildWhatsAppSender(contact, layout, isDark, textColor),
           SizedBox(height: layout.spacing),
 
           // Countdown Timer Section
