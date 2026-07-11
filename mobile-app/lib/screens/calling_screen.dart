@@ -48,6 +48,9 @@ class _CallingScreenState extends State<CallingScreen> {
   // Stream Subscription
   StreamSubscription? _phoneStateSub;
 
+  // Timestamp (epoch ms) when SIM dialing was initiated
+  int _callStartTimestamp = 0;
+
   Timer? _breakUiTimer;
   Timer? _shiftCheckTimer;
 
@@ -188,7 +191,8 @@ class _CallingScreenState extends State<CallingScreen> {
   }
 
   void _checkShiftCompletion() {
-    if (_telemetry.workingTime >= 28800 && !_telemetry.shiftCompleteShown) {
+    final workLimitSeconds = _telemetry.workTimeLimitHours * 3600;
+    if (_telemetry.workingTime >= workLimitSeconds && !_telemetry.shiftCompleteShown) {
       _telemetry.shiftCompleteShown = true;
       _showShiftCompleteDialog();
     }
@@ -385,6 +389,9 @@ class _CallingScreenState extends State<CallingScreen> {
     // Request state updates
     _telemetry.setCallingState(true);
 
+    // Record dial timestamp so _detectCallOutcome only matches this new call
+    _callStartTimestamp = DateTime.now().millisecondsSinceEpoch;
+
     // Launch Dialer Intent
     final launched = await _callService.dialNumber(phoneNumber);
     if (!launched) {
@@ -424,22 +431,31 @@ class _CallingScreenState extends State<CallingScreen> {
     });
   }
 
+  /// Returns true if two phone number strings refer to the same subscriber
+  /// by comparing their last 10 digits (ignoring country codes and formatting).
+  bool _phoneNumbersMatch(String a, String b) {
+    final digitsA = a.replaceAll(RegExp(r'\D'), '');
+    final digitsB = b.replaceAll(RegExp(r'\D'), '');
+    if (digitsA.isEmpty || digitsB.isEmpty) return false;
+    final last10A = digitsA.length > 10 ? digitsA.substring(digitsA.length - 10) : digitsA;
+    final last10B = digitsB.length > 10 ? digitsB.substring(digitsB.length - 10) : digitsB;
+    return last10A == last10B;
+  }
+
   Future<void> _detectCallOutcome() async {
     try {
       final contact = _activeContacts[_currentIndex < _activeContacts.length ? _currentIndex : 0];
-      final String contactPhone = contact['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
+      final String contactPhone = contact['phone_number'].toString();
       
       const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
       
-      // Try up to 6 times (total ~5 seconds) to retrieve the call log matching the contact
-      for (int attempt = 1; attempt <= 6; attempt++) {
-        await Future.delayed(Duration(milliseconds: attempt == 1 ? 1500 : 800));
+      // Try up to 8 times (total ~8 seconds) to retrieve the call log matching this dial session
+      for (int attempt = 1; attempt <= 8; attempt++) {
+        await Future.delayed(Duration(milliseconds: attempt == 1 ? 1500 : 1000));
         
-        final dynamic recentLogs = await channel.invokeMethod('getRecentCallLogs', {'limit': 15});
+        final dynamic recentLogs = await channel.invokeMethod('getRecentCallLogs', {'limit': 20});
         
         if (recentLogs != null && recentLogs is List) {
-          final nowMs = DateTime.now().millisecondsSinceEpoch;
-          
           for (var log in recentLogs) {
             if (log is Map) {
               final String number = log['number'] ?? '';
@@ -447,12 +463,11 @@ class _CallingScreenState extends State<CallingScreen> {
               final int type = log['type'] ?? 0;
               final int date = log['date'] ?? 0; // Epoch timestamp in milliseconds
               
-              final String cleanLogNumber = number.replaceAll(RegExp(r'\D'), '');
+              // Only consider call logs that started at or after dialing began (10s grace period)
+              if (date < _callStartTimestamp - 10000) continue;
               
-              // Suffix match phone numbers (to handle country codes / formats) and verify date is within 5 minutes
-              if ((cleanLogNumber.endsWith(contactPhone) || contactPhone.endsWith(cleanLogNumber)) &&
-                  (nowMs - date).abs() < 300000) {
-                
+              // Match phone numbers by comparing last 10 digits to handle country code variations
+              if (_phoneNumbersMatch(number, contactPhone)) {
                 setState(() {
                   _callDurationSeconds = duration; // Sync exact duration from Android call log
                   if (type == 2) {
@@ -468,7 +483,7 @@ class _CallingScreenState extends State<CallingScreen> {
                     _detectedCallStatus = duration > 0 ? 'connected' : 'non-connected';
                   }
                 });
-                print('[CallLog] Match found in recent logs on attempt $attempt! Outcome: $_detectedCallStatus, Duration: $_callDurationSeconds');
+                print('[CallLog] Match found on attempt $attempt! Outcome: $_detectedCallStatus, Duration: $_callDurationSeconds');
                 return; // Exit on successful match
               }
             }
@@ -479,14 +494,13 @@ class _CallingScreenState extends State<CallingScreen> {
       // If we reach here, no matching log entry was found
       setState(() {
         _detectedCallStatus = 'non-connected';
-        _callDurationSeconds = 0;
+        // Keep _callDurationSeconds as measured by our internal timer (fallback)
       });
       print('[CallLog] No matching recent call log found. Defaulting to non-connected.');
     } catch (e) {
       print('[CallLog] Error retrieving recent call logs: $e');
       setState(() {
         _detectedCallStatus = 'non-connected';
-        _callDurationSeconds = 0;
       });
     }
   }
@@ -1169,13 +1183,30 @@ class _CallingScreenState extends State<CallingScreen> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () async {
-                        final phone = contact['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
+                        final rawPhone = contact['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
+                        // Prepend India country code (91) if number has exactly 10 digits
+                        final phone = rawPhone.length == 10 ? '91$rawPhone' : rawPhone;
                         final msg = Uri.encodeComponent(_selectedTemplate);
-                        final uri = Uri.parse('https://wa.me/$phone?text=$msg');
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                          ApiService.incrementWhatsappCount();
+                        // Try wa.me deep link first, bypass canLaunchUrl (unreliable on Android 11+)
+                        final waUri = Uri.parse('https://wa.me/$phone?text=$msg');
+                        bool launched = false;
+                        try {
+                          launched = await launchUrl(waUri, mode: LaunchMode.externalApplication);
+                        } catch (_) {}
+                        if (!launched) {
+                          // Fallback: direct whatsapp:// deep link
+                          final fallbackUri = Uri.parse('whatsapp://send?phone=$phone&text=$msg');
+                          try {
+                            await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('WhatsApp is not installed on this device.')),
+                              );
+                            }
+                          }
                         }
+                        ApiService.incrementWhatsappCount();
                       },
                       icon: const Icon(Icons.send_rounded, size: 16, color: Colors.white),
                       label: const Text('Send WhatsApp', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),

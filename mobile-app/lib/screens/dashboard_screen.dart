@@ -454,7 +454,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _checkShiftCompletion() {
-    if (_telemetry.workingTime >= 28800 && !_telemetry.shiftCompleteShown) {
+    final workLimitSeconds = _telemetry.workTimeLimitHours * 3600;
+    if (_telemetry.workingTime >= workLimitSeconds && !_telemetry.shiftCompleteShown) {
       _telemetry.shiftCompleteShown = true;
       _showShiftCompleteDialog();
     }
@@ -2483,8 +2484,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: _buildTimerCard(
                                 title: 'Work Time',
                                 value: _formatDuration(_telemetry.workingTime),
-                                target: '8h',
-                                progress: _telemetry.workingTime / 28800,
+                                target: '${_telemetry.workTimeLimitHours}h',
+                                progress: _telemetry.workingTime / (_telemetry.workTimeLimitHours * 3600),
                                 valueColor: const Color(0xFF6366F1),
                                 icon: Icons.access_time_rounded,
                                 context: context,
@@ -2495,8 +2496,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: _buildTimerCard(
                                 title: 'Talk Time',
                                 value: _formatDuration(_telemetry.talkTime),
-                                target: '4h',
-                                progress: _telemetry.talkTime / 14400,
+                                target: '${_telemetry.talkTimeLimitHours}h',
+                                progress: _telemetry.talkTime / (_telemetry.talkTimeLimitHours * 3600),
                                 valueColor: const Color(0xFF10B981),
                                 icon: Icons.phone_in_talk_rounded,
                                 context: context,

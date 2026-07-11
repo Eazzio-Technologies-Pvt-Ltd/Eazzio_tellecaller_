@@ -549,7 +549,7 @@ const Telecallers = () => {
         )}
 
         <div style={{ marginLeft: 'auto', alignSelf: 'flex-end', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span>Showing stats for <strong>{filterType === 'date' ? filterDate : filterMonth}</strong>{filterType === 'date' && ' (daily reset at 12:00 PM)'}</span>
+          <span>Showing stats for <strong>{filterType === 'date' ? filterDate : filterMonth}</strong>{filterType === 'date' && ' (daily reset at 12:00 AM)'}</span>
           <button 
             className="btn btn-secondary"
             onClick={fetchTelecallers}

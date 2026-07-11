@@ -182,6 +182,15 @@ async function initializeSchema() {
       called_at ${timestampType}
     )`,
 
+    // Call recordings table (master DB)
+    `CREATE TABLE IF NOT EXISTS call_recordings (
+      id ${serialType},
+      company_reg_num VARCHAR(50) NOT NULL REFERENCES companies(reg_num) ON DELETE CASCADE,
+      call_log_id INTEGER NOT NULL,
+      recording_url ${textType} NOT NULL,
+      created_at ${timestampType}
+    )`,
+
     // Telecaller sessions table
     `CREATE TABLE IF NOT EXISTS telecaller_sessions (
       id ${serialType},
@@ -422,6 +431,15 @@ async function initializeSchema() {
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )`);
           } catch (e) {}
+
+          try {
+            await client.query(`CREATE TABLE IF NOT EXISTS call_recordings (
+              id SERIAL PRIMARY KEY,
+              call_log_id INTEGER REFERENCES call_logs(id) ON DELETE CASCADE,
+              recording_url TEXT NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`);
+          } catch (e) {}
           
           console.log(`Migrated columns in schema: ${schemaName}`);
         } finally {
@@ -512,6 +530,14 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
         feedback ${textType},
         recording_url ${textType},
         called_at ${timestampType}
+      )`,
+
+      // Call recordings table (tenant DB)
+      `CREATE TABLE IF NOT EXISTS call_recordings (
+        id ${serialType},
+        call_log_id INTEGER NOT NULL REFERENCES call_logs(id) ON DELETE CASCADE,
+        recording_url ${textType} NOT NULL,
+        created_at ${timestampType}
       )`,
 
       // Lead transfers table

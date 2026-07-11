@@ -91,12 +91,24 @@ exports.createCallLog = async (req, res) => {
 
     const insertTime = calledAt ? new Date(calledAt) : new Date();
 
-    // 2. Insert call log
-    await db.query(
+    const insertRes = await db.query(
       `INSERT INTO call_logs (contact_id, telecaller_id, call_status, duration, feedback, recording_url, called_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
       [contactId, userId, callStatus, parseInt(duration || 0), feedback || '', recordingUrl, insertTime]
     );
+
+    // If there is a recording URL, also insert into call_recordings table
+    if (recordingUrl && insertRes.rows.length > 0) {
+      const callLogId = insertRes.rows[0].id;
+      try {
+        await db.query(
+          'INSERT INTO call_recordings (call_log_id, recording_url) VALUES ($1, $2)',
+          [callLogId, recordingUrl]
+        );
+      } catch (recErr) {
+        console.error('Error inserting into call_recordings:', recErr.message);
+      }
+    }
 
     // 3. Update contact status & follow up date
     let contactStatus = 'completed';
@@ -294,8 +306,47 @@ exports.recordTelemetryDelta = async (userId) => {
 exports.syncTelemetry = async (req, res) => {
   const userId = req.user.id;
   try {
-    // Record delta since last active timestamp
+    // Extract client-side cumulative timers from request body
+    const clientWorkingTime = parseInt(req.body.workingTime || 0, 10);
+    const clientIdleTime = parseInt(req.body.idleTime || 0, 10);
+    const clientBreakTime = parseInt(req.body.breakTime || 0, 10);
+    const clientCallingTime = parseInt(req.body.callingTime || 0, 10);
+    const hasClientData = clientWorkingTime > 0 || clientIdleTime > 0 || clientBreakTime > 0 || clientCallingTime > 0;
+
+    // Record server-side delta since last active timestamp
     await exports.recordTelemetryDelta(userId);
+
+    // If client sent cumulative values, reconcile by taking max(server, client) for each metric
+    if (hasClientData) {
+      const today = getTrackingDate();
+      const sessionCheck = await db.query(
+        'SELECT * FROM telecaller_sessions WHERE telecaller_id = $1 AND date = $2',
+        [userId, today]
+      );
+      if (sessionCheck.rows.length > 0) {
+        const current = sessionCheck.rows[0];
+        const reconciledWorking = Math.max(parseInt(current.total_working_time || 0, 10), clientWorkingTime);
+        const reconciledIdle = Math.max(parseInt(current.total_idle_time || 0, 10), clientIdleTime);
+        const reconciledBreak = Math.max(parseInt(current.total_break_time || 0, 10), clientBreakTime);
+        const reconciledCalling = Math.max(parseInt(current.total_calling_time || 0, 10), clientCallingTime);
+        await db.query(
+          `UPDATE telecaller_sessions
+           SET total_working_time = $1, total_idle_time = $2, total_break_time = $3, total_calling_time = $4, last_updated_at = CURRENT_TIMESTAMP
+           WHERE telecaller_id = $5 AND date = $6`,
+          [reconciledWorking, reconciledIdle, reconciledBreak, reconciledCalling, userId, today]
+        );
+        console.log(`[TelemetryReconcile] User ${userId} | Client: W${clientWorkingTime}s I${clientIdleTime}s B${clientBreakTime}s C${clientCallingTime}s | Reconciled: W${reconciledWorking}s I${reconciledIdle}s B${reconciledBreak}s C${reconciledCalling}s`);
+      } else {
+        // No session yet — create one with client values
+        try {
+          await db.query(
+            `INSERT INTO telecaller_sessions (telecaller_id, date, total_working_time, total_idle_time, total_break_time, total_calling_time)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [userId, today, clientWorkingTime, clientIdleTime, clientBreakTime, clientCallingTime]
+          );
+        } catch (insErr) { /* row may have been inserted by recordTelemetryDelta above, ignore */ }
+      }
+    }
 
     // Update user's last active timestamp because they just synced telemetry.
     // If they were marked offline (due to background check inactivity), mark them back online.
@@ -539,7 +590,7 @@ exports.getAnalytics = async (req, res) => {
           COUNT(CASE WHEN call_status = 'missed' THEN 1 END) as missed_count,
           COALESCE(SUM(duration), 0) as talk_time
         FROM call_logs
-        WHERE ${isPg ? "(called_at - INTERVAL '6 hours 30 minutes')::date" : "date(called_at, '-6 hours', '-30 minutes')"} = $1
+        WHERE ${isPg ? "(called_at + INTERVAL '5 hours 30 minutes')::date" : "date(called_at, '+5 hours', '+30 minutes')"} = $1
         GROUP BY telecaller_id
       `;
     }
@@ -621,6 +672,24 @@ exports.getTodayTelemetry = async (req, res) => {
       session = sessionCheck.rows[0];
     }
 
+    // Fetch company shift limits
+    let workTimeLimitHours = 8;
+    let talkTimeLimitHours = 4;
+    if (req.user && req.user.companyRegNum) {
+      try {
+        const compSettings = await db.queryMain(
+          'SELECT work_time_limit_hours, talk_time_limit_hours FROM companies WHERE reg_num = $1',
+          [req.user.companyRegNum]
+        );
+        if (compSettings.rows.length > 0) {
+          workTimeLimitHours = parseInt(compSettings.rows[0].work_time_limit_hours || 8, 10);
+          talkTimeLimitHours = parseInt(compSettings.rows[0].talk_time_limit_hours || 4, 10);
+        }
+      } catch (limErr) {
+        console.error('Error fetching company shift limits:', limErr.message);
+      }
+    }
+
     const isPg = db.dbType === 'postgres';
     const dateFilter = isPg ? "(called_at + INTERVAL '5 hours 30 minutes')::date = $1" : "date(called_at, '+5 hours', '+30 minutes') = $1";
     const callsCheck = await db.query(
@@ -658,6 +727,8 @@ exports.getTodayTelemetry = async (req, res) => {
         talkTime: talkTime,
         idleTime: parseInt(session.total_idle_time || 0, 10),
         breakTime: parseInt(session.total_break_time || 0, 10),
+        workTimeLimitHours: workTimeLimitHours,
+        talkTimeLimitHours: talkTimeLimitHours,
       },
       calls: {
         connected: parseInt(callCounts.connected || 0, 10),

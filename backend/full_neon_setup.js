@@ -253,6 +253,16 @@ async function setupCompanySchema(client, schemaName) {
     )
   `, 'lead_transfers');
 
+  // ── call_recordings ────────────────────────────────────────────────────────
+  await run(client, `
+    CREATE TABLE IF NOT EXISTS call_recordings (
+      id SERIAL PRIMARY KEY,
+      call_log_id INTEGER REFERENCES call_logs(id) ON DELETE CASCADE,
+      recording_url TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `, 'call_recordings');
+
   // ── telecaller_sessions ────────────────────────────────────────────────────
   await run(client, `
     CREATE TABLE IF NOT EXISTS telecaller_sessions (
@@ -295,6 +305,12 @@ async function setupCompanySchema(client, schemaName) {
     ["ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS recording_url TEXT", 'call_logs.recording_url'],
     ["ALTER TABLE telecaller_sessions ADD COLUMN IF NOT EXISTS total_idle_time INTEGER DEFAULT 0", 'telecaller_sessions.total_idle_time'],
     ["ALTER TABLE telecaller_sessions ADD COLUMN IF NOT EXISTS whatsapp_messages_count INTEGER DEFAULT 0", 'telecaller_sessions.whatsapp_messages_count'],
+    [`CREATE TABLE IF NOT EXISTS call_recordings (
+      id SERIAL PRIMARY KEY,
+      call_log_id INTEGER REFERENCES call_logs(id) ON DELETE CASCADE,
+      recording_url TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`, 'call_recordings table'],
   ];
 
   for (const [sql, tag] of tenantAlters) {
@@ -362,6 +378,7 @@ async function main() {
     console.log('  • campaigns');
     console.log('  • contacts');
     console.log('  • call_logs');
+    console.log('  • call_recordings');
     console.log('  • lead_transfers');
     console.log('  • telecaller_sessions');
     console.log('  • admin_notifications');

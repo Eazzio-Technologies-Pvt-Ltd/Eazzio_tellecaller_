@@ -40,6 +40,10 @@ class TelemetryService with WidgetsBindingObserver {
   int _breakTime = 0;
   int _idleTime = 0;
 
+  // Company shift limits (fetched from server)
+  int _workTimeLimitHours = 8;
+  int _talkTimeLimitHours = 4;
+
   // Track daily call totals locally for UI representation
   int connectedCalls = 0;
   int missedCalls = 0;
@@ -55,6 +59,8 @@ class TelemetryService with WidgetsBindingObserver {
   int get talkTime => _talkTime;
   int get breakTime => _breakTime;
   int get idleTime => _idleTime;
+  int get workTimeLimitHours => _workTimeLimitHours;
+  int get talkTimeLimitHours => _talkTimeLimitHours;
 
   bool get isActive => _timer != null;
   TelemetryState get currentState => _currentState;
@@ -163,6 +169,8 @@ class TelemetryService with WidgetsBindingObserver {
         _talkTime = telemetry['talkTime'] ?? 0;
         _breakTime = telemetry['breakTime'] ?? 0;
         _idleTime = telemetry['idleTime'] ?? 0;
+        _workTimeLimitHours = telemetry['workTimeLimitHours'] ?? 8;
+        _talkTimeLimitHours = telemetry['talkTimeLimitHours'] ?? 4;
         
         connectedCalls = calls['connected'] ?? 0;
         nonConnectedCalls = calls['nonConnected'] ?? 0;

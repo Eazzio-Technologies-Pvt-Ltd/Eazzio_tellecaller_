@@ -108,6 +108,16 @@ CREATE TABLE IF NOT EXISTS public.payments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 7. call_recordings (Payment verified recording records)
+CREATE TABLE IF NOT EXISTS public.call_recordings (
+    id SERIAL PRIMARY KEY,
+    company_reg_num VARCHAR(50) NOT NULL REFERENCES public.companies(reg_num) ON DELETE CASCADE,
+    call_log_id INTEGER NOT NULL,
+    recording_url TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
 
 -- =============================================================================
 -- SECTION 2: TENANT SCHEMA TEMPLATE (Provisioning Dynamic Company Data)
@@ -180,6 +190,15 @@ CREATE TABLE IF NOT EXISTS call_logs (
     recording_url TEXT,
     called_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 4b. call_recordings (Linked call recording files)
+CREATE TABLE IF NOT EXISTS call_recordings (
+    id SERIAL PRIMARY KEY,
+    call_log_id INTEGER REFERENCES call_logs(id) ON DELETE CASCADE,
+    recording_url TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 
 -- 5. lead_transfers (Allotted or transferred contacts history)
 CREATE TABLE IF NOT EXISTS lead_transfers (
