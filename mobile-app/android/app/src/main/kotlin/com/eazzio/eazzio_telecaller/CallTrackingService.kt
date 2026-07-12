@@ -4,10 +4,8 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.database.sqlite.SQLiteDatabase
 import android.os.Build
 import android.os.IBinder
 import android.provider.CallLog
@@ -35,7 +33,6 @@ class CallTrackingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent != null && intent.getBooleanExtra("check_last_call", false)) {
-            // Run call check in a background thread
             Thread {
                 processLastCall()
             }.start()
@@ -43,9 +40,7 @@ class CallTrackingService : Service() {
         return START_STICKY
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -75,9 +70,7 @@ class CallTrackingService : Service() {
                 this,
                 android.Manifest.permission.READ_CALL_LOG
             ) != android.content.pm.PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
+        ) return
 
         try {
             val cursor = contentResolver.query(
@@ -105,48 +98,65 @@ class CallTrackingService : Service() {
                 val date = if (dateIndex != -1) cursor.getLong(dateIndex) else 0L
                 cursor.close()
 
-                // Check if the call ended recently (within the last 60 seconds)
+                // Only process calls that ended within the last 60 seconds
                 val diffSeconds = (System.currentTimeMillis() - date) / 1000
-                if (diffSeconds > 60) {
-                    return
-                }
+                if (diffSeconds > 60) return
 
-                // Check if this number is in our allotted list in SharedPreferences
                 val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+
+                // ── Timestamp guard: skip if already confirmed-synced by Flutter-side poll ──
+                val lastSynced = prefs.getLong("flutter.last_synced_call_timestamp", 0L)
+                if (date <= lastSynced) return
+
+                // ── Allotted-number check ──
                 val allottedString = prefs.getString("flutter.allotted_phone_numbers", "") ?: ""
                 val allottedList = allottedString.split(",").map { it.trim().replace(Regex("\\D"), "") }
-                
+
                 val cleanNumber = number.replace(Regex("\\D"), "")
                 if (cleanNumber.isEmpty()) return
 
-                val isMatched = allottedList.any { 
+                val isMatched = allottedList.any {
                     it.endsWith(cleanNumber) || cleanNumber.endsWith(it)
                 }
+                if (!isMatched) return
 
-                if (isMatched) {
-                    // Map Call Type
-                    var callStatus = "missed"
-                    if (type == CallLog.Calls.OUTGOING_TYPE) {
-                        callStatus = if (duration > 0) "connected" else "non_connected"
-                    } else if (type == CallLog.Calls.INCOMING_TYPE) {
-                        callStatus = if (duration > 0) "received" else "missed"
-                    } else if (type == CallLog.Calls.MISSED_TYPE || type == CallLog.Calls.REJECTED_TYPE) {
-                        callStatus = "missed"
-                    } else {
-                        return
-                    }
-
-                    // Format Timestamp to UTC ISO8601
-                    val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-                    sdf.timeZone = TimeZone.getTimeZone("UTC")
-                    val isoTimestamp = sdf.format(Date(date))
-
-                    // Save to SQLite pending_sync table
-                    saveToLocalDb(cleanNumber, callStatus, duration, isoTimestamp)
-
-                    // Trigger Sync
-                    syncLogsToServer()
+                // ── Map call type ──
+                val callStatus = when {
+                    type == CallLog.Calls.OUTGOING_TYPE -> if (duration > 0) "connected" else "non_connected"
+                    type == CallLog.Calls.INCOMING_TYPE -> if (duration > 0) "received" else "missed"
+                    type == CallLog.Calls.MISSED_TYPE || type == CallLog.Calls.REJECTED_TYPE -> "missed"
+                    else -> return
                 }
+
+                // ── Format timestamp to UTC ISO8601 ──
+                val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+                sdf.timeZone = TimeZone.getTimeZone("UTC")
+                val isoTimestamp = sdf.format(Date(date))
+
+                // ── Build and POST payload directly ──
+                val payload = JSONObject().apply {
+                    put("activities", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("phoneNumber", cleanNumber)
+                            put("callType", callStatus)
+                            put("durationSeconds", duration)
+                            put("timestamp", isoTimestamp)
+                        })
+                    })
+                }
+
+                val token = prefs.getString("flutter.auth_token", null) ?: return
+                val baseUrl = "https://eazzio-tellecaller.onrender.com"
+                val success = postSyncCall(baseUrl, token, payload.toString())
+
+                if (success) {
+                    // Max-value guard: never overwrite a higher timestamp set concurrently by Flutter side
+                    val currentStored = prefs.getLong("flutter.last_synced_call_timestamp", 0L)
+                    val newValue = if (date > currentStored) date else currentStored
+                    prefs.edit().putLong("flutter.last_synced_call_timestamp", newValue).apply()
+                }
+                // On failure: do not update timestamp — the Dart-side periodic sync will
+                // re-query the native call log and pick this call up on next attempt.
             } else {
                 cursor?.close()
             }
@@ -155,119 +165,9 @@ class CallTrackingService : Service() {
         }
     }
 
-    private fun saveToLocalDb(phoneNumber: String, callType: String, duration: Int, timestamp: String) {
-        var db: SQLiteDatabase? = null
-        try {
-            val dbFile = getDatabasePath("call_log_sync.db")
-            db = SQLiteDatabase.openOrCreateDatabase(dbFile, null)
-            
-            // Ensure table exists just in case
-            db.execSQL(
-                "CREATE TABLE IF NOT EXISTS pending_sync (" +
-                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                        "phone_number TEXT, " +
-                        "call_type TEXT, " +
-                        "duration_seconds INTEGER, " +
-                        "timestamp TEXT, " +
-                        "synced INTEGER DEFAULT 0, " +
-                        "UNIQUE(phone_number, timestamp) ON CONFLICT IGNORE" +
-                        ")"
-            )
-
-            val values = ContentValues().apply {
-                put("phone_number", phoneNumber)
-                put("call_type", callType)
-                put("duration_seconds", duration)
-                put("timestamp", timestamp)
-                put("synced", 0)
-            }
-
-            db.insertWithOnConflict("pending_sync", null, values, SQLiteDatabase.CONFLICT_IGNORE)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            db?.close()
-        }
-    }
-
-    private fun syncLogsToServer() {
-        var db: SQLiteDatabase? = null
-        try {
-            val dbFile = getDatabasePath("call_log_sync.db")
-            if (!dbFile.exists()) return
-
-            db = SQLiteDatabase.openOrCreateDatabase(dbFile, null)
-            val cursor = db.rawQuery("SELECT id, phone_number, call_type, duration_seconds, timestamp FROM pending_sync WHERE synced = 0", null)
-            
-            val unsyncedList = mutableListOf<Map<String, Any>>()
-            val ids = mutableListOf<Int>()
-
-            if (cursor.moveToFirst()) {
-                val idCol = cursor.getColumnIndex("id")
-                val phoneCol = cursor.getColumnIndex("phone_number")
-                val typeCol = cursor.getColumnIndex("call_type")
-                val durCol = cursor.getColumnIndex("duration_seconds")
-                val timeCol = cursor.getColumnIndex("timestamp")
-
-                do {
-                    val id = cursor.getInt(idCol)
-                    val phone = cursor.getString(phoneCol)
-                    val type = cursor.getString(typeCol)
-                    val duration = cursor.getInt(durCol)
-                    val timestamp = cursor.getString(timeCol)
-
-                    unsyncedList.add(
-                        mapOf(
-                            "phoneNumber" to phone,
-                            "callType" to type,
-                            "durationSeconds" to duration,
-                            "timestamp" to timestamp
-                        )
-                    )
-                    ids.add(id)
-                } while (cursor.moveToNext())
-            }
-            cursor.close()
-
-            if (unsyncedList.isEmpty()) return
-
-            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val token = prefs.getString("flutter.auth_token", null)
-            val baseUrl = "https://eazzio-tellecaller.onrender.com" // Default fallback URL
-
-            if (token != null) {
-                val jsonPayload = JSONObject().apply {
-                    val array = JSONArray()
-                    for (item in unsyncedList) {
-                        array.put(JSONObject(item))
-                    }
-                    put("activities", array)
-                }
-
-                val success = postSyncCall(baseUrl, token, jsonPayload.toString())
-                if (success) {
-                    // Update rows to synced = 1
-                    db.beginTransaction()
-                    try {
-                        for (id in ids) {
-                            db.execSQL("UPDATE pending_sync SET synced = 1 WHERE id = $id")
-                        }
-                        db.setTransactionSuccessful()
-                    } finally {
-                        db.endTransaction()
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            db?.close()
-        }
-    }
-
     private fun postSyncCall(baseUrl: String, token: String, jsonString: String): Boolean {
         var connection: HttpURLConnection? = null
-        try {
+        return try {
             val url = URL("$baseUrl/api/call-logs/activities")
             connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "POST"
@@ -283,12 +183,13 @@ class CallTrackingService : Service() {
             writer.close()
 
             val responseCode = connection.responseCode
-            return responseCode == 200 || responseCode == 201
+            responseCode == 200 || responseCode == 201
         } catch (e: Exception) {
             e.printStackTrace()
-            return false
+            false
         } finally {
             connection?.disconnect()
         }
     }
 }
+

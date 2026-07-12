@@ -14,7 +14,6 @@ import 'package:eazzio_telecaller/screens/calling_screen.dart';
 import 'package:eazzio_telecaller/screens/login_screen.dart';
 import 'package:eazzio_telecaller/main.dart';
 import 'package:eazzio_telecaller/services/layout_service.dart';
-import 'package:eazzio_telecaller/services/call_log_database_helper.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -749,12 +748,13 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
       }
 
       final List<dynamic>? logs = await channel.invokeMethod('getRecentCallLogs', {'limit': 150});
-      final dbHelper = CallLogDatabaseHelper();
 
       final prefs = await SharedPreferences.getInstance();
-      final int lastSynced = prefs.getInt('last_synced_call_timestamp') ?? 
+      final int lastSynced = prefs.getInt('last_synced_call_timestamp') ??
           DateTime.now().subtract(const Duration(days: 1)).millisecondsSinceEpoch;
 
+      // Build batch in-memory — no SQLite
+      final List<Map<String, dynamic>> activitiesToSync = [];
       int highestTimestamp = lastSynced;
 
       if (logs != null && logs.isNotEmpty) {
@@ -763,9 +763,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
           final int dateMs = log['date'] ?? 0;
           if (dateMs <= lastSynced) continue;
 
-          if (dateMs > highestTimestamp) {
-            highestTimestamp = dateMs;
-          }
+          if (dateMs > highestTimestamp) highestTimestamp = dateMs;
 
           final String rawNumber = log['number'] ?? '';
           final String logNum = rawNumber.replaceAll(RegExp(r'\D'), '');
@@ -798,12 +796,11 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
               if ((dateMs - lastEnd).abs() < 30000) {
                 duration = lastRing;
               } else {
-                duration = 15; // default fallback ring time
+                duration = 15;
               }
             }
 
-            // Insert into SQLite database locally as pending sync
-            await dbHelper.insertPendingSync({
+            activitiesToSync.add({
               'phoneNumber': rawNumber,
               'callType': callStatus,
               'durationSeconds': duration,
@@ -813,26 +810,13 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
         }
       }
 
-      // Fetch all unsynced activities from local database
-      final unsyncedLogs = await dbHelper.getUnsyncedLogs();
-
-      if (unsyncedLogs.isNotEmpty) {
-        // Format payload to POST
-        final List<Map<String, dynamic>> activitiesToSync = unsyncedLogs.map((item) {
-          return {
-            'phoneNumber': item['phoneNumber'],
-            'callType': item['callType'],
-            'durationSeconds': item['durationSeconds'],
-            'timestamp': item['timestamp'],
-          };
-        }).toList();
-
+      // Only POST if there's something new; advance timestamp only on success
+      if (activitiesToSync.isNotEmpty) {
         final success = await ApiService.syncCallActivities(activitiesToSync);
         if (success) {
-          final List<int> ids = unsyncedLogs.map((item) => item['id'] as int).toList();
-          await dbHelper.markAsSynced(ids);
-          await prefs.setInt('last_synced_call_timestamp', highestTimestamp);
-          await dbHelper.cleanOldLogs();
+          // Take max to avoid racing with native service writing the same key
+          final int stored = prefs.getInt('last_synced_call_timestamp') ?? 0;
+          await prefs.setInt('last_synced_call_timestamp', highestTimestamp > stored ? highestTimestamp : stored);
         }
       }
 
@@ -845,6 +829,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
       _isSyncing = false;
     }
   }
+
 
   @override
   void initState() {
