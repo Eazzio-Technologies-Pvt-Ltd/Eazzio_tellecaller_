@@ -231,3 +231,24 @@ CREATE TABLE IF NOT EXISTS admin_notifications (
     message TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 8. call_activities (Native call log sync records — replaces local SQLite pending_sync)
+--    Populated by the mobile app via POST /api/call-logs/activities.
+--    Each row represents one confirmed call activity synced from the device's native call log.
+--    Deduplication is enforced server-side: if a call with the same phone_number, duration_seconds
+--    and timestamp (within a 5-second window) already exists, it is skipped.
+CREATE TABLE IF NOT EXISTS call_activities (
+    id SERIAL PRIMARY KEY,
+    lead_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+    telecaller_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    call_type VARCHAR(20) NOT NULL,           -- 'connected' | 'non_connected' | 'received' | 'missed'
+    duration_seconds INTEGER DEFAULT 0,
+    phone_number VARCHAR(50) NOT NULL,
+    timestamp TIMESTAMP NOT NULL,             -- UTC timestamp of the call from native call log
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index to speed up deduplication queries and per-user reporting
+CREATE INDEX IF NOT EXISTS idx_call_activities_telecaller ON call_activities(telecaller_id);
+CREATE INDEX IF NOT EXISTS idx_call_activities_phone_ts ON call_activities(phone_number, timestamp);
+

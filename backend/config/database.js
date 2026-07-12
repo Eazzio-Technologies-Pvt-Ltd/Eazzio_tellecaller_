@@ -243,7 +243,8 @@ async function initializeSchema() {
       call_type VARCHAR(20) NOT NULL,
       duration_seconds INTEGER DEFAULT 0,
       phone_number VARCHAR(50) NOT NULL,
-      timestamp ${timestampType}
+      timestamp ${timestampType},
+      created_at ${timestampType}
     )`
   ];
 
