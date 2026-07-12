@@ -68,7 +68,7 @@
             android:name=".CallTrackingService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="phoneCall|microphone" />
+            android:foregroundServiceType="phoneCall" />
 
         <receiver
             android:name=".PhoneStateReceiver"

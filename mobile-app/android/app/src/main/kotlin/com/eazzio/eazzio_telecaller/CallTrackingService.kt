@@ -28,7 +28,25 @@ class CallTrackingService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, getNotification("Eazzio call tracking is running in the background."))
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    getNotification("Eazzio call tracking is running in the background."),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, getNotification("Eazzio call tracking is running in the background."))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Fallback try without service type
+            try {
+                startForeground(NOTIFICATION_ID, getNotification("Eazzio call tracking is running in the background."))
+            } catch (ex: Exception) {
+                ex.printStackTrace()
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
