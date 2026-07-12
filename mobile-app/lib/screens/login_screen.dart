@@ -375,11 +375,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               builder: (context, constraints) {
                 final double availableHeight = constraints.maxHeight;
 
-                final double splashLogoSize = 255.0;
-                final double loginLogoSize = _phase == 'loginForm' ? 150.0 : 190.0;
+                final double splashLogoSize = 300.0;
+                final double loginLogoSize = _phase == 'loginForm' ? 210.0 : 240.0;
                 final double logoSize = splashLogoSize + (loginLogoSize - splashLogoSize) * _logoMove.value;
 
-                final double finalTopMargin = _phase == 'loginForm' ? 16.0 : 40.0;
+                final double finalTopMargin = _phase == 'loginForm' ? 12.0 : 30.0;
                 final double splashTopMargin = (availableHeight - splashLogoSize) / 2.0 - 40.0;
                 final double currentTopMargin = splashTopMargin + (finalTopMargin - splashTopMargin) * _logoMove.value;
 

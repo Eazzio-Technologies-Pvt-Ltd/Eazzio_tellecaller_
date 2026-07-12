@@ -60,10 +60,10 @@ class _SplashScreenState extends State<SplashScreen> {
       backgroundColor: bgColor,
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(32.0),
           child: Image.asset(
             'assets/logo_light.png',
-            width: 260.0,
+            width: 360.0,
             fit: BoxFit.contain,
           ),
         ),
