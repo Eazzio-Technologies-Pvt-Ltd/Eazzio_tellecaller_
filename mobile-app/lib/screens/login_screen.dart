@@ -30,6 +30,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   late AnimationController _roleCtrl;
   late AnimationController _formCtrl;
   late Animation<double> _spinnerOpacity;
+  late Animation<double> _logoMove;
+  late Animation<double> _contentOpacity;
   late Animation<double> _roleOpacity;
   late Animation<double> _formSlide;
   late Animation<double> _formOpacity;
@@ -44,11 +46,19 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           text: 'EAZ-', selection: TextSelection.collapsed(offset: 4));
       }
     });
-    _splashCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
+    _splashCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000));
     _roleCtrl   = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
     _formCtrl   = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+    
     _spinnerOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _splashCtrl, curve: const Interval(0.55, 0.85, curve: Curves.easeOut)));
+      CurvedAnimation(parent: _splashCtrl, curve: const Interval(0.0, 0.45, curve: Curves.easeOut)));
+    
+    _logoMove = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _splashCtrl, curve: const Interval(0.45, 0.85, curve: Curves.easeInOutCubic)));
+      
+    _contentOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _splashCtrl, curve: const Interval(0.80, 1.0, curve: Curves.easeOut)));
+
     _roleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _roleCtrl, curve: Curves.easeOut));
     _formSlide = Tween<double>(begin: 50.0, end: 0.0).animate(
@@ -353,48 +363,94 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    final layout = ResponsiveLayout(context);
     return AnimatedBuilder(
       animation: Listenable.merge([_splashCtrl, _roleCtrl, _formCtrl]),
       builder: (context, _) {
+        final layout = ResponsiveLayout(context);
         return Scaffold(
           backgroundColor: const Color(0xFFF3F4F6),
           resizeToAvoidBottomInset: true,
           body: SafeArea(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: layout.scale(20.0, 28.0)),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom),
-                child: IntrinsicHeight(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(height: _phase == 'loginForm' ? 24 : 52),
-                      Center(child: SizedBox(
-                        width: _phase == 'loginForm' ? 130 : 190,
-                        height: _phase == 'loginForm' ? 130 : 190,
-                        child: Image.asset('assets/logo.png', fit: BoxFit.contain))),
-                      if (_phase == 'splash' && _spinnerOpacity.value > 0.0) ...[
-                        const SizedBox(height: 20),
-                        Opacity(opacity: _spinnerOpacity.value,
-                          child: Center(child: SizedBox(width: 22, height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2.0,
-                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)))))),
-                      ],
-                      if (_phase == 'roleSelect') _buildRoleSelect(),
-                      if (_phase == 'loginForm') _buildLoginForm(),
-                      const Spacer(),
-                      if (_phase != 'splash')
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Text('Made with ', style: TextStyle(color: Color(0xFF6B7280), fontSize: 11)),
-                            Text('Eazzio Technologies Pvt Ltd', style: TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.bold)),
-                          ])),
-                    ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final double availableHeight = constraints.maxHeight;
+
+                final double splashLogoSize = 255.0;
+                final double loginLogoSize = _phase == 'loginForm' ? 150.0 : 190.0;
+                final double logoSize = splashLogoSize + (loginLogoSize - splashLogoSize) * _logoMove.value;
+
+                final double finalTopMargin = _phase == 'loginForm' ? 16.0 : 40.0;
+                final double splashTopMargin = (availableHeight - splashLogoSize) / 2.0 - 40.0;
+                final double currentTopMargin = splashTopMargin + (finalTopMargin - splashTopMargin) * _logoMove.value;
+
+                return SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(horizontal: layout.scale(20.0, 28.0)),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: availableHeight),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SizedBox(height: currentTopMargin),
+                          Center(
+                            child: SizedBox(
+                              width: logoSize,
+                              height: logoSize,
+                              child: Image.asset('assets/logo_light.png', fit: BoxFit.contain),
+                            ),
+                          ),
+                          
+                          if (_splashCtrl.value < 0.85 && _spinnerOpacity.value > 0.0) ...[
+                            const SizedBox(height: 20),
+                            Opacity(
+                              opacity: _spinnerOpacity.value,
+                              child: Center(
+                                child: SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.0,
+                                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+
+                          if (_splashCtrl.value >= 0.70) ...[
+                            Opacity(
+                              opacity: _contentOpacity.value,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (_phase == 'roleSelect') _buildRoleSelect(),
+                                  if (_phase == 'loginForm') _buildLoginForm(),
+                                ],
+                              ),
+                            ),
+                          ],
+                          
+                          const Spacer(),
+                          if (_splashCtrl.value >= 0.70)
+                            Opacity(
+                              opacity: _contentOpacity.value,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text('Made with ', style: TextStyle(color: Color(0xFF6B7280), fontSize: 11)),
+                                    Text('Eazzio Technologies Pvt Ltd', style: TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         );

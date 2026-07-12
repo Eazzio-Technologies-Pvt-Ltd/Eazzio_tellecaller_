@@ -17,33 +17,38 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Timing configuration (2 seconds splash time)
-    Timer(const Duration(seconds: 2), () async {
-      if (mounted) {
-        if (ApiService.isAuthenticated) {
-          final prefs = await SharedPreferences.getInstance();
-          final role = prefs.getString('user_role') ?? 'telecaller';
-          if (mounted) {
-            if (role == 'admin' || role == 'superadmin') {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const CompanyAdminDashboardScreen()),
-              );
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const DashboardScreen()),
-              );
-            }
+    if (ApiService.isAuthenticated) {
+      Timer(const Duration(milliseconds: 1000), () async {
+        final prefs = await SharedPreferences.getInstance();
+        final role = prefs.getString('user_role') ?? 'telecaller';
+        if (mounted) {
+          if (role == 'admin' || role == 'superadmin') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const CompanyAdminDashboardScreen()),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const DashboardScreen()),
+            );
           }
-        } else {
+        }
+      });
+    } else {
+      Future.microtask(() {
+        if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
           );
         }
-      }
-    });
+      });
+    }
   }
 
   @override
@@ -55,9 +60,10 @@ class _SplashScreenState extends State<SplashScreen> {
       backgroundColor: bgColor,
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(40.0),
+          padding: const EdgeInsets.all(24.0),
           child: Image.asset(
-            'assets/logo.png',
+            'assets/logo_light.png',
+            width: 260.0,
             fit: BoxFit.contain,
           ),
         ),
