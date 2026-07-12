@@ -6,6 +6,7 @@ import android.app.ActivityManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.os.Build
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.eazzio.eazzio_telecaller/app_control"
@@ -212,6 +213,14 @@ class MainActivity: FlutterActivity() {
                     result.error("DIAL_ERROR", e.message, null)
                 }
             } else if (call.method == "getRecentCallLogs") {
+                if (androidx.core.content.ContextCompat.checkSelfPermission(
+                        this,
+                        android.Manifest.permission.READ_CALL_LOG
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    result.error("PERMISSION_DENIED", "READ_CALL_LOG permission is required to read call logs", null)
+                    return@setMethodCallHandler
+                }
                 val limit = call.argument<Int>("limit") ?: 20
                 try {
                     val cursor = contentResolver.query(
@@ -256,9 +265,76 @@ class MainActivity: FlutterActivity() {
                 } catch (e: Exception) {
                     result.error("CALL_LOG_ERROR", e.message, null)
                 }
+            } else if (call.method == "checkDefaultDialerRole") {
+                val isDefault = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val roleManager = getSystemService(Context.ROLE_SERVICE) as android.app.role.RoleManager
+                    roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_DIALER)
+                } else {
+                    val telecomManager = getSystemService(Context.TELECOM_SERVICE) as android.telecom.TelecomManager
+                    telecomManager.defaultDialerPackage == packageName
+                }
+                result.success(isDefault)
+            } else if (call.method == "requestDefaultDialerRole") {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val roleManager = getSystemService(Context.ROLE_SERVICE) as android.app.role.RoleManager
+                        val intent = roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_DIALER)
+                        startActivityForResult(intent, 2026)
+                    } else {
+                        val intent = Intent(android.telecom.TelecomManager.ACTION_CHANGE_DEFAULT_DIALER)
+                        intent.putExtra(android.telecom.TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME, packageName)
+                        startActivity(intent)
+                    }
+                    result.success(true)
+                } catch (e: Exception) {
+                    result.error("DIALER_ROLE_ERROR", e.message, null)
+                }
+            } else if (call.method == "isIgnoringBatteryOptimizations") {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+                val isIgnoring = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    powerManager.isIgnoringBatteryOptimizations(packageName)
+                } else {
+                    true
+                }
+                result.success(isIgnoring)
+            } else if (call.method == "requestIgnoreBatteryOptimizations") {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                        intent.data = android.net.Uri.parse("package:$packageName")
+                        startActivity(intent)
+                    }
+                    result.success(true)
+                } catch (e: Exception) {
+                    result.error("BATTERY_OPTIMIZATION_ERROR", e.message, null)
+                }
+            } else if (call.method == "startTrackingService") {
+                try {
+                    val serviceIntent = Intent(this, CallTrackingService::class.java)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startForegroundService(serviceIntent)
+                    } else {
+                        startService(serviceIntent)
+                    }
+                    result.success(true)
+                } catch (e: Exception) {
+                    result.error("SERVICE_START_ERROR", e.message, null)
+                }
             } else {
                 result.notImplemented()
             }
+        }
+
+        // Auto start foreground tracking service on app load
+        try {
+            val serviceIntent = Intent(this, CallTrackingService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Failed to auto-start call tracking service: ${e.message}")
         }
     }
 }

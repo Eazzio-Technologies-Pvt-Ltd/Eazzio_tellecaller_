@@ -14,6 +14,7 @@ import 'package:eazzio_telecaller/screens/calling_screen.dart';
 import 'package:eazzio_telecaller/screens/login_screen.dart';
 import 'package:eazzio_telecaller/main.dart';
 import 'package:eazzio_telecaller/services/layout_service.dart';
+import 'package:eazzio_telecaller/services/call_log_database_helper.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -32,6 +33,8 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
   List<Map<String, dynamic>> _availableSims = [];
   bool _loadingSims = false;
   bool _permissionDenied = false;
+  bool _isDefaultDialer = true;
+  bool _isIgnoringBattery = true;
   DateTime? _callStartTimestamp;
   PhoneStateStatus? _lastPhoneState;
   StreamSubscription? _phoneStateSub;
@@ -316,9 +319,17 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     final phoneGranted = await Permission.phone.isGranted;
     final contactsGranted = await Permission.contacts.isGranted;
 
+    const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
+    bool hasCallLogPerm = false;
+    try {
+      hasCallLogPerm = await channel.invokeMethod('checkCallLogPermission') ?? false;
+    } catch (e) {
+      print('Error checking native call log permission: $e');
+    }
+
     if (mounted) {
       setState(() {
-        _permissionDenied = !phoneGranted || !contactsGranted;
+        _permissionDenied = !phoneGranted || !contactsGranted || !hasCallLogPerm;
       });
     }
   }
@@ -387,6 +398,24 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
         Permission.contacts,
       ].request();
 
+      const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
+      bool hasCallLogPerm = false;
+      try {
+        hasCallLogPerm = await channel.invokeMethod('checkCallLogPermission') ?? false;
+      } catch (e) {
+        print('Error checking native call log permission: $e');
+      }
+
+      if (!hasCallLogPerm) {
+        try {
+          await channel.invokeMethod('requestCallLogPermission');
+          // Wait briefly for dialog interactions and recheck status
+          await Future.delayed(const Duration(milliseconds: 500));
+        } catch (e) {
+          print('Error requesting native call log permission: $e');
+        }
+      }
+
       await _checkCallPermissions();
       if (!_permissionDenied) {
         _syncCallLogs();
@@ -419,6 +448,210 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
         ],
       ),
     );
+  }
+
+  Future<void> _checkSystemPreferences() async {
+    const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
+    try {
+      final bool isDefault = await channel.invokeMethod('checkDefaultDialerRole') ?? false;
+      final bool isIgnoring = await channel.invokeMethod('isIgnoringBatteryOptimizations') ?? false;
+      if (mounted) {
+        setState(() {
+          _isDefaultDialer = isDefault;
+          _isIgnoringBattery = isIgnoring;
+        });
+      }
+    } catch (e) {
+      print('Error checking system preferences: $e');
+    }
+  }
+
+  Future<void> _requestDefaultDialer() async {
+    const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
+    try {
+      await channel.invokeMethod('requestDefaultDialerRole');
+      await Future.delayed(const Duration(seconds: 1));
+      await _checkSystemPreferences();
+    } catch (e) {
+      print('Error requesting default dialer: $e');
+    }
+  }
+
+  Future<void> _requestIgnoreBattery() async {
+    const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
+    try {
+      await channel.invokeMethod('requestIgnoreBatteryOptimizations');
+      await Future.delayed(const Duration(seconds: 1));
+      await _checkSystemPreferences();
+    } catch (e) {
+      print('Error requesting battery optimization ignore: $e');
+    }
+  }
+
+  void _showDialerRoleExplanationDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.phone_callback_rounded, color: Color(0xFF6366F1), size: 28),
+            const SizedBox(width: 10),
+            Text('Set as Default Dialer', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Text(
+          'On Android 10+, Eazzio requires being set as the default dialer to accurately capture phone call logs and durations for your allotted leads.\n\nWithout this, call logs may be incomplete or missing numbers.',
+          style: TextStyle(color: subtextColor, fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('declined_dialer_role', true);
+              if (!_isIgnoringBattery) {
+                _showBatteryOptimizationDialog();
+              }
+            },
+            child: Text('Not Now', style: TextStyle(color: subtextColor)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              _requestDefaultDialer();
+            },
+            child: const Text('Set Dialer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBatteryOptimizationDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.battery_saver_rounded, color: Color(0xFF6366F1), size: 28),
+            const SizedBox(width: 10),
+            Text('Disable Battery Limit', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Text(
+          'To ensure real-time call tracking even when the app is running in the background, please exempt Eazzio from battery optimization limits.',
+          style: TextStyle(color: subtextColor, fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('declined_battery_optimization', true);
+            },
+            child: Text('Skip', style: TextStyle(color: subtextColor)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              _requestIgnoreBattery();
+            },
+            child: const Text('Exempt', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDialerWarningBanner() {
+    final layout = ResponsiveLayout(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF2C241A) : const Color(0xFFFFFBEB);
+    final textColor = isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309);
+    final subtextColor = isDark ? const Color(0xFFFCD34D) : const Color(0xFFD97706);
+
+    return InkWell(
+      onTap: _requestDefaultDialer,
+      child: Container(
+        padding: EdgeInsets.all(layout.scale(12.0, 16.0)),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(layout.cardRadius),
+          border: Border.all(
+            color: isDark ? const Color(0xFF78350F) : const Color(0xFFFCD34D),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.phone_callback_rounded, color: textColor, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Best-Effort Call Tracking Active',
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: layout.scale(13.0, 14.0),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Set Eazzio as your Default Dialer to log calls with 100% accuracy on Android 10+.',
+                    style: TextStyle(
+                      color: subtextColor,
+                      fontSize: layout.scale(11.0, 12.0),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: textColor),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveAllottedPhoneNumbers(List<dynamic> contacts) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final List<String> numbers = contacts
+          .map((c) => c['phone_number'].toString().replaceAll(RegExp(r'\D'), ''))
+          .where((num) => num.isNotEmpty)
+          .toList();
+      await prefs.setString('allotted_phone_numbers', numbers.join(','));
+      print('Saved ${numbers.length} allotted phone numbers to SharedPreferences.');
+    } catch (e) {
+      print('Error saving allotted numbers to SharedPreferences: $e');
+    }
   }
 
   Widget _buildPermissionWarningBanner() {
@@ -482,8 +715,16 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
 
     final phoneGranted = await Permission.phone.isGranted;
     final contactsGranted = await Permission.contacts.isGranted;
+    
+    const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
+    bool hasCallLogPerm = false;
+    try {
+      hasCallLogPerm = await channel.invokeMethod('checkCallLogPermission') ?? false;
+    } catch (e) {
+      print('Error checking native call log permission: $e');
+    }
 
-    if (!phoneGranted || !contactsGranted) {
+    if (!phoneGranted || !contactsGranted || !hasCallLogPerm) {
       if (mounted) {
         setState(() {
           _permissionDenied = true;
@@ -501,83 +742,97 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     _isSyncing = true;
     try {
       final contacts = await ApiService.fetchAllottedContacts();
+      await _saveAllottedPhoneNumbers(contacts);
       if (contacts.isEmpty) {
         _isSyncing = false;
         return;
       }
 
-      const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
-      
       final List<dynamic>? logs = await channel.invokeMethod('getRecentCallLogs', {'limit': 150});
-      if (logs == null || logs.isEmpty) {
-        _isSyncing = false;
-        return;
-      }
+      final dbHelper = CallLogDatabaseHelper();
 
       final prefs = await SharedPreferences.getInstance();
       final int lastSynced = prefs.getInt('last_synced_call_timestamp') ?? 
           DateTime.now().subtract(const Duration(days: 1)).millisecondsSinceEpoch;
 
-      final List<Map<String, dynamic>> activitiesToSync = [];
       int highestTimestamp = lastSynced;
 
-      for (final log in logs) {
-        if (log is! Map) continue;
-        final int dateMs = log['date'] ?? 0;
-        if (dateMs <= lastSynced) continue;
+      if (logs != null && logs.isNotEmpty) {
+        for (final log in logs) {
+          if (log is! Map) continue;
+          final int dateMs = log['date'] ?? 0;
+          if (dateMs <= lastSynced) continue;
 
-        if (dateMs > highestTimestamp) {
-          highestTimestamp = dateMs;
-        }
-
-        final String rawNumber = log['number'] ?? '';
-        final String logNum = rawNumber.replaceAll(RegExp(r'\D'), '');
-        if (logNum.isEmpty) continue;
-
-        final contact = contacts.firstWhere((c) {
-          final String cNum = c['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
-          return cNum.endsWith(logNum) || logNum.endsWith(cNum);
-        }, orElse: () => null);
-
-        if (contact != null) {
-          final int type = log['type'] ?? 0;
-          int duration = log['duration'] ?? 0;
-          final DateTime calledAt = DateTime.fromMillisecondsSinceEpoch(dateMs);
-
-          String callStatus = 'missed';
-          if (type == 2) {
-            callStatus = duration > 0 ? 'connected' : 'non_connected';
-          } else if (type == 1) {
-            callStatus = duration > 0 ? 'received' : 'missed';
-          } else if (type == 3 || type == 5) {
-            callStatus = 'missed';
-          } else {
-            continue;
+          if (dateMs > highestTimestamp) {
+            highestTimestamp = dateMs;
           }
 
-          if (duration == 0) {
-            final lastEnd = prefs.getInt('last_call_end_time') ?? 0;
-            final lastRing = prefs.getInt('last_call_ringing_duration') ?? 0;
-            if ((dateMs - lastEnd).abs() < 30000) {
-              duration = lastRing;
+          final String rawNumber = log['number'] ?? '';
+          final String logNum = rawNumber.replaceAll(RegExp(r'\D'), '');
+          if (logNum.isEmpty) continue;
+
+          final contact = contacts.firstWhere((c) {
+            final String cNum = c['phone_number'].toString().replaceAll(RegExp(r'\D'), '');
+            return cNum.endsWith(logNum) || logNum.endsWith(cNum);
+          }, orElse: () => null);
+
+          if (contact != null) {
+            final int type = log['type'] ?? 0;
+            int duration = log['duration'] ?? 0;
+            final DateTime calledAt = DateTime.fromMillisecondsSinceEpoch(dateMs);
+
+            String callStatus = 'missed';
+            if (type == 2) {
+              callStatus = duration > 0 ? 'connected' : 'non_connected';
+            } else if (type == 1) {
+              callStatus = duration > 0 ? 'received' : 'missed';
+            } else if (type == 3 || type == 5) {
+              callStatus = 'missed';
             } else {
-              duration = 15; // default fallback ring time
+              continue;
             }
-          }
 
-          activitiesToSync.add({
-            'phoneNumber': rawNumber,
-            'callType': callStatus,
-            'durationSeconds': duration,
-            'timestamp': calledAt.toUtc().toIso8601String(),
-          });
+            if (duration == 0) {
+              final lastEnd = prefs.getInt('last_call_end_time') ?? 0;
+              final lastRing = prefs.getInt('last_call_ringing_duration') ?? 0;
+              if ((dateMs - lastEnd).abs() < 30000) {
+                duration = lastRing;
+              } else {
+                duration = 15; // default fallback ring time
+              }
+            }
+
+            // Insert into SQLite database locally as pending sync
+            await dbHelper.insertPendingSync({
+              'phoneNumber': rawNumber,
+              'callType': callStatus,
+              'durationSeconds': duration,
+              'timestamp': calledAt.toUtc().toIso8601String(),
+            });
+          }
         }
       }
 
-      if (activitiesToSync.isNotEmpty) {
+      // Fetch all unsynced activities from local database
+      final unsyncedLogs = await dbHelper.getUnsyncedLogs();
+
+      if (unsyncedLogs.isNotEmpty) {
+        // Format payload to POST
+        final List<Map<String, dynamic>> activitiesToSync = unsyncedLogs.map((item) {
+          return {
+            'phoneNumber': item['phoneNumber'],
+            'callType': item['callType'],
+            'durationSeconds': item['durationSeconds'],
+            'timestamp': item['timestamp'],
+          };
+        }).toList();
+
         final success = await ApiService.syncCallActivities(activitiesToSync);
         if (success) {
+          final List<int> ids = unsyncedLogs.map((item) => item['id'] as int).toList();
+          await dbHelper.markAsSynced(ids);
           await prefs.setInt('last_synced_call_timestamp', highestTimestamp);
+          await dbHelper.cleanOldLogs();
         }
       }
 
@@ -634,6 +889,19 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
       } else {
         _syncCallLogs();
       }
+
+      // Check system configurations
+      _checkSystemPreferences().then((_) async {
+        final prefs = await SharedPreferences.getInstance();
+        final declinedDialer = prefs.getBool('declined_dialer_role') ?? false;
+        final declinedBattery = prefs.getBool('declined_battery_optimization') ?? false;
+
+        if (!_isDefaultDialer && !declinedDialer && mounted) {
+          _showDialerRoleExplanationDialog();
+        } else if (!_isIgnoringBattery && !declinedBattery && mounted) {
+          _showBatteryOptimizationDialog();
+        }
+      });
     });
 
     _syncTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
@@ -1452,6 +1720,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
 
     try {
       final contacts = await ApiService.fetchAllottedContacts();
+      await _saveAllottedPhoneNumbers(contacts);
       final transfers = await ApiService.fetchTransferRequests();
       final colleagues = await ApiService.fetchColleagues();
 
@@ -2613,6 +2882,8 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
         children: [
           if (_permissionDenied) _buildPermissionWarningBanner(),
           if (_permissionDenied) SizedBox(height: layout.spacing),
+          if (!_isDefaultDialer) _buildDialerWarningBanner(),
+          if (!_isDefaultDialer) SizedBox(height: layout.spacing),
           _buildSimSelectionCard(),
           SizedBox(height: layout.spacing),
           Container(
@@ -2720,6 +2991,14 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (_permissionDenied) ...[
+                      _buildPermissionWarningBanner(),
+                      SizedBox(height: layout.scale(8.0, 12.0)),
+                    ],
+                    if (!_isDefaultDialer) ...[
+                      _buildDialerWarningBanner(),
+                      SizedBox(height: layout.scale(8.0, 12.0)),
+                    ],
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [

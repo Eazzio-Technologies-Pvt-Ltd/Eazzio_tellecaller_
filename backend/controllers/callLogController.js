@@ -815,8 +815,20 @@ exports.syncCallActivities = async (req, res) => {
     return res.status(400).json({ error: 'Activities array is required.' });
   }
 
+  const client = await db.pgPool.connect();
+  const errorHandler = (err) => { console.error('Database client error in syncCallActivities transaction:', err.message); };
+  client.on('error', errorHandler);
+
   try {
-    const contactsRes = await db.query(
+    const store = db.dbStorage.getStore();
+    if (store && store.companyRegNum) {
+      const schemaName = `company_${store.companyRegNum}`;
+      await client.query(`SET search_path TO "${schemaName}", "public"`);
+    } else {
+      await client.query('SET search_path TO "public"');
+    }
+
+    const contactsRes = await client.query(
       'SELECT id, phone_number, created_at FROM contacts WHERE assigned_to = $1 ORDER BY created_at DESC',
       [userId]
     );
@@ -836,6 +848,8 @@ exports.syncCallActivities = async (req, res) => {
 
     let syncedCount = 0;
 
+    await client.query('BEGIN');
+
     for (const activity of activities) {
       const { phoneNumber, callType, durationSeconds, timestamp } = activity;
       if (!phoneNumber || !callType || !timestamp) continue;
@@ -851,7 +865,7 @@ exports.syncCallActivities = async (req, res) => {
 
       // Deduplication check: timestamp (within a 5-second window), duration, phoneNumber
       const targetTimeMs = activityTime.getTime();
-      const existingActivities = await db.query(
+      const existingActivities = await client.query(
         'SELECT id, timestamp FROM call_activities WHERE telecaller_id = $1 AND phone_number = $2 AND duration_seconds = $3',
         [userId, phoneNumber, parseInt(durationSeconds || 0)]
       );
@@ -867,18 +881,35 @@ exports.syncCallActivities = async (req, res) => {
 
       if (isDuplicate) continue;
 
-      await db.query(
+      await client.query(
         `INSERT INTO call_activities (lead_id, telecaller_id, call_type, duration_seconds, phone_number, timestamp)
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [leadId, userId, callType, parseInt(durationSeconds || 0), phoneNumber, activityTime]
       );
+
+      let contactStatus = 'completed';
+      if (callType === 'missed' || callType === 'non_connected' || callType === 'non-connected') {
+        contactStatus = 'missed';
+      }
+
+      await client.query(
+        `UPDATE contacts SET status = $1, last_called_at = $2 WHERE id = $3`,
+        [contactStatus, activityTime, leadId]
+      );
+
       syncedCount++;
     }
 
+    await client.query('COMMIT');
+
     res.status(200).json({ success: true, message: `Successfully synced ${syncedCount} call activities.` });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Sync call activities error:', error);
     res.status(500).json({ error: 'Server error syncing call activities.' });
+  } finally {
+    client.removeListener('error', errorHandler);
+    client.release();
   }
 };
 
