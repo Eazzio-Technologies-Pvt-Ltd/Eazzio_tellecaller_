@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:eazzio_telecaller/services/api_service.dart';
 import 'package:eazzio_telecaller/services/telemetry_service.dart';
@@ -373,7 +373,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                       Center(child: SizedBox(
                         width: _phase == 'loginForm' ? 130 : 190,
                         height: _phase == 'loginForm' ? 130 : 190,
-                        child: Image.asset('assets/logo_light.png', fit: BoxFit.contain))),
+                        child: Image.asset('assets/logo.png', fit: BoxFit.contain))),
                       if (_phase == 'splash' && _spinnerOpacity.value > 0.0) ...[
                         const SizedBox(height: 20),
                         Opacity(opacity: _spinnerOpacity.value,
@@ -389,8 +389,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           padding: EdgeInsets.symmetric(vertical: 12),
                           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                             Text('Made with ', style: TextStyle(color: Color(0xFF6B7280), fontSize: 11)),
-                            Icon(Icons.favorite, color: Colors.red, size: 12),
-                            Text(' by Eazzio Technologies Pvt Ltd', style: TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.bold)),
+                            Text('Eazzio Technologies Pvt Ltd', style: TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.bold)),
                           ])),
                     ],
                   ),
