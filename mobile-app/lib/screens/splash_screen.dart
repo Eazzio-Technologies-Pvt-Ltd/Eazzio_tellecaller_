@@ -5,7 +5,6 @@ import 'package:eazzio_telecaller/services/api_service.dart';
 import 'package:eazzio_telecaller/screens/login_screen.dart';
 import 'package:eazzio_telecaller/screens/dashboard_screen.dart';
 import 'package:eazzio_telecaller/screens/company_admin_dashboard_screen.dart';
-import 'package:eazzio_telecaller/services/layout_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,67 +17,49 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    if (ApiService.isAuthenticated) {
-      Timer(const Duration(milliseconds: 1000), () async {
-        final prefs = await SharedPreferences.getInstance();
-        final role = prefs.getString('user_role') ?? 'telecaller';
-        if (mounted) {
-          if (role == 'admin' || role == 'superadmin') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const CompanyAdminDashboardScreen()),
-            );
-          } else {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const DashboardScreen()),
-            );
+    // Timing configuration (2 seconds splash time)
+    Timer(const Duration(seconds: 2), () async {
+      if (mounted) {
+        if (ApiService.isAuthenticated) {
+          final prefs = await SharedPreferences.getInstance();
+          final role = prefs.getString('user_role') ?? 'telecaller';
+          if (mounted) {
+            if (role == 'admin' || role == 'superadmin') {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const CompanyAdminDashboardScreen()),
+              );
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const DashboardScreen()),
+              );
+            }
           }
-        }
-      });
-    } else {
-      // Instantly go to LoginScreen which plays the splash-to-login transition animation
-      Future.microtask(() {
-        if (mounted) {
+        } else {
           Navigator.pushReplacement(
             context,
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ),
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
           );
         }
-      });
-    }
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final layout = ResponsiveLayout(context);
-    final double logoWidth = layout.scale(380.0 * 0.84, 450.0 * 0.84);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF0A0B10) : Colors.white;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/logo_light.png',
-              width: logoWidth,
-              fit: BoxFit.contain,
-            ),
-            SizedBox(height: layout.scale(32.0, 48.0)),
-            SizedBox(
-              width: layout.scale(24.0, 28.0),
-              height: layout.scale(24.0, 28.0),
-              child: const CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0077B6)),
-              ),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(40.0),
+          child: Image.asset(
+            isDark ? 'assets/logo-dark.png' : 'assets/logo.png',
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );
