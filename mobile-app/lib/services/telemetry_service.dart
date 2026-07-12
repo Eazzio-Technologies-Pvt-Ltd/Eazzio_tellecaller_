@@ -145,7 +145,7 @@ class TelemetryService with WidgetsBindingObserver {
           }
           break;
         case TelemetryState.calling:
-          _talkTime++;
+          // Do not automatically increment talk time; talk time is synced from server as actual call durations
           break;
       }
 

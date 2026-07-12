@@ -259,7 +259,7 @@ exports.recordTelemetryDelta = async (userId) => {
         idleDelta = delta;
       } else if (originalStatus === 'calling') {
         workDelta = delta;
-        callingDelta = delta;
+        // callingDelta = delta; // Removed: do not automatically increment calling/talk time for screen open duration
       } else if (originalStatus === 'break') {
         breakDelta = delta;
       }
@@ -346,7 +346,9 @@ exports.syncTelemetry = async (req, res) => {
         finalWorking  = Math.max(parseInt(current.total_working_time  || 0, 10), clientWorkingTime);
         finalIdle     = Math.max(parseInt(current.total_idle_time     || 0, 10), clientIdleTime);
         finalBreak    = Math.max(parseInt(current.total_break_time    || 0, 10), clientBreakTime);
-        finalCalling  = Math.max(parseInt(current.total_calling_time  || 0, 10), clientCallingTime);
+        // talkTime represents actual call duration and is updated when call logs are created.
+        // We do not reconcile callingTime using client cumulative timer.
+        finalCalling  = parseInt(current.total_calling_time  || 0, 10);
         await db.query(
           `UPDATE telecaller_sessions
            SET total_working_time = $1, total_idle_time = $2, total_break_time = $3, total_calling_time = $4, last_updated_at = CURRENT_TIMESTAMP

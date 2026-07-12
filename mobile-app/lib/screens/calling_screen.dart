@@ -1432,20 +1432,24 @@ class _CallingScreenState extends State<CallingScreen> {
                   currentTry > 1 || _response1Controller.text.isNotEmpty && currentTry != 1,
                   currentTry == 1,
                 ),
-                const SizedBox(height: 10),
-                _buildResponseField(
-                  'RESPONSE 2',
-                  _response2Controller,
-                  currentTry < 2 || (currentTry > 2 && _response2Controller.text.isNotEmpty),
-                  currentTry == 2,
-                ),
-                const SizedBox(height: 10),
-                _buildResponseField(
-                  'RESPONSE 3',
-                  _response3Controller,
-                  currentTry < 3,
-                  currentTry == 3,
-                ),
+                if (currentTry >= 2) ...[
+                  const SizedBox(height: 10),
+                  _buildResponseField(
+                    'RESPONSE 2',
+                    _response2Controller,
+                    currentTry < 2 || (currentTry > 2 && _response2Controller.text.isNotEmpty),
+                    currentTry == 2,
+                  ),
+                ],
+                if (currentTry >= 3) ...[
+                  const SizedBox(height: 10),
+                  _buildResponseField(
+                    'RESPONSE 3',
+                    _response3Controller,
+                    currentTry < 3,
+                    currentTry == 3,
+                  ),
+                ],
               ],
             );
           }),

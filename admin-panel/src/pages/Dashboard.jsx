@@ -149,13 +149,8 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
   const isFirstLoadNotificationsRef = useRef(true);
 
   const triggerToast = (message, type) => {
-    const id = Date.now() + Math.random().toString(36).substring(2, 9);
-    setToasts(prev => [...prev, { id, message, type }]);
-    
-    // Automatically remove after 6 seconds
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 6000);
+    // Toast popups are disabled per user request
+    return;
   };
 
   const [activeRecordingUrl, setActiveRecordingUrl] = useState(null);
@@ -329,7 +324,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
               const msgLower = n.message.toLowerCase();
               if (msgLower.includes('online') || msgLower.includes('offline')) {
                 const toastType = msgLower.includes('online') ? 'success' : 'warning';
-                triggerToast(n.message, toastType);
+                // triggerToast(n.message, toastType); // Disabled pop notifications per user request
               }
             }
           });
@@ -342,7 +337,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
               const msgLower = n.message.toLowerCase();
               if (msgLower.includes('online') || msgLower.includes('offline')) {
                 const toastType = msgLower.includes('online') ? 'success' : 'warning';
-                triggerToast(n.message, toastType);
+                // triggerToast(n.message, toastType); // Disabled pop notifications per user request
               }
             });
           }
@@ -409,7 +404,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             const msgLower = newNotification.message.toLowerCase();
             if (msgLower.includes('online') || msgLower.includes('offline')) {
               const toastType = msgLower.includes('online') ? 'success' : 'warning';
-              triggerToast(newNotification.message, toastType);
+              // triggerToast(newNotification.message, toastType); // Disabled pop notifications per user request
             }
           }
         }
@@ -702,7 +697,8 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
           </table>
         </div>
 
-        {/* Toast Notification Container */}
+        {/* Toast Notification Container - Disabled per user request */}
+        {/*
         <div className="toast-container">
           {toasts.map(toast => (
             <div key={toast.id} className={`toast-item toast-${toast.type}`}>
@@ -720,6 +716,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             </div>
           ))}
         </div>
+        */}
       </div>
     );
   }
@@ -1773,7 +1770,8 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
         </>
       )}
 
-      {/* Toast Notification Container */}
+      {/* Toast Notification Container - Disabled per user request */}
+      {/*
       <div className="toast-container">
         {toasts.map(toast => (
           <div key={toast.id} className={`toast-item toast-${toast.type}`}>
@@ -1791,6 +1789,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
           </div>
         ))}
       </div>
+      */}
     </div>
   );
 };
