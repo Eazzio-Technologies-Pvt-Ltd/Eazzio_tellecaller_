@@ -1371,7 +1371,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
               children: [
                 const Icon(Icons.campaign_rounded, color: Color(0xFF6366F1), size: 22),
                 const SizedBox(width: 8),
-                Text('My Campaign', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 17)),
+                Text(createNew ? 'My Campaign' : 'Company Admin', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 17)),
               ],
             ),
             content: SingleChildScrollView(
