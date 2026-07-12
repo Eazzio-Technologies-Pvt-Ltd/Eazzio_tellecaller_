@@ -175,7 +175,7 @@ class MainActivity: FlutterActivity() {
                         val phoneAccounts = telecomManager.callCapablePhoneAccounts
                         var targetAccountHandle: android.telecom.PhoneAccountHandle? = null
 
-                        if (subId != null) {
+                        if (subId != null && subId != -1) {
                             for (handle in phoneAccounts) {
                                 if (handle.id.contains(subId.toString())) {
                                     targetAccountHandle = handle
@@ -201,9 +201,11 @@ class MainActivity: FlutterActivity() {
                         }
                     }
                     
-                    intent.putExtra("com.android.phone.extra.slot", slotIndex ?: 0)
-                    intent.putExtra("simSlot", slotIndex ?: 0)
-                    if (subId != null) {
+                    if (slotIndex != null) {
+                        intent.putExtra("com.android.phone.extra.slot", slotIndex)
+                        intent.putExtra("simSlot", slotIndex)
+                    }
+                    if (subId != null && subId != -1) {
                         intent.putExtra("subscription", subId)
                     }
 

@@ -75,21 +75,22 @@ class CallService {
 
   // Dial a phone number using physical SIM dialer
   Future<bool> dialNumber(String phoneNumber) async {
-    if (selectedSlotIndex != null) {
-      try {
-        const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
-        print('Dialing using selected SIM slot: $selectedSlotIndex (Subscription: $selectedSubscriptionId)');
-        final bool result = await channel.invokeMethod('dialWithSim', {
-          'phoneNumber': phoneNumber,
-          'slotIndex': selectedSlotIndex,
-          'subscriptionId': selectedSubscriptionId,
-        }) ?? false;
-        return result;
-      } catch (e) {
-        print('Native SIM dialer failed, falling back to default dialer: $e');
-      }
+    // Always attempt dialing via the native platform channel (using Intent.ACTION_CALL)
+    // to bypass activity-level intent filters (e.g. DIAL/VIEW) and prevent loopback.
+    try {
+      const channel = MethodChannel('com.eazzio.eazzio_telecaller/app_control');
+      print('Dialing using platform channel: slot=$selectedSlotIndex (Subscription: $selectedSubscriptionId)');
+      final bool result = await channel.invokeMethod('dialWithSim', {
+        'phoneNumber': phoneNumber,
+        'slotIndex': selectedSlotIndex,
+        'subscriptionId': selectedSubscriptionId,
+      }) ?? false;
+      return result;
+    } catch (e) {
+      print('Native dialer via platform channel failed, falling back to launchUrl: $e');
     }
 
+    // Fallback: Use standard URL launching if native dialing channel fails
     final String cleanNumber = phoneNumber.replaceAll(RegExp(r'\s+\b'), '');
     final Uri telUri = Uri(scheme: 'tel', path: cleanNumber);
     
