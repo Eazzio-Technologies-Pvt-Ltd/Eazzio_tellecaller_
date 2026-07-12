@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:eazzio_telecaller/services/api_service.dart';
 import 'package:eazzio_telecaller/services/telemetry_service.dart';
@@ -8,12 +8,11 @@ import 'package:eazzio_telecaller/services/layout_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -24,12 +23,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   bool _isAdminMode = false;
   bool _obscurePassword = true;
   String? _errorMessage;
+  // 'splash' | 'roleSelect' | 'loginForm'
+  String _phase = 'splash';
 
-  late AnimationController _animationController;
+  late AnimationController _splashCtrl;
+  late AnimationController _roleCtrl;
+  late AnimationController _formCtrl;
   late Animation<double> _spinnerOpacity;
-  late Animation<double> _bgTransition;
-  late Animation<double> _cardOpacity;
-  late Animation<double> _logoMove;
+  late Animation<double> _roleOpacity;
+  late Animation<double> _formSlide;
+  late Animation<double> _formOpacity;
 
   @override
   void initState() {
@@ -38,1008 +41,361 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _companyRegController.addListener(() {
       if (!_companyRegController.text.startsWith('EAZ-')) {
         _companyRegController.value = const TextEditingValue(
-          text: 'EAZ-',
-          selection: TextSelection.collapsed(offset: 4),
-        );
+          text: 'EAZ-', selection: TextSelection.collapsed(offset: 4));
       }
     });
-
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2600),
-    );
-
-    // Spinner fades out (1.2s → 1.5s)
+    _splashCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
+    _roleCtrl   = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
+    _formCtrl   = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
     _spinnerOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.46, 0.58, curve: Curves.easeOut),
-      ),
-    );
-
-    // Background fades from white → themed (1.4s → 1.9s)
-    _bgTransition = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.54, 0.73, curve: Curves.easeInOut),
-      ),
-    );
-
-    // Logo moves slowly from center → top (1.5s → 2.1s)
-    _logoMove = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.58, 0.81, curve: Curves.easeInOutCubic),
-      ),
-    );
-
-    // Form card fades in after logo finishes (2.1s → 2.6s)
-    _cardOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.81, 1.00, curve: Curves.easeOut),
-      ),
-    );
-
-    _animationController.forward();
+      CurvedAnimation(parent: _splashCtrl, curve: const Interval(0.55, 0.85, curve: Curves.easeOut)));
+    _roleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _roleCtrl, curve: Curves.easeOut));
+    _formSlide = Tween<double>(begin: 50.0, end: 0.0).animate(
+      CurvedAnimation(parent: _formCtrl, curve: Curves.easeOutCubic));
+    _formOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _formCtrl, curve: Curves.easeOut));
+    _splashCtrl.forward().then((_) {
+      setState(() => _phase = 'roleSelect');
+      _roleCtrl.forward();
+    });
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _phoneController.dispose();
-    _companyRegController.dispose();
-    _passwordController.dispose();
-    _animationController.dispose();
+    _emailController.dispose(); _phoneController.dispose();
+    _companyRegController.dispose(); _passwordController.dispose();
+    _splashCtrl.dispose(); _roleCtrl.dispose(); _formCtrl.dispose();
     super.dispose();
+  }
+
+  void _selectRole(bool isAdmin) {
+    setState(() { _isAdminMode = isAdmin; _errorMessage = null; _phase = 'loginForm'; });
+    _formCtrl.forward(from: 0.0);
+  }
+
+  void _backToRoleSelect() {
+    _formCtrl.reverse().then((_) => setState(() { _phase = 'roleSelect'; _errorMessage = null; }));
   }
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
+    setState(() { _isLoading = true; _errorMessage = null; });
     try {
       final result = _isAdminMode
-          ? await ApiService.login(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-            )
-          : await ApiService.login(
-              email: _phoneController.text.trim(),
-              companyRegNum: _companyRegController.text.trim(),
-            );
-
+          ? await ApiService.login(email: _emailController.text.trim(), password: _passwordController.text)
+          : await ApiService.login(email: _phoneController.text.trim(), companyRegNum: _companyRegController.text.trim());
       if (result['success'] == true) {
         final role = result['user']['role'];
-        if (_isAdminMode) {
-          if (role != 'admin' && role != 'superadmin') {
-            setState(() {
-              _errorMessage = "Access Denied: Only administrators can access this section.";
-              _isLoading = false;
-            });
-            await ApiService.logout();
-            return;
-          }
-        } else {
-          if (role != 'telecaller') {
-            setState(() {
-              _errorMessage = "Access Denied: Only telecallers can access this mobile app.";
-              _isLoading = false;
-            });
-            await ApiService.logout();
-            return;
-          }
+        if (_isAdminMode && role != 'admin' && role != 'superadmin') {
+          setState(() { _errorMessage = "Access Denied: Only administrators can access this section."; _isLoading = false; });
+          await ApiService.logout(); return;
         }
-
+        if (!_isAdminMode && role != 'telecaller') {
+          setState(() { _errorMessage = "Access Denied: Only telecallers can access this mobile app."; _isLoading = false; });
+          await ApiService.logout(); return;
+        }
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_role', role);
-        if (result['user'] != null && result['user']['id'] != null) {
-          await prefs.setInt('user_id', result['user']['id']);
-        }
-
+        if (result['user']?['id'] != null) await prefs.setInt('user_id', result['user']['id']);
         if (role == 'telecaller') {
           TelemetryService().startSession();
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const DashboardScreen()),
-            );
-          }
+          if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const DashboardScreen()));
         } else {
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const CompanyAdminDashboardScreen()),
-            );
-          }
+          if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const CompanyAdminDashboardScreen()));
         }
       } else {
-        setState(() {
-          _errorMessage = result['error'] ?? 'Login failed. Please check credentials.';
-          _isLoading = false;
-        });
+        setState(() { _errorMessage = result['error'] ?? 'Login failed.'; _isLoading = false; });
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'An error occurred: $e';
-        _isLoading = false;
-      });
+      setState(() { _errorMessage = 'An error occurred: $e'; _isLoading = false; });
     }
   }
 
   Future<void> _showForgotPasswordDialog() async {
-    final emailController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    bool isDialogLoading = false;
-
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        const isDark = false;
-        final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
-        final textColor = isDark ? Colors.white : const Color(0xFF111827);
-        final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
-        final fieldFillColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF3F4F6);
-        final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
-
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: cardColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text(
-                'Reset Admin Password',
-                style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 20),
-              ),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Enter your registered admin email address. We will send you a 6-digit OTP code to verify your identity.',
-                      style: TextStyle(color: subtextColor, fontSize: 13, height: 1.4),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      style: TextStyle(color: textColor, fontSize: 14),
-                      decoration: InputDecoration(
-                        labelText: 'Admin Email',
-                        labelStyle: TextStyle(color: subtextColor, fontSize: 13),
-                        prefixIcon: Icon(Icons.email_outlined, color: subtextColor, size: 20),
-                        filled: true,
-                        fillColor: fieldFillColor,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter your email';
-                        }
-                        if (!value.contains('@')) {
-                          return 'Please enter a valid email';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isDialogLoading ? null : () => Navigator.pop(context),
-                  child: Text('Cancel', style: TextStyle(color: subtextColor)),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: isDialogLoading
-                      ? null
-                      : () async {
-                          if (!formKey.currentState!.validate()) return;
-                          
-                          setDialogState(() {
-                            isDialogLoading = true;
-                          });
-
-                          final email = emailController.text.trim();
-                          final res = await ApiService.forgotPassword(email);
-
-                          if (res['success'] == true) {
-                            if (context.mounted) {
-                              Navigator.pop(context); // Close email dialog
-                              _showResetPasswordDialog(email); // Open reset password dialog
-                            }
-                          } else {
-                            setDialogState(() {
-                              isDialogLoading = false;
-                            });
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(res['error'] ?? 'Failed to send OTP.'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                  child: isDialogLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Text('Send OTP', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+    final emailCtrl = TextEditingController();
+    final fKey = GlobalKey<FormState>();
+    bool loading = false;
+    showDialog(context: context, barrierDismissible: true, builder: (ctx) {
+      return StatefulBuilder(builder: (ctx, setS) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Reset Admin Password', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Form(key: fKey, child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Enter your registered admin email. We will send a 6-digit OTP.', style: TextStyle(fontSize: 13)),
+          const SizedBox(height: 14),
+          TextFormField(
+            controller: emailCtrl, keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(labelText: 'Admin Email', prefixIcon: Icon(Icons.email_outlined), border: OutlineInputBorder()),
+            validator: (v) => (v == null || v.trim().isEmpty || !v.contains('@')) ? 'Enter a valid email' : null),
+        ])),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
+            onPressed: loading ? null : () async {
+              if (!fKey.currentState!.validate()) return;
+              setS(() => loading = true);
+              final res = await ApiService.forgotPassword(emailCtrl.text.trim());
+              if (res['success'] == true) {
+                if (ctx.mounted) { Navigator.pop(ctx); _showResetPasswordDialog(emailCtrl.text.trim()); }
+              } else {
+                setS(() => loading = false);
+                if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(res['error'] ?? 'Failed'), backgroundColor: Colors.red));
+              }
+            },
+            child: loading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Send OTP', style: TextStyle(color: Colors.white))),
+        ]));
+    });
   }
 
   Future<void> _showResetPasswordDialog(String email) async {
-    final otpController = TextEditingController();
-    final passwordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    bool isDialogLoading = false;
-    bool obscurePassword = true;
+    final otpCtrl = TextEditingController();
+    final pwCtrl = TextEditingController();
+    final cpwCtrl = TextEditingController();
+    final fKey = GlobalKey<FormState>();
+    bool loading = false;
+    bool obscure = true;
+    showDialog(context: context, barrierDismissible: false, builder: (ctx) {
+      return StatefulBuilder(builder: (ctx, setS) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('OTP & New Password', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(child: Form(key: fKey, child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('OTP sent to $email', style: const TextStyle(fontSize: 13)), const SizedBox(height: 12),
+          TextFormField(controller: otpCtrl, keyboardType: TextInputType.number, maxLength: 6, decoration: const InputDecoration(labelText: '6-Digit OTP', prefixIcon: Icon(Icons.security_outlined), counterText: '', border: OutlineInputBorder()), validator: (v) => (v == null || v.length != 6) ? 'Enter 6-digit OTP' : null),
+          const SizedBox(height: 10),
+          TextFormField(controller: pwCtrl, obscureText: obscure, decoration: InputDecoration(labelText: 'New Password', prefixIcon: const Icon(Icons.lock_outline), suffixIcon: IconButton(icon: Icon(obscure ? Icons.visibility_off : Icons.visibility), onPressed: () => setS(() => obscure = !obscure)), border: const OutlineInputBorder()), validator: (v) => (v == null || v.length < 6) ? 'Min 6 characters' : null),
+          const SizedBox(height: 10),
+          TextFormField(controller: cpwCtrl, obscureText: obscure, decoration: const InputDecoration(labelText: 'Confirm Password', prefixIcon: Icon(Icons.lock_outline), border: OutlineInputBorder()), validator: (v) => v != pwCtrl.text ? 'Passwords do not match' : null),
+        ]))),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
+            onPressed: loading ? null : () async {
+              if (!fKey.currentState!.validate()) return;
+              setS(() => loading = true);
+              final res = await ApiService.resetPassword(email: email, otp: otpCtrl.text.trim(), newPassword: pwCtrl.text.trim());
+              if (res['success'] == true) {
+                if (ctx.mounted) { Navigator.pop(ctx); ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Password reset!'), backgroundColor: Colors.green)); }
+              } else {
+                setS(() => loading = false);
+                if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(res['error'] ?? 'Failed'), backgroundColor: Colors.red));
+              }
+            },
+            child: loading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Reset Password', style: TextStyle(color: Colors.white))),
+        ]));
+    });
+  }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        const isDark = false;
-        final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
-        final textColor = isDark ? Colors.white : const Color(0xFF111827);
-        final subtextColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF4B5563);
-        final fieldFillColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF3F4F6);
-        final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
+  InputDecoration _field(String label, IconData icon, {String? hint}) => InputDecoration(
+    labelText: label, hintText: hint,
+    hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
+    prefixIcon: Icon(icon, color: const Color(0xFF6B7280), size: 20),
+    filled: true, fillColor: const Color(0xFFF3F4F6),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5)),
+  );
 
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: cardColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text(
-                'Enter OTP & New Password',
-                style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 20),
-              ),
-              content: SingleChildScrollView(
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'A 6-digit OTP code has been sent to $email. Enter the code and set your new password.',
-                        style: TextStyle(color: subtextColor, fontSize: 13, height: 1.4),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // OTP Field
-                      TextFormField(
-                        controller: otpController,
-                        keyboardType: TextInputType.number,
-                        maxLength: 6,
-                        style: TextStyle(color: textColor, fontSize: 14),
-                        decoration: InputDecoration(
-                          labelText: '6-Digit OTP Code',
-                          labelStyle: TextStyle(color: subtextColor, fontSize: 13),
-                          prefixIcon: Icon(Icons.security_outlined, color: subtextColor, size: 20),
-                          filled: true,
-                          fillColor: fieldFillColor,
-                          counterText: '',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().length != 6) {
-                            return 'Please enter 6-digit OTP code';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
+  Widget _roleCard({required String label, required String subtitle, required IconData icon, required Color bg, required Color fg, required VoidCallback onTap}) {
+    return Expanded(child: GestureDetector(onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 14),
+        decoration: BoxDecoration(
+          color: Colors.white, borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE5E7EB), width: 1.5),
+          boxShadow: [BoxShadow(color: fg.withOpacity(0.08), blurRadius: 16, offset: const Offset(0, 4))]),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 64, height: 64, decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+            child: Icon(icon, color: fg, size: 30)),
+          const SizedBox(height: 14),
+          Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF111827), height: 1.3)),
+          const SizedBox(height: 4),
+          Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+        ]))));
+  }
 
-                      // New Password Field
-                      TextFormField(
-                        controller: passwordController,
-                        obscureText: obscurePassword,
-                        style: TextStyle(color: textColor, fontSize: 14),
-                        decoration: InputDecoration(
-                          labelText: 'New Password',
-                          labelStyle: TextStyle(color: subtextColor, fontSize: 13),
-                          prefixIcon: Icon(Icons.lock_outline, color: subtextColor, size: 20),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              obscurePassword ? Icons.visibility_off : Icons.visibility,
-                              color: subtextColor,
-                              size: 20,
-                            ),
-                            onPressed: () {
-                              setDialogState(() {
-                                obscurePassword = !obscurePassword;
-                              });
-                            },
-                          ),
-                          filled: true,
-                          fillColor: fieldFillColor,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().length < 6) {
-                            return 'Password must be at least 6 characters';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
+  Widget _buildRoleSelect() {
+    return Opacity(opacity: _roleOpacity.value, child: Column(children: [
+      const SizedBox(height: 28),
+      const Text('Welcome Back', textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
+      const SizedBox(height: 6),
+      const Text('Select your account type to continue', textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+      const SizedBox(height: 32),
+      Row(children: [
+        _roleCard(label: 'Telecaller\nLogin', subtitle: 'Dialer workspace',
+          icon: Icons.headset_mic_rounded, bg: const Color(0xFFEEF2FF), fg: const Color(0xFF6366F1),
+          onTap: () => _selectRole(false)),
+        const SizedBox(width: 16),
+        _roleCard(label: 'Company\nAdmin Login', subtitle: 'Manage your team',
+          icon: Icons.admin_panel_settings_rounded, bg: const Color(0xFFF0FDF4), fg: const Color(0xFF10B981),
+          onTap: () => _selectRole(true)),
+      ]),
+    ]));
+  }
 
-                      // Confirm Password Field
-                      TextFormField(
-                        controller: confirmPasswordController,
-                        obscureText: obscurePassword,
-                        style: TextStyle(color: textColor, fontSize: 14),
-                        decoration: InputDecoration(
-                          labelText: 'Confirm New Password',
-                          labelStyle: TextStyle(color: subtextColor, fontSize: 13),
-                          prefixIcon: Icon(Icons.lock_outline, color: subtextColor, size: 20),
-                          filled: true,
-                          fillColor: fieldFillColor,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value != passwordController.text) {
-                            return 'Passwords do not match';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isDialogLoading ? null : () => Navigator.pop(context),
-                  child: Text('Cancel', style: TextStyle(color: subtextColor)),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: isDialogLoading
-                      ? null
-                      : () async {
-                          if (!formKey.currentState!.validate()) return;
-                          
-                          setDialogState(() {
-                            isDialogLoading = true;
-                          });
-
-                          final res = await ApiService.resetPassword(
-                            email: email,
-                            otp: otpController.text.trim(),
-                            newPassword: passwordController.text.trim(),
-                          );
-
-                          if (res['success'] == true) {
-                            if (context.mounted) {
-                              Navigator.pop(context); // Close reset dialog
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(res['message'] ?? 'Password reset successfully.'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            }
-                          } else {
-                            setDialogState(() {
-                              isDialogLoading = false;
-                            });
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(res['error'] ?? 'Failed to reset password.'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                  child: isDialogLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Text('Reset Password', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
+  Widget _buildLoginForm() {
+    final accentColor = _isAdminMode ? const Color(0xFF10B981) : const Color(0xFF6366F1);
+    return Transform.translate(
+      offset: Offset(0, _formSlide.value),
+      child: Opacity(opacity: _formOpacity.value, child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 12),
+          Row(children: [
+            GestureDetector(
+              onTap: _backToRoleSelect,
+              child: Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE5E7EB))),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, size: 15, color: Color(0xFF6B7280)))),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: accentColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(_isAdminMode ? Icons.admin_panel_settings_rounded : Icons.headset_mic_rounded, size: 14, color: accentColor),
+                const SizedBox(width: 6),
+                Text(_isAdminMode ? 'Company Admin' : 'Telecaller',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: accentColor)),
+              ])),
+          ]),
+          const SizedBox(height: 14),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white, borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: accentColor.withOpacity(0.3), width: 2),
+              boxShadow: [BoxShadow(color: accentColor.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))]),
+            padding: const EdgeInsets.all(20),
+            child: Form(key: _formKey, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_isAdminMode ? 'Admin Sign In' : 'Telecaller Sign In',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
+              const SizedBox(height: 4),
+              Text(_isAdminMode ? 'Email & password' : 'Company code & mobile',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(color: const Color(0x26EF4444), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0x59EF4444))),
+                  child: Row(children: [
+                    const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_errorMessage!, style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12, fontWeight: FontWeight.w500))),
+                  ])),
               ],
-            );
-          },
-        );
-      },
-    );
+              const SizedBox(height: 18),
+              if (!_isAdminMode) ...[
+                TextFormField(
+                  controller: _companyRegController, keyboardType: TextInputType.text,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: _field('Company Registration Code', Icons.business_sharp, hint: 'e.g. EAZ-123456'),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty || v.trim() == 'EAZ-') return 'Please enter Company Registration Code';
+                    if (!v.trim().toUpperCase().startsWith('EAZ-')) return 'Must start with EAZ-';
+                    return null;
+                  }),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _phoneController, keyboardType: TextInputType.phone,
+                  decoration: _field('Registered Mobile Number', Icons.phone, hint: 'e.g. 9876543210'),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Please enter your mobile number';
+                    if (v.trim().length < 8) return 'Enter a valid mobile number';
+                    return null;
+                  }),
+              ] else ...[
+                TextFormField(
+                  controller: _emailController, keyboardType: TextInputType.emailAddress,
+                  decoration: _field('Admin Email', Icons.email, hint: 'admin@company.com'),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Please enter email';
+                    if (!v.contains('@')) return 'Enter a valid email';
+                    return null;
+                  }),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _passwordController, obscureText: _obscurePassword,
+                  decoration: _field('Password', Icons.lock).copyWith(
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off, color: const Color(0xFF6B7280), size: 20),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword))),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter password' : null),
+                const SizedBox(height: 2),
+                Align(alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _showForgotPasswordDialog,
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                    child: const Text('Forgot Password?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6366F1))))),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _handleLogin,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: accentColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0),
+                  child: _isLoading
+                      ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text(_isAdminMode ? 'Access Admin Dashboard' : 'Access Dialer Workspace',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)))),
+            ])),
+          ),
+        ])));
   }
 
   @override
   Widget build(BuildContext context) {
-    const isDark = false;
-    final textColor = isDark ? Colors.white : const Color(0xFF111827);
-    final labelColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
-    final fieldFillColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF3F4F6);
-    final bgColor = isDark ? const Color(0xFF0A0B10) : const Color(0xFFF3F4F6);
-    final cardColor = isDark ? const Color(0xFF12131A) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF222435) : const Color(0xFFE5E7EB);
-
+    final layout = ResponsiveLayout(context);
     return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, child) {
-        final layout = ResponsiveLayout(context);
-        final activeBgColor = Color.lerp(Colors.white, bgColor, _bgTransition.value)!;
-
+      animation: Listenable.merge([_splashCtrl, _roleCtrl, _formCtrl]),
+      builder: (context, _) {
         return Scaffold(
-          backgroundColor: activeBgColor,
+          backgroundColor: const Color(0xFFF3F4F6),
           resizeToAvoidBottomInset: true,
           body: SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final double availableHeight = constraints.maxHeight;
-
-                // Dynamically scale logo size down from splash to login mode to fit all screen sizes compactly
-                final double splashLogoSize = (availableHeight * 0.50).clamp(260.0, 380.0);
-                final double loginLogoSize = (availableHeight * 0.36).clamp(180.0, 245.0);
-                final double logoSize = splashLogoSize + (loginLogoSize - splashLogoSize) * _logoMove.value;
-
-                // Splash: logo vertically centered. Login: logo at top with small margin.
-                final double finalTopMargin = layout.scale(12.0, 18.0);
-                final double splashTopMargin = ((availableHeight - splashLogoSize) / 2.0 - layout.scale(24.0, 36.0)).clamp(finalTopMargin, availableHeight * 0.32);
-                // Interpolate from splash center position → top
-                final double currentTopMargin = splashTopMargin + (finalTopMargin - splashTopMargin) * _logoMove.value;
-
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: availableHeight),
-                    child: IntrinsicHeight(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: layout.scale(14.0, 20.0)),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                        // Animated spacer — centers logo on splash, shrinks after
-                        SizedBox(height: currentTopMargin),
-
-                        // Big logo — same size throughout, only position changes
-                        Center(
-                          child: SizedBox(
-                            width: logoSize,
-                            height: logoSize,
-                            child: Image.asset(
-                              isDark ? 'assets/logo.png' : 'assets/logo_light.png',
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
-
-                        // Spinner (splash only, fades out)
-                        if (_spinnerOpacity.value > 0.0) ...[
-                          SizedBox(height: layout.scale(12.0, 18.0) * _spinnerOpacity.value),
-                          Opacity(
-                            opacity: _spinnerOpacity.value,
-                            child: Center(
-                              child: SizedBox(
-                                width: layout.scale(20.0, 24.0),
-                                height: layout.scale(20.0, 24.0),
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.0,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Theme.of(context).primaryColor,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-
-                        // ── Form Card — Compact ──
-                        if (_cardOpacity.value > 0.0) ...[
-                          SizedBox(height: layout.scale(4.0, 8.0)),
-                          Opacity(
-                            opacity: _cardOpacity.value,
-                            child: Container(
-                              margin: EdgeInsets.only(bottom: layout.scale(4.0, 8.0)),
-                                decoration: BoxDecoration(
-                                  color: cardColor,
-                                  borderRadius: BorderRadius.circular(layout.scale(16.0, 20.0)),
-                                  border: Border.all(
-                                    color: isDark ? borderColor : const Color(0xFF6366F1).withOpacity(0.3),
-                                    width: isDark ? 1 : 2,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF6366F1).withOpacity(isDark ? 0.03 : 0.06),
-                                      blurRadius: isDark ? 4 : 8,
-                                      offset: isDark ? const Offset(0, 2) : const Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: layout.scale(18.0, 22.0),
-                                  vertical: layout.scale(18.0, 22.0),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // ── Header ──
-                                    Text(
-                                      'Welcome Back',
-                                      style: TextStyle(
-                                        fontSize: layout.scale(20.0, 24.0),
-                                        fontWeight: FontWeight.bold,
-                                        color: textColor,
-                                      ),
-                                    ),
-                                    SizedBox(height: layout.scale(4.0, 6.0)),
-                                    Text(
-                                      'Sign in to continue',
-                                      style: TextStyle(
-                                        fontSize: layout.scale(13.0, 15.0),
-                                        color: labelColor,
-                                      ),
-                                    ),
-
-                                    // Spacing before toggle
-                                    SizedBox(height: layout.scale(12.0, 16.0)),
-
-                                    // Tab toggle between Telecaller and Company Admin
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: fieldFillColor,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: GestureDetector(
-                                              onTap: () {
-                                                setState(() {
-                                                  _isAdminMode = false;
-                                                  _errorMessage = null;
-                                                });
-                                              },
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                                decoration: BoxDecoration(
-                                                  color: !_isAdminMode ? Theme.of(context).primaryColor : Colors.transparent,
-                                                  borderRadius: BorderRadius.circular(10),
-                                                ),
-                                                alignment: Alignment.center,
-                                                child: Text(
-                                                  'Telecaller',
-                                                  style: TextStyle(
-                                                    color: !_isAdminMode ? Colors.white : labelColor,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: layout.scale(12.0, 14.0),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            child: GestureDetector(
-                                              onTap: () {
-                                                setState(() {
-                                                  _isAdminMode = true;
-                                                  _errorMessage = null;
-                                                });
-                                              },
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                                decoration: BoxDecoration(
-                                                  color: _isAdminMode ? Theme.of(context).primaryColor : Colors.transparent,
-                                                  borderRadius: BorderRadius.circular(10),
-                                                ),
-                                                alignment: Alignment.center,
-                                                child: Text(
-                                                  'Company Admin',
-                                                  style: TextStyle(
-                                                    color: _isAdminMode ? Colors.white : labelColor,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: layout.scale(12.0, 14.0),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    // Error Banner
-                                    if (_errorMessage != null) ...[
-                                      SizedBox(height: layout.scale(10.0, 14.0)),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: layout.scale(10.0, 12.0),
-                                          vertical: layout.scale(8.0, 10.0),
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0x26EF4444),
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(color: const Color(0x59EF4444)),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.error_outline, color: const Color(0xFFEF4444), size: layout.scale(15.0, 18.0)),
-                                            SizedBox(width: layout.scale(8.0, 10.0)),
-                                            Expanded(
-                                              child: Text(
-                                                _errorMessage!,
-                                                style: TextStyle(
-                                                  color: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
-                                                  fontSize: layout.scale(11.0, 13.0),
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-
-                                    // Spacer
-                                    SizedBox(height: layout.scale(12.0, 16.0)),
-
-                                    if (!_isAdminMode) ...[
-                                      // ── Field 1: Company Registration Code ──
-                                      TextFormField(
-                                        controller: _companyRegController,
-                                        style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
-                                        keyboardType: TextInputType.text,
-                                        textCapitalization: TextCapitalization.characters,
-                                        decoration: InputDecoration(
-                                          labelText: 'Company Registration Code',
-                                          labelStyle: TextStyle(color: labelColor, fontSize: layout.scale(13.0, 15.0)),
-                                          hintText: 'e.g. EAZ-123456',
-                                          hintStyle: TextStyle(color: const Color(0xFF9CA3AF), fontSize: layout.scale(11.0, 13.0)),
-                                          prefixIcon: Icon(Icons.business_sharp, color: labelColor, size: layout.scale(20.0, 24.0)),
-                                          filled: true,
-                                          fillColor: fieldFillColor,
-                                          isDense: false,
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: layout.scale(14.0, 16.0),
-                                            vertical: layout.scale(16.0, 18.0),
-                                          ),
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
-                                          ),
-                                        ),
-                                        validator: (value) {
-                                          if (value == null || value.trim().isEmpty || value.trim() == 'EAZ-') {
-                                            return 'Please enter Company Registration Code';
-                                          }
-                                          if (!value.trim().toUpperCase().startsWith('EAZ-')) {
-                                            return 'Must start with EAZ- Prefix';
-                                          }
-                                          return null;
-                                        },
-                                      ),
-
-                                      // Spacing between registration and mobile number fields
-                                      SizedBox(height: layout.scale(12.0, 16.0)),
-
-                                      // ── Field 2: Registered Mobile Number ──
-                                      TextFormField(
-                                        controller: _phoneController,
-                                        style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
-                                        key: const ValueKey('phone_field'),
-                                        keyboardType: TextInputType.phone,
-                                        decoration: InputDecoration(
-                                          labelText: 'Registered Mobile Number',
-                                          labelStyle: TextStyle(color: labelColor, fontSize: layout.scale(13.0, 15.0)),
-                                          hintText: 'e.g. 9876543210',
-                                          hintStyle: TextStyle(color: const Color(0xFF9CA3AF), fontSize: layout.scale(11.0, 13.0)),
-                                          prefixIcon: Icon(Icons.phone, color: labelColor, size: layout.scale(20.0, 24.0)),
-                                          filled: true,
-                                          fillColor: fieldFillColor,
-                                          isDense: false,
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: layout.scale(14.0, 16.0),
-                                            vertical: layout.scale(16.0, 18.0),
-                                          ),
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
-                                          ),
-                                        ),
-                                        validator: (value) {
-                                          if (value == null || value.trim().isEmpty) {
-                                            return 'Please enter your registered mobile number';
-                                          }
-                                          if (value.trim().length < 8) {
-                                            return 'Please enter a valid mobile number';
-                                          }
-                                          return null;
-                                        },
-                                      ),
-                                    ] else ...[
-                                      // ── Field 1: Admin Email ──
-                                      TextFormField(
-                                        controller: _emailController,
-                                        style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
-                                        key: const ValueKey('email_field'),
-                                        keyboardType: TextInputType.emailAddress,
-                                        decoration: InputDecoration(
-                                          labelText: 'Admin Email',
-                                          labelStyle: TextStyle(color: labelColor, fontSize: layout.scale(13.0, 15.0)),
-                                          hintText: 'e.g. admin@company.com',
-                                          hintStyle: TextStyle(color: const Color(0xFF9CA3AF), fontSize: layout.scale(11.0, 13.0)),
-                                          prefixIcon: Icon(Icons.email, color: labelColor, size: layout.scale(20.0, 24.0)),
-                                          filled: true,
-                                          fillColor: fieldFillColor,
-                                          isDense: false,
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: layout.scale(14.0, 16.0),
-                                            vertical: layout.scale(16.0, 18.0),
-                                          ),
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
-                                          ),
-                                        ),
-                                        validator: (value) {
-                                          if (value == null || value.trim().isEmpty) {
-                                            return 'Please enter registered email';
-                                          }
-                                          if (!value.contains('@')) {
-                                            return 'Please enter a valid email address';
-                                          }
-                                          return null;
-                                        },
-                                      ),
-
-                                      // Spacing between email and password
-                                      SizedBox(height: layout.scale(12.0, 16.0)),
-
-                                      // ── Field 2: Admin Password ──
-                                      TextFormField(
-                                        controller: _passwordController,
-                                        style: TextStyle(color: textColor, fontSize: layout.scale(14.0, 16.0)),
-                                        obscureText: _obscurePassword,
-                                        decoration: InputDecoration(
-                                          labelText: 'Password',
-                                          labelStyle: TextStyle(color: labelColor, fontSize: layout.scale(13.0, 15.0)),
-                                          prefixIcon: Icon(Icons.lock, color: labelColor, size: layout.scale(20.0, 24.0)),
-                                          suffixIcon: IconButton(
-                                            icon: Icon(
-                                              _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                                              color: labelColor,
-                                              size: layout.scale(20.0, 24.0),
-                                            ),
-                                            onPressed: () {
-                                              setState(() {
-                                                _obscurePassword = !_obscurePassword;
-                                              });
-                                            },
-                                          ),
-                                          filled: true,
-                                          fillColor: fieldFillColor,
-                                          isDense: false,
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: layout.scale(14.0, 16.0),
-                                            vertical: layout.scale(16.0, 18.0),
-                                          ),
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: isDark ? borderColor : const Color(0xFFCBD5E1), width: 1),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
-                                          ),
-                                        ),
-                                        validator: (value) {
-                                          if (value == null || value.trim().isEmpty) {
-                                            return 'Please enter your password';
-                                          }
-                                          return null;
-                                        },
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: TextButton(
-                                          onPressed: _showForgotPasswordDialog,
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.zero,
-                                            minimumSize: Size.zero,
-                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                          ),
-                                          child: Text(
-                                            'Forgot Password?',
-                                            style: TextStyle(
-                                              fontSize: layout.scale(12.0, 13.0),
-                                              fontWeight: FontWeight.bold,
-                                              color: Theme.of(context).primaryColor,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-
-                                    // Spacer before button
-                                    SizedBox(height: layout.scale(16.0, 20.0)),
-
-                                    // ── Access Button ──
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton(
-                                        onPressed: _isLoading ? null : _handleLogin,
-                                        style: ElevatedButton.styleFrom(
-                                          padding: EdgeInsets.symmetric(vertical: layout.scale(16.0, 18.0)),
-                                          backgroundColor: Theme.of(context).primaryColor,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          elevation: 0,
-                                        ),
-                                        child: _isLoading
-                                            ? SizedBox(
-                                                height: layout.scale(18.0, 20.0),
-                                                width: layout.scale(18.0, 20.0),
-                                                child: const CircularProgressIndicator(
-                                                  color: Colors.white,
-                                                  strokeWidth: 2,
-                                                ),
-                                              )
-                                            : Text(
-                                                _isAdminMode ? 'Access Admin Dashboard' : 'Access Dialer Workspace',
-                                                style: TextStyle(
-                                                  fontSize: layout.scale(14.0, 17.0),
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          const Spacer(),
-                        ] else ...[
-                          const Spacer(),
-                        ],
-
-                        // Footer — bigger text
-                        if (_cardOpacity.value > 0.0) ...[
-                          Opacity(
-                            opacity: _cardOpacity.value,
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: layout.scale(6.0, 10.0)),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Made with ',
-                                      style: TextStyle(color: labelColor, fontSize: layout.scale(11.0, 13.0)),
-                                    ),
-                                    Icon(Icons.favorite, color: Colors.red, size: layout.scale(12.0, 14.0)),
-                                    Text(
-                                      ' by Eazzio Technologies Pvt Ltd',
-                                      style: TextStyle(
-                                        color: labelColor,
-                                        fontSize: layout.scale(11.0, 13.0),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: layout.scale(20.0, 28.0)),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(height: _phase == 'loginForm' ? 24 : 52),
+                      Center(child: SizedBox(
+                        width: _phase == 'loginForm' ? 130 : 190,
+                        height: _phase == 'loginForm' ? 130 : 190,
+                        child: Image.asset('assets/logo_light.png', fit: BoxFit.contain))),
+                      if (_phase == 'splash' && _spinnerOpacity.value > 0.0) ...[
+                        const SizedBox(height: 20),
+                        Opacity(opacity: _spinnerOpacity.value,
+                          child: Center(child: SizedBox(width: 22, height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.0,
+                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)))))),
+                      ],
+                      if (_phase == 'roleSelect') _buildRoleSelect(),
+                      if (_phase == 'loginForm') _buildLoginForm(),
+                      const Spacer(),
+                      if (_phase != 'splash')
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Text('Made with ', style: TextStyle(color: Color(0xFF6B7280), fontSize: 11)),
+                            Icon(Icons.favorite, color: Colors.red, size: 12),
+                            Text(' by Eazzio Technologies Pvt Ltd', style: TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.bold)),
+                          ])),
+                    ],
                   ),
                 ),
-              );
-              },
+              ),
             ),
           ),
         );
