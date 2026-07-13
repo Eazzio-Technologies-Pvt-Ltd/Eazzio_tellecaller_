@@ -31,7 +31,6 @@ class _CallingScreenState extends State<CallingScreen> {
   // Active Call Statuses
   bool _isDialing = false;
   bool _isCallActive = false;
-  bool _wasConnected = false;
   int _callDurationSeconds = 0;
   Timer? _callDurationTimer;
 
@@ -390,7 +389,6 @@ class _CallingScreenState extends State<CallingScreen> {
 
     setState(() {
       _isDialing = true;
-      _wasConnected = false;
       _showPostCallScreen = false;
       _callDurationSeconds = 0;
       _followUpDate = null;
@@ -423,7 +421,6 @@ class _CallingScreenState extends State<CallingScreen> {
     setState(() {
       _isDialing = false;
       _isCallActive = true;
-      _wasConnected = true;
     });
 
     // Request state updates only when call connects
@@ -484,20 +481,18 @@ class _CallingScreenState extends State<CallingScreen> {
               // Match phone numbers by comparing last 10 digits to handle country code variations
               if (_phoneNumbersMatch(number, contactPhone)) {
                 setState(() {
-                  if (duration > 0) {
-                    _callDurationSeconds = duration; // Sync exact duration from Android call log
-                  }
+                  _callDurationSeconds = duration; // Sync exact duration from Android call log (0 if unanswered)
                   if (type == 2) {
                     // Outgoing
-                    _detectedCallStatus = (duration > 0 || _wasConnected) ? 'connected' : 'non-connected';
+                    _detectedCallStatus = (duration > 0) ? 'connected' : 'non-connected';
                   } else if (type == 1) {
                     // Incoming
-                    _detectedCallStatus = (duration > 0 || _wasConnected) ? 'received' : 'missed';
+                    _detectedCallStatus = (duration > 0) ? 'received' : 'missed';
                   } else if (type == 3 || type == 5) {
                     // Missed or Rejected
                     _detectedCallStatus = 'missed';
                   } else {
-                    _detectedCallStatus = (duration > 0 || _wasConnected) ? 'connected' : 'non-connected';
+                    _detectedCallStatus = (duration > 0) ? 'connected' : 'non-connected';
                   }
                 });
                 print('[CallLog] Match found on attempt $attempt! Outcome: $_detectedCallStatus, Duration: $_callDurationSeconds');
@@ -510,7 +505,7 @@ class _CallingScreenState extends State<CallingScreen> {
       
       // If we reach here, no matching log entry was found
       setState(() {
-        if (_wasConnected || _callDurationSeconds > 0) {
+        if (_callDurationSeconds > 15) {
           _detectedCallStatus = 'connected';
         } else {
           _detectedCallStatus = 'non-connected';
