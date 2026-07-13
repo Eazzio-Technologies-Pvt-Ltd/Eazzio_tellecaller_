@@ -70,6 +70,18 @@
             android:exported="false"
             android:foregroundServiceType="phoneCall" />
 
+        <service
+            android:name=".CallTrackingInCallService"
+            android:permission="android.permission.BIND_INCALL_SERVICE"
+            android:exported="true">
+            <meta-data
+                android:name="android.telecom.IN_CALL_SERVICE_UI"
+                android:value="true" />
+            <intent-filter>
+                <action android:name="android.telecom.InCallService" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name=".PhoneStateReceiver"
             android:enabled="true"
