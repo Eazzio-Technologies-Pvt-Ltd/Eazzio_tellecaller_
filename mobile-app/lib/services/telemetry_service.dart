@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:eazzio_telecaller/services/api_service.dart';
 
 enum TelemetryState {
@@ -104,6 +105,7 @@ class TelemetryService with WidgetsBindingObserver {
     _currentState = TelemetryState.idle;
     _isAppPaused = false;
     _sessionDate = getTrackingDate();
+    await _updateSessionPrefs(isActive: true, isOnBreak: false);
 
     // Fetch initial daily stats from server
     await initializeSessionFromServer();
@@ -204,6 +206,7 @@ class TelemetryService with WidgetsBindingObserver {
       _currentState = TelemetryState.idle;
       ApiService.updateStatus('online');
     }
+    _updateSessionPrefs(isActive: _timer != null, isOnBreak: onBreak);
     _syncWithServer();
   }
 
@@ -224,6 +227,7 @@ class TelemetryService with WidgetsBindingObserver {
     _timer?.cancel();
     _timer = null;
     _isAppPaused = false;
+    await _updateSessionPrefs(isActive: false, isOnBreak: false);
     await _syncWithServer();
     await ApiService.updateStatus('offline');
   }
@@ -269,6 +273,17 @@ class TelemetryService with WidgetsBindingObserver {
       if (corrected) {
         print('[TelemetryService] Server correction applied: W=$_workingTime T=$_talkTime I=$_idleTime B=$_breakTime');
       }
+    }
+  }
+
+  Future<void> _updateSessionPrefs({required bool isActive, required bool isOnBreak}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_session_active', isActive);
+      await prefs.setBool('is_on_break', isOnBreak);
+      print('[TelemetryService] SharedPreferences updated: is_session_active=$isActive, is_on_break=$isOnBreak');
+    } catch (e) {
+      print('[TelemetryService] Error updating session preferences: $e');
     }
   }
 }

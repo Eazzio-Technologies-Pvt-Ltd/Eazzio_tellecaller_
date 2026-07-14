@@ -860,9 +860,13 @@ exports.syncCallActivities = async (req, res) => {
       if (!normPhone) continue;
 
       const match = assignedContacts.find(c => normalize(c.phone_number) === normPhone);
-      if (!match) continue; // Skip personal calls
+      if (!match) {
+        if (callType !== 'received' && callType !== 'missed') {
+          continue; // Skip personal outgoing calls
+        }
+      }
 
-      const leadId = match.id;
+      const leadId = match ? match.id : null;
       const activityTime = new Date(timestamp);
 
       // Deduplication check: timestamp (within a 5-second window), duration, phoneNumber
@@ -889,15 +893,17 @@ exports.syncCallActivities = async (req, res) => {
         [leadId, userId, callType, parseInt(durationSeconds || 0), phoneNumber, activityTime]
       );
 
-      let contactStatus = 'completed';
-      if (callType === 'missed' || callType === 'non_connected' || callType === 'non-connected') {
-        contactStatus = 'missed';
-      }
+      if (leadId) {
+        let contactStatus = 'completed';
+        if (callType === 'missed' || callType === 'non_connected' || callType === 'non-connected') {
+          contactStatus = 'missed';
+        }
 
-      await client.query(
-        `UPDATE contacts SET status = $1, last_called_at = $2 WHERE id = $3`,
-        [contactStatus, activityTime, leadId]
-      );
+        await client.query(
+          `UPDATE contacts SET status = $1, last_called_at = $2 WHERE id = $3`,
+          [contactStatus, activityTime, leadId]
+        );
+      }
 
       syncedCount++;
     }

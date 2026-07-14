@@ -122,21 +122,17 @@ class CallTrackingService : Service() {
 
                 val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
 
+                // ── Session state checks ──
+                val isSessionActive = prefs.getBoolean("flutter.is_session_active", false)
+                val isOnBreak = prefs.getBoolean("flutter.is_on_break", false)
+                if (!isSessionActive || isOnBreak) return
+
                 // ── Timestamp guard: skip if already confirmed-synced by Flutter-side poll ──
                 val lastSynced = prefs.getLong("flutter.last_synced_call_timestamp", 0L)
                 if (date <= lastSynced) return
 
-                // ── Allotted-number check ──
-                val allottedString = prefs.getString("flutter.allotted_phone_numbers", "") ?: ""
-                val allottedList = allottedString.split(",").map { it.trim().replace(Regex("\\D"), "") }
-
                 val cleanNumber = number.replace(Regex("\\D"), "")
                 if (cleanNumber.isEmpty()) return
-
-                val isMatched = allottedList.any {
-                    it.endsWith(cleanNumber) || cleanNumber.endsWith(it)
-                }
-                if (!isMatched) return
 
                 // ── Map call type ──
                 val callStatus = when {
@@ -145,6 +141,20 @@ class CallTrackingService : Service() {
                     type == CallLog.Calls.MISSED_TYPE || type == CallLog.Calls.REJECTED_TYPE -> "missed"
                     else -> return
                 }
+
+                // ── Allotted-number check ──
+                val allottedString = prefs.getString("flutter.allotted_phone_numbers", "") ?: ""
+                val allottedList = allottedString.split(",").map { it.trim().replace(Regex("\\D"), "") }
+
+                val isMatched = allottedList.any {
+                    it.endsWith(cleanNumber) || cleanNumber.endsWith(it)
+                }
+
+                val isIncoming = type == CallLog.Calls.INCOMING_TYPE ||
+                                 type == CallLog.Calls.MISSED_TYPE ||
+                                 type == CallLog.Calls.REJECTED_TYPE
+
+                if (!isIncoming && !isMatched) return
 
                 // ── Format timestamp to UTC ISO8601 ──
                 val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)

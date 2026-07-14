@@ -774,8 +774,9 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
             return cNum.endsWith(logNum) || logNum.endsWith(cNum);
           }, orElse: () => null);
 
-          if (contact != null) {
-            final int type = log['type'] ?? 0;
+          final int type = log['type'] ?? 0;
+          final bool isIncoming = type == 1 || type == 3 || type == 5;
+          if (contact != null || isIncoming) {
             int duration = log['duration'] ?? 0;
             final DateTime calledAt = DateTime.fromMillisecondsSinceEpoch(dateMs);
 
