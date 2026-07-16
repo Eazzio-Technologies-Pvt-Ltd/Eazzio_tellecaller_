@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import API_BASE_URL from '../config/api';
-import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock, Calendar, Clock, Activity, FileDown, User } from 'lucide-react';
+import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock, Calendar, Clock, Activity, FileDown, User, PhoneIncoming, PhoneMissed } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -249,19 +249,26 @@ const CallLogs = ({ user, setActiveTab }) => {
     let total = 0;
     let connected = 0;
     let talkTime = 0;
+    let received = 0;
+    let missed = 0;
 
     logs.forEach(log => {
       const logDate = parseDbDate(log.called_at);
       if (isToday(logDate)) {
         total++;
-        if (log.call_status === 'connected' || log.call_status === 'received') {
+        if (log.call_status === 'connected') {
           connected++;
           talkTime += (log.duration || 0);
+        } else if (log.call_status === 'received') {
+          received++;
+          talkTime += (log.duration || 0);
+        } else if (log.call_status === 'missed') {
+          missed++;
         }
       }
     });
 
-    return { total, connected, talkTime };
+    return { total, connected, talkTime, received, missed };
   };
 
   const todayStats = getTodayStats();
@@ -375,6 +382,26 @@ const CallLogs = ({ user, setActiveTab }) => {
           <div>
             <div style={styles.statLabel}>Today's Connected</div>
             <div style={styles.statValue}>{todayStats.connected}</div>
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ ...styles.statCard, borderLeft: '4px solid #06b6d4' }}>
+          <div style={styles.statIconWrapCyan}>
+            <PhoneIncoming size={20} />
+          </div>
+          <div>
+            <div style={styles.statLabel}>Today's Received</div>
+            <div style={styles.statValue}>{todayStats.received}</div>
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ ...styles.statCard, borderLeft: '4px solid #ef4444' }}>
+          <div style={styles.statIconWrapRed}>
+            <PhoneMissed size={20} />
+          </div>
+          <div>
+            <div style={styles.statLabel}>Today's Missed</div>
+            <div style={styles.statValue}>{todayStats.missed}</div>
           </div>
         </div>
 
@@ -742,7 +769,7 @@ const styles = {
   },
   statsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
     gap: '1rem',
     marginBottom: '1.5rem',
   },
@@ -784,6 +811,28 @@ const styles = {
     borderRadius: '10px',
     background: 'rgba(168, 85, 247, 0.1)',
     color: '#a855f7',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  statIconWrapCyan: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '10px',
+    background: 'rgba(6, 182, 212, 0.1)',
+    color: '#06b6d4',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  statIconWrapRed: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '10px',
+    background: 'rgba(239, 68, 68, 0.1)',
+    color: '#ef4444',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
