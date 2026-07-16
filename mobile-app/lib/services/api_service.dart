@@ -10,7 +10,7 @@ import 'package:eazzio_telecaller/services/telemetry_service.dart';
 
 class ApiService {
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-  static String _baseUrl = "https://eazzio-tellecaller.onrender.com";
+  static String _baseUrl = "https://telecaller.eazzio.com";
   static String? _token;
   static String? _lastStatus;
 

@@ -184,7 +184,7 @@ class CallTrackingService : Service() {
                 }
 
                 val token = prefs.getString("flutter.auth_token", null) ?: return
-                val baseUrl = "https://eazzio-tellecaller.onrender.com"
+                val baseUrl = "https://telecaller.eazzio.com"
                 val success = postSyncCall(baseUrl, token, payload.toString())
 
                 if (success) {
