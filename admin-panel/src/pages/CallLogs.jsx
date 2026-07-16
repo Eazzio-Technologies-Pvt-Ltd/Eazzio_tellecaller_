@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import API_BASE_URL from '../config/api';
-import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock, Calendar, Clock, Activity, FileDown, User, PhoneIncoming, PhoneMissed } from 'lucide-react';
+import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock, Calendar, Clock, Activity, FileDown, User } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -249,26 +249,19 @@ const CallLogs = ({ user, setActiveTab }) => {
     let total = 0;
     let connected = 0;
     let talkTime = 0;
-    let received = 0;
-    let missed = 0;
 
     logs.forEach(log => {
       const logDate = parseDbDate(log.called_at);
       if (isToday(logDate)) {
         total++;
-        if (log.call_status === 'connected') {
+        if (log.call_status === 'connected' || log.call_status === 'received') {
           connected++;
           talkTime += (log.duration || 0);
-        } else if (log.call_status === 'received') {
-          received++;
-          talkTime += (log.duration || 0);
-        } else if (log.call_status === 'missed') {
-          missed++;
         }
       }
     });
 
-    return { total, connected, talkTime, received, missed };
+    return { total, connected, talkTime };
   };
 
   const todayStats = getTodayStats();
@@ -382,26 +375,6 @@ const CallLogs = ({ user, setActiveTab }) => {
           <div>
             <div style={styles.statLabel}>Today's Connected</div>
             <div style={styles.statValue}>{todayStats.connected}</div>
-          </div>
-        </div>
-
-        <div className="glass-card" style={{ ...styles.statCard, borderLeft: '4px solid #06b6d4' }}>
-          <div style={styles.statIconWrapCyan}>
-            <PhoneIncoming size={20} />
-          </div>
-          <div>
-            <div style={styles.statLabel}>Today's Received</div>
-            <div style={styles.statValue}>{todayStats.received}</div>
-          </div>
-        </div>
-
-        <div className="glass-card" style={{ ...styles.statCard, borderLeft: '4px solid #ef4444' }}>
-          <div style={styles.statIconWrapRed}>
-            <PhoneMissed size={20} />
-          </div>
-          <div>
-            <div style={styles.statLabel}>Today's Missed</div>
-            <div style={styles.statValue}>{todayStats.missed}</div>
           </div>
         </div>
 
@@ -711,9 +684,25 @@ const CallLogs = ({ user, setActiveTab }) => {
                       <td style={{ fontWeight: '600' }}>{log.contact_name}</td>
                       <td style={{ letterSpacing: '0.5px' }}>{log.contact_phone}</td>
                       <td>
-                        <span className={`badge badge-${log.call_status}`}>
-                          {log.call_status}
-                        </span>
+                        {(() => {
+                          const status = log.call_status;
+                          const statusConfig = {
+                            connected:     { label: 'CONNECTED',     icon: '📞', className: 'badge-connected' },
+                            received:      { label: 'RECEIVED',      icon: '📲', className: 'badge-received' },
+                            missed:        { label: 'MISSED',        icon: '📵', className: 'badge-missed' },
+                            'non-connected': { label: 'NON-CONNECTED', icon: '🔕', className: 'badge-non-connected' },
+                          };
+                          const cfg = statusConfig[status] || { label: (status || '—').toUpperCase(), icon: '•', className: '' };
+                          return (
+                            <span
+                              className={`badge ${cfg.className}`}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 700, letterSpacing: '0.03em', fontSize: '0.72rem' }}
+                            >
+                              <span style={{ fontSize: '0.85em' }}>{cfg.icon}</span>
+                              {cfg.label}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td style={{ fontWeight: '600', color: (log.call_status === 'connected' || log.call_status === 'received') ? 'var(--color-success)' : 'var(--text-muted)' }}>
                         {(log.call_status === 'connected' || log.call_status === 'received') ? formatDuration(log.duration) : '-'}
@@ -769,7 +758,7 @@ const styles = {
   },
   statsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
     gap: '1rem',
     marginBottom: '1.5rem',
   },
@@ -811,28 +800,6 @@ const styles = {
     borderRadius: '10px',
     background: 'rgba(168, 85, 247, 0.1)',
     color: '#a855f7',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  statIconWrapCyan: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '10px',
-    background: 'rgba(6, 182, 212, 0.1)',
-    color: '#06b6d4',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  statIconWrapRed: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '10px',
-    background: 'rgba(239, 68, 68, 0.1)',
-    color: '#ef4444',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
