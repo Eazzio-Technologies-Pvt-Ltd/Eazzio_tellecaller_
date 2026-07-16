@@ -1,5 +1,25 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Sticky Header
+  // 1. Top Security Banner Dismissal
+  const securityBanner = document.querySelector('.top-security-banner');
+  const closeBannerBtn = document.querySelector('.banner-close-btn');
+  
+  if (securityBanner && closeBannerBtn) {
+    closeBannerBtn.addEventListener('click', () => {
+      securityBanner.style.transition = 'all 0.3s ease';
+      securityBanner.style.height = '0';
+      securityBanner.style.paddingTop = '0';
+      securityBanner.style.paddingBottom = '0';
+      securityBanner.style.opacity = '0';
+      securityBanner.style.overflow = 'hidden';
+      securityBanner.style.borderBottom = 'none';
+      setTimeout(() => {
+        securityBanner.style.display = 'none';
+      }, 300);
+      localStorage.setItem('securityBannerDismissed', 'true');
+    });
+  }
+
+  // 2. Sticky Header
   const header = document.querySelector('.header');
   window.addEventListener('scroll', () => {
     if (window.scrollY > 50) {

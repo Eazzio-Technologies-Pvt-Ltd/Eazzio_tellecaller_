@@ -15,6 +15,20 @@
 
   <!-- Header -->
   <header class="header">
+    <div class="top-security-banner" id="topSecurityBanner">
+      <div class="banner-container">
+        <span class="lock-icon">🔒</span>
+        <span class="banner-text">Your data is safe and secure with us Encrypted by AES 256-bit Encryption</span>
+      </div>
+      <button class="banner-close-btn" id="closeSecurityBannerBtn" aria-label="Close security message">&times;</button>
+    </div>
+    <script>
+      (function() {
+        if (localStorage.getItem('securityBannerDismissed') === 'true') {
+          document.getElementById('topSecurityBanner').style.display = 'none';
+        }
+      })();
+    </script>
     <div class="container nav-container">
       <a href="#" class="logo-wrapper">
         <!-- Render light logo (logo-light.png) when dark mode is on, render dark logo (logo-dark.png) when light mode is on -->

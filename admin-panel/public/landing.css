@@ -2199,3 +2199,92 @@ html, body {
     height: 120px !important;
   }
 }
+
+/* ============================================================
+   Top Security Banner
+   ============================================================ */
+.header {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.top-security-banner {
+  background-color: #0b0f19;
+  color: #f1f5f9;
+  padding: 10px 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 100000;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.4;
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.08);
+  box-sizing: border-box;
+}
+
+.top-security-banner .banner-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding-right: 28px; /* Room for close button */
+}
+
+.top-security-banner .lock-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.top-security-banner .banner-text {
+  text-align: center;
+  word-break: keep-all;
+}
+
+.top-security-banner .banner-close-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 1.25rem;
+  cursor: pointer;
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  line-height: 1;
+  outline: none;
+}
+
+.top-security-banner .banner-close-btn:hover {
+  color: #ffffff;
+  transform: translateY(-50%) scale(1.1);
+}
+
+@media (max-width: 768px) {
+  .top-security-banner {
+    font-size: 0.78rem;
+    padding: 8px 16px;
+  }
+  
+  .top-security-banner .banner-container {
+    padding-right: 20px;
+    gap: 8px;
+  }
+  
+  .top-security-banner .banner-close-btn {
+    right: 12px;
+  }
+}
