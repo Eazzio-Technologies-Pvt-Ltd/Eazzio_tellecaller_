@@ -41,9 +41,10 @@ async function runTest() {
   // 1. Admin Login
   console.log('Logging in as Admin...');
   const adminLogin = await makeJsonRequest('POST', '/api/auth/login', {
-    email: process.env.TEST_ADMIN_EMAIL || 'tellecaller111@eazzio.com',
-    password: process.env.TEST_ADMIN_PASSWORD || 'eazziotellecaller111'
+    email: process.env.TEST_ADMIN_EMAIL || 'thesisinstitute@gmail.com',
+    password: process.env.TEST_ADMIN_PASSWORD || 'thesis123'
   });
+  console.log('Admin Login Response:', adminLogin);
   const adminToken = adminLogin.body.token;
 
   // 2. Register/Login a Test Telecaller
@@ -60,6 +61,7 @@ async function runTest() {
     email: testEmail,
     companyRegNum: process.env.TEST_COMPANY_REG_NUM || 'EAZ-552057'
   });
+  console.log('Caller Login Response:', callerLogin);
   
   // Verify telecaller is online initially
   let callersRes = await makeJsonRequest('GET', '/api/auth/telecallers', null, adminToken);

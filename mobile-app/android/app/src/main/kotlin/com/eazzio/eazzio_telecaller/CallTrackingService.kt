@@ -24,9 +24,19 @@ class CallTrackingService : Service() {
 
     private val CHANNEL_ID = "com.eazzio.eazzio_telecaller.background_sync"
     private val NOTIFICATION_ID = 2026
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
+        
+        try {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "Eazzio::CallTrackingWakeLock")
+            wakeLock?.acquire()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         createNotificationChannel()
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -218,6 +228,17 @@ class CallTrackingService : Service() {
         } finally {
             connection?.disconnect()
         }
+    }
+
+    override fun onDestroy() {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        super.onDestroy()
     }
 }
 

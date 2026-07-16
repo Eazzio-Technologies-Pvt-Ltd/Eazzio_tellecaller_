@@ -76,23 +76,13 @@ class TelemetryService with WidgetsBindingObserver {
   }
 
   void _handleAppBackground() {
-    if (_currentState != TelemetryState.calling && isActive) {
-      _isAppPaused = true;
-      ApiService.updateStatus('offline');
-      _syncWithServer();
-    }
+    // Keep app session active and online even when backgrounded or screen idle
+    // Do not set status to offline or pause timers when moved to background
   }
 
   void _handleAppForeground() async {
-    if (_isAppPaused && isActive) {
-      if (_currentState == TelemetryState.onBreak) {
-        ApiService.updateStatus('break');
-      } else {
-        ApiService.updateStatus('online');
-      }
-      await initializeSessionFromServer();
-      _isAppPaused = false;
-    }
+    // Since we did not pause the telemetry session or set the status to offline when backgrounded,
+    // we do not need to restore/resume from background.
   }
 
   // Start the daily telemetry session
