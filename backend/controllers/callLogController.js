@@ -459,6 +459,7 @@ exports.getCallLogs = async (req, res) => {
         c.response_2,
         c.response_3,
         u.name as telecaller_name,
+        u.status as telecaller_status,
         camp.name as campaign_name
       FROM call_logs cl
       LEFT JOIN contacts c ON cl.contact_id = c.id
@@ -467,6 +468,9 @@ exports.getCallLogs = async (req, res) => {
     `;
     const params = [];
     const conditions = [];
+
+    // Do not show call logs of telecallers currently on break
+    conditions.push(`(u.status IS NULL OR u.status != 'break')`);
 
     if (parsedId) {
       params.push(parsedId);

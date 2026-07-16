@@ -167,6 +167,21 @@ const AuthLayoutWrapper = ({ children }) => {
         <div className="auth-page-copyright">
           © 2026 Eazzio Technologies Pvt Ltd | Eazzio v2.2.9 | Protected by Google reCAPTCHA
         </div>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          marginTop: '6px',
+          fontSize: '0.72rem',
+          color: '#6b7280',
+          textAlign: 'center',
+          padding: '0 8px'
+        }}>
+          <Shield size={12} color="#10b981" />
+          <span style={{ color: '#10b981', fontWeight: '600' }}>Your Data is Safe and Secure</span>
+          <span>, encrypted by AES 256 bit end to end Encryption.</span>
+        </div>
       </div>
     </div>
   );
