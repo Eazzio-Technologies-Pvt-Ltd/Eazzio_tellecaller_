@@ -3059,3 +3059,25 @@ input::-ms-clear {
   justify-content: center !important;
   flex-shrink: 0 !important;
 }
+
+/* Media query targeting specifically 350px to 450px width viewports to set a dark blue mobile header */
+@media screen and (min-width: 350px) and (max-width: 450px) {
+  .mobile-header {
+    background: #0B192C !important; /* Premium dark blue "old style" */
+    background-color: #0B192C !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2) !important;
+  }
+  
+  .mobile-menu-toggle {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+  }
+
+  .mobile-menu-toggle:hover,
+  .mobile-menu-toggle:active {
+    background: rgba(255, 255, 255, 0.16) !important;
+    color: #ffffff !important;
+  }
+}

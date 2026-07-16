@@ -22,8 +22,8 @@ const Logo = ({ theme = 'dark', mode = 'sidebar' }) => {
   // Aspect ratio is 396/46 = ~8.6, height set proportionally
   const height = isSidebar ? 25 : 68;
   
-  // Display dark logo in light theme specifically for 350-450px viewport range
-  const logoSrc = (isTargetViewport && theme === 'light') ? '/logo-dark.png' : '/logo-light.png';
+  // Display light logo for the dark blue top nav in 350-450px range, otherwise fallback to theme defaults
+  const logoSrc = isTargetViewport ? '/logo-light.png' : (theme === 'light' ? '/logo-dark.png' : '/logo-light.png');
 
   return (
     <img 
