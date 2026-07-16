@@ -710,7 +710,7 @@ exports.deleteUser = async (req, res) => {
       [id]
     );
 
-    // 6. Finally delete the user
+    // 6. Finally delete the user (Note: Deletion is free and does NOT increment company's edit_count)
     await db.query('DELETE FROM users WHERE id = $1', [id]);
 
     res.json({

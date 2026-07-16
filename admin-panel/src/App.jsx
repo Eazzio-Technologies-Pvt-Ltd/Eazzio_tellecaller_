@@ -343,7 +343,6 @@ const App = () => {
   const [showDemoPassword, setShowDemoPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [activeRoleTab, setActiveRoleTab] = useState('admin-panel'); // 'admin-panel' or 'mobile-access'
 
   // Oscillating metrics for left pane stats card
   const [liveCalls, setLiveCalls] = useState(2841);
@@ -1235,108 +1234,7 @@ const App = () => {
                 {loginType === 'superadmin' ? 'to access administration panel' : 'to access your account'}
               </p>
 
-              {loginType !== 'superadmin' && (
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  marginTop: '1.25rem',
-                  marginBottom: '0.5rem',
-                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                  padding: '4px',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(255, 255, 255, 0.08)'
-                }}>
-                  <button
-                    type="button"
-                    onClick={() => setActiveRoleTab('admin-panel')}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      backgroundColor: activeRoleTab === 'admin-panel' ? '#6366F1' : 'transparent',
-                      color: activeRoleTab === 'admin-panel' ? '#ffffff' : 'var(--text-secondary, #475569)',
-                      fontSize: '0.82rem',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'center'
-                    }}
-                  >
-                    Company Admin Panel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveRoleTab('mobile-access')}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      backgroundColor: activeRoleTab === 'mobile-access' ? '#6366F1' : 'transparent',
-                      color: activeRoleTab === 'mobile-access' ? '#ffffff' : 'var(--text-secondary, #475569)',
-                      fontSize: '0.82rem',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'center'
-                    }}
-                  >
-                    Mobile App Access
-                  </button>
-                </div>
-              )}
 
-              <div className="auth-card-divider-line"></div>
-
-              {activeRoleTab === 'mobile-access' && loginType !== 'superadmin' ? (
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  padding: '1.25rem',
-                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  color: 'var(--text-primary)',
-                  marginBottom: '1rem',
-                  textAlign: 'left'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#f59e0b' }}>
-                    <Smartphone size={20} />
-                    <span style={{ fontWeight: '700', fontSize: '0.95rem' }}>Telecaller Onboarding Guide</span>
-                  </div>
-                  
-                  <p style={{ fontSize: '0.85rem', lineHeight: '1.45', color: 'var(--text-secondary)' }}>
-                    Telecallers must log in using the Eazzio mobile application. 
-                    The web portal is reserved for company administrators only.
-                  </p>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <span style={{ color: '#6366F1', fontWeight: 'bold' }}>1.</span>
-                      <span>Download and install the Eazzio Telecaller APK on your Android device.</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <span style={{ color: '#6366F1', fontWeight: 'bold' }}>2.</span>
-                      <span>Get your login credentials (registered mobile number & passcode) from your Company Admin.</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <span style={{ color: '#6366F1', fontWeight: 'bold' }}>3.</span>
-                      <span>If you forgot your passcode or need a login token, your Company Admin can retrieve or reset them via their admin dashboard under <strong>Telecaller Accounts & Credentials</strong>.</span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveRoleTab('admin-panel')}
-                    className="btn-gradient-auth"
-                    style={{ marginTop: '0.5rem', width: '100%' }}
-                  >
-                    Go back to Admin Login
-                  </button>
-                </div>
-              ) : (
                 <form onSubmit={handleLogin} className="auth-form-content">
                 {loginError && (
                   <div style={styles.errorAlert}>
@@ -1471,7 +1369,7 @@ const App = () => {
                   </div>
                 )}
               </form>
-              )}
+
 
               <div className="auth-card-divider-line"></div>
 
