@@ -10,7 +10,7 @@ import 'package:eazzio_telecaller/services/telemetry_service.dart';
 
 class ApiService {
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-  static String _baseUrl = "https://telecaller.eazzio.com";
+  static String _baseUrl = "https://eazzio-tellecaller.onrender.com";
   static String? _token;
   static String? _lastStatus;
 
@@ -63,7 +63,7 @@ class ApiService {
         Uri.parse('$_baseUrl/api/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(bodyMap),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
 
       final Map<String, dynamic> data = jsonDecode(response.body);
 
@@ -118,7 +118,7 @@ class ApiService {
           'Authorization': 'Bearer $_token',
         },
         body: jsonEncode({'status': status}),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 60));
       
       if (response.statusCode == 200) {
         return true;
@@ -153,7 +153,7 @@ class ApiService {
           'currentPassword': currentPassword,
           'newPassword': newPassword,
         }),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 60));
 
       final Map<String, dynamic> data = jsonDecode(response.body);
 
@@ -179,7 +179,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -271,7 +271,7 @@ class ApiService {
           'breakTime': breakTime,
           'callingTime': callingTime,
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 60));
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -296,7 +296,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -319,7 +319,7 @@ class ApiService {
           'Authorization': 'Bearer $_token',
         },
         body: jsonEncode({'activities': activities}),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         return true;
@@ -350,7 +350,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -377,7 +377,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -397,7 +397,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -422,7 +422,7 @@ class ApiService {
           'name': name,
           'description': description,
         }),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 201) {
         return {'success': true, 'campaign': jsonDecode(response.body)};
       } else {
@@ -444,7 +444,7 @@ class ApiService {
           'Authorization': 'Bearer $_token',
         },
         body: jsonEncode({'status': status}),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       return response.statusCode == 200;
     } catch (e) {
       print('Error updating campaign status: $e');
@@ -460,7 +460,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       return response.statusCode == 200;
     } catch (e) {
       print('Error deleting campaign: $e');
@@ -483,7 +483,7 @@ class ApiService {
           'password': password,
           'role': 'telecaller',
         }),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 201) {
         return {'success': true};
       } else {
@@ -508,7 +508,7 @@ class ApiService {
           'name': name,
           'email': email,
         }),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return {'success': true};
       } else {
@@ -528,7 +528,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       return response.statusCode == 200;
     } catch (e) {
       print('Error deleting telecaller: $e');
@@ -544,7 +544,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -563,7 +563,7 @@ class ApiService {
         Uri.parse('$_baseUrl/api/auth/forgot-password'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email}),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
 
       final Map<String, dynamic> data = jsonDecode(response.body);
       if (response.statusCode == 200) {
@@ -591,7 +591,7 @@ class ApiService {
           'otp': otp,
           'newPassword': newPassword,
         }),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
 
       final Map<String, dynamic> data = jsonDecode(response.body);
       if (response.statusCode == 200) {
@@ -613,7 +613,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -638,7 +638,7 @@ class ApiService {
         body: jsonEncode({
           'telecallerId': telecallerId,
         }),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return true;
       } else if (response.statusCode == 401) {
@@ -665,7 +665,7 @@ class ApiService {
           'contactIds': contactIds,
           'telecallerId': telecallerId,
         }),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return true;
       } else if (response.statusCode == 401) {
@@ -697,7 +697,7 @@ class ApiService {
           'name': name,
           'phoneNumber': phoneNumber,
         }),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       
       final Map<String, dynamic> data = jsonDecode(response.body);
       if (response.statusCode == 201) {
@@ -727,7 +727,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -748,7 +748,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -815,7 +815,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -836,7 +836,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -867,7 +867,7 @@ class ApiService {
           'toUserId': toUserId,
           'reason': reason ?? '',
         }),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
 
       final Map<String, dynamic> data = jsonDecode(response.body);
       if (response.statusCode == 201) {
@@ -889,7 +889,7 @@ class ApiService {
         headers: {
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
@@ -917,7 +917,7 @@ class ApiService {
         body: jsonEncode({
           'status': status,
         }),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
 
       final Map<String, dynamic> data = jsonDecode(response.body);
       if (response.statusCode == 200) {
@@ -940,7 +940,7 @@ class ApiService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_token',
         },
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return {'success': true, 'message': 'WhatsApp count incremented'};
       }
