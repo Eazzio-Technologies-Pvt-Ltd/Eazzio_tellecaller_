@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import API_BASE_URL from '../config/api';
-import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock, Calendar, Clock, Activity, FileDown, User } from 'lucide-react';
+import { Volume2, Play, Search, Mic, MicOff, AlertCircle, CheckCircle, Lock, Calendar, Clock, Activity, FileDown, User, PhoneIncoming, PhoneMissed } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -249,6 +249,9 @@ const CallLogs = ({ user, setActiveTab }) => {
     let total = 0;
     let connected = 0;
     let talkTime = 0;
+    let received = 0;
+    let receivedDuration = 0;
+    let missed = 0;
 
     logs.forEach(log => {
       const logDate = parseDbDate(log.called_at);
@@ -258,10 +261,17 @@ const CallLogs = ({ user, setActiveTab }) => {
           connected++;
           talkTime += (log.duration || 0);
         }
+        if (log.call_status === 'received') {
+          received++;
+          receivedDuration += (log.duration || 0);
+        }
+        if (log.call_status === 'missed') {
+          missed++;
+        }
       }
     });
 
-    return { total, connected, talkTime };
+    return { total, connected, talkTime, received, receivedDuration, missed };
   };
 
   const todayStats = getTodayStats();
@@ -385,6 +395,30 @@ const CallLogs = ({ user, setActiveTab }) => {
           <div>
             <div style={styles.statLabel}>Today's Talk Time</div>
             <div style={styles.statValue}>{formatDuration(todayStats.talkTime)}</div>
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ ...styles.statCard, borderLeft: '4px solid #10b981' }}>
+          <div style={{ ...styles.statIconWrapGreen, background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
+            <PhoneIncoming size={20} />
+          </div>
+          <div>
+            <div style={styles.statLabel}>Today's Received</div>
+            <div style={styles.statValue}>{todayStats.received}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+              {todayStats.receivedDuration > 0 ? `⏱ ${formatDuration(todayStats.receivedDuration)}` : 'No duration'}
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ ...styles.statCard, borderLeft: '4px solid #ef4444' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <PhoneMissed size={20} />
+          </div>
+          <div>
+            <div style={styles.statLabel}>Today's Missed</div>
+            <div style={{ ...styles.statValue, color: '#ef4444' }}>{todayStats.missed}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>No answer</div>
           </div>
         </div>
       </div>
