@@ -1673,14 +1673,8 @@ exports.createCallRecordingOrder = async (req, res) => {
       return res.status(400).json({ error: 'Call recording is already free and enabled on the Growth Plan.' });
     }
 
-    // Charge: Starter is ₹399/month * 12 = ₹4788/year.
-    // Legacy support: Monthly is ₹49. Annual is ₹399.
-    let totalAmount = 399; // Default legacy annual
-    if (plan === 'starter') {
-      totalAmount = 399 * 12; // 399/monthly * 12 = 4788
-    } else if (plan === 'monthly') {
-      totalAmount = 49;
-    }
+    // Charge: Starter or legacy monthly plan call recording add-on is ₹3999/annually.
+    let totalAmount = 3999;
     const amountInPaise = totalAmount * 100;
 
     const keyId = process.env.RAZORPAY_KEY_ID;

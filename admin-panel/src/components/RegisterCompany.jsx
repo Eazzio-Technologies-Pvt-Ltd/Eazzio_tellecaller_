@@ -452,7 +452,7 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
                 Call Recording Included
               </div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '1px' }}>
-                Call Recording is FREE and fully included in the Growth Plan.
+                Call Recording is FREE and fully included in the Growth Plan (Recordings are stored for 1 week and then deleted automatically).
               </div>
             </div>
           </div>
@@ -484,7 +484,7 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
                 Include Call Recording Add-on
               </div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '1px' }}>
-                Record all calls automatically. Only ₹399 / month * 12 (₹4,788 billed annually).
+                Record all calls automatically. Only ₹3,999/annually (Recordings are stored for 1 week and then deleted automatically).
               </div>
             </div>
           </div>

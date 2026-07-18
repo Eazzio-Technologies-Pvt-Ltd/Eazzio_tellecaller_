@@ -96,14 +96,14 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
         const editSurcharge = plan === 'demo' ? 0 : Math.max(0, edits - 3) * 20;
 
         let recordingBill = 0;
-        if (plan === 'growth') {
+        if (plan === 'growth' || plan === 'annual') {
           recordingBill = 0;
-        } else if (plan === 'starter' && recActive) {
-          recordingBill = 399 * 12; // 399/monthly * 12 = 4788
+        } else if ((plan === 'starter' || plan === 'monthly') && recActive) {
+          recordingBill = 3999;
         } else if (plan === 'basic') {
           recordingBill = 0;
         } else if (recActive) {
-          recordingBill = plan === 'annual' ? 399 : 49;
+          recordingBill = 3999;
         }
 
         setCompanyBill(seatsBill + editSurcharge + recordingBill);
@@ -685,15 +685,16 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
                     }
 
                     if (recActive) {
+                      const recCost = (planType === 'starter' || planType === 'monthly') ? 3999 : ((planType === 'annual' || planType === 'growth') ? 0 : 3999);
                       return (
                         <tr style={styles.tr}>
                           <td style={{ ...styles.td, fontWeight: '700', color: 'var(--text-primary)' }}>
-                            Call Recording Add-on ({planType === 'starter' ? 'Starter Plan — 1 Year' : (planType === 'annual' ? 'Growth Plan (Legacy) — 1 Year' : 'Starter Plan (Legacy) — 1 Month')})
+                            Call Recording Add-on ({planType === 'starter' ? 'Starter Plan — 1 Year' : (planType === 'monthly' ? 'Starter Plan (Legacy) — 1 Month' : 'Annual Plan (Legacy) — 1 Year')})
                           </td>
-                          <td style={styles.td}>₹{planType === 'starter' ? 399 * 12 : (planType === 'annual' ? 399 : 49)} / year</td>
+                          <td style={styles.td}>₹{recCost} / year</td>
                           <td style={styles.td}>Active (Expires: {formatDate(callRecordingEndDate)})</td>
                           <td style={{ ...styles.td, textAlign: 'right', fontWeight: '800', color: '#10b981' }}>
-                            ₹{planType === 'starter' ? 399 * 12 : (planType === 'annual' ? 399 : 49)}
+                            ₹{recCost}
                           </td>
                         </tr>
                       );

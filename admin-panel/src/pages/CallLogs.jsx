@@ -23,8 +23,13 @@ const CallLogs = ({ user, setActiveTab }) => {
   const isCompanyAdmin = user && user.companyRegNum;
   const isDemo = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
   const isAnnual = user?.planType === 'annual' || user?.planType === 'starter' || user?.planType === 'growth';
-  // Pricing: Starter add-on: 399*12, Growth: free, Basic: N/A, Legacy monthly: 49, Legacy annual: 399
-  const recordingPrice = user?.planType === 'growth' ? 'FREE' : (user?.planType === 'starter' ? '₹399/month * 12 (₹4,788 billed annually)' : (user?.planType === 'basic' ? 'Not Available' : (isAnnual ? '₹399/year' : '₹49/month')));
+  const planKey = (user?.planType || '').toLowerCase();
+  // Pricing: Starter/monthly call recording add-on: ₹3,999/annually. Growth: FREE. Basic: Not Available.
+  const recordingPrice = planKey === 'growth' || planKey === 'annual'
+    ? 'FREE'
+    : (planKey === 'starter' || planKey === 'monthly'
+      ? '₹3,999/annually'
+      : (planKey === 'basic' || planKey === 'demo' ? 'Not Available' : '₹3,999/annually'));
 
   const parseDbDate = (dateString) => {
     if (!dateString) return new Date();

@@ -30,6 +30,9 @@ exports.createCallLog = async (req, res) => {
   const { contactId, callStatus, duration, feedback, followUpDate, calledAt } = req.body;
   const userId = req.user.id;
 
+  // Run call recording cleanup asynchronously to automatically delete recordings older than 1 week
+  deleteOldRecordings().catch(err => console.error('[Cleanup] Error in background deleteOldRecordings:', err));
+
   if (!contactId || !callStatus) {
     return res.status(400).json({ error: 'Contact ID and Call Status are required.' });
   }
@@ -930,6 +933,69 @@ exports.syncCallActivities = async (req, res) => {
   } finally {
     client.removeListener('error', errorHandler);
     client.release();
+  }
+};
+
+// Helper function to automatically delete call recordings older than 1 week (7 days)
+const deleteOldRecordings = async () => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const now = new Date();
+    const cutoffDate = new Date();
+    cutoffDate.setDate(now.getDate() - 7); // 7 days ago
+
+    // Query all registered companies
+    const companiesRes = await db.queryMain('SELECT reg_num FROM companies');
+    const client = await db.pgPool.connect();
+    
+    try {
+      for (const row of companiesRes.rows) {
+        const regNum = row.reg_num;
+        const schemaName = `company_${regNum}`;
+        
+        // Switch search path to the company tenant schema
+        await client.query(`SET search_path TO "${schemaName}", "public"`);
+        
+        // Find recordings created more than 7 days ago
+        const oldLogsRes = await client.query(
+          'SELECT id, recording_url FROM call_logs WHERE called_at < $1 AND recording_url IS NOT NULL',
+          [cutoffDate]
+        );
+        
+        for (const log of oldLogsRes.rows) {
+          const recordingUrl = log.recording_url;
+          if (recordingUrl) {
+            const fileName = path.basename(recordingUrl);
+            const filePath = path.join(__dirname, '../uploads/recordings', fileName);
+            if (fs.existsSync(filePath)) {
+              fs.unlink(filePath, (err) => {
+                if (err) console.error(`[Cleanup] Error deleting recording file ${fileName}:`, err.message);
+                else console.log(`[Cleanup] Successfully deleted expired recording file: ${fileName}`);
+              });
+            }
+          }
+        }
+        
+        // Remove DB references to expired recordings
+        if (oldLogsRes.rows.length > 0) {
+          const logIds = oldLogsRes.rows.map(l => l.id);
+          await client.query(
+            'UPDATE call_logs SET recording_url = NULL WHERE id = ANY($1::int[])',
+            [logIds]
+          );
+          await client.query(
+            'DELETE FROM call_recordings WHERE call_log_id = ANY($1::int[])',
+            [logIds]
+          );
+          console.log(`[Cleanup] Cleared ${oldLogsRes.rows.length} expired recording entries in schema ${schemaName}`);
+        }
+      }
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('[Cleanup] Error running recordings auto deletion:', err.message);
   }
 };
 

@@ -285,11 +285,29 @@ const Companies = () => {
         <div className="live-monitor-grid" style={{ ...styles.grid, gridTemplateColumns: colsStyle }}>
           {filteredCompanies.map(c => {
             const addedTelecallers = c.telecaller_count || 0;
-            const pricePerCaller = c.plan_type === 'demo' ? 0 : (c.plan_type === 'annual' ? 49 : 59);
-            const totalCharge = addedTelecallers * pricePerCaller;
+            const planKey = (c.plan_type || '').toLowerCase();
+            
+            let planText = 'Basic';
+            let pricePerCaller = 29;
+            if (planKey === 'growth' || planKey === 'annual') {
+              planText = 'Growth';
+              pricePerCaller = 99;
+            } else if (planKey === 'starter' || planKey === 'monthly') {
+              planText = 'Starter';
+              pricePerCaller = 49;
+            } else if (planKey === 'demo') {
+              planText = 'Free Demo';
+              pricePerCaller = 0;
+            }
+
+            const isRecEnabled = c.call_recording_enabled === 1 || c.call_recording_enabled === true;
+            let totalCharge = addedTelecallers * pricePerCaller;
+            if ((planText === 'Starter' || planKey === 'monthly') && isRecEnabled) {
+              totalCharge += 3999;
+            }
+
             const isExpired = c.subscription_end ? new Date(c.subscription_end) < new Date() : false;
             const expiryStr = formatDate(c.subscription_end);
-            const planText = c.plan_type === 'demo' ? 'Free Plan' : (c.plan_type === 'annual' ? 'Growth' : 'Starter');
 
             return (
               <div 
@@ -378,7 +396,7 @@ const Companies = () => {
 
                 {/* Total Billing Panel */}
                 <div style={styles.billingBanner}>
-                  <span style={styles.billingLabel}>TOTAL MONTHLY CHARGE</span>
+                  <span style={styles.billingLabel}>TOTAL ANNUAL CHARGE</span>
                   <span style={styles.billingPrice}>₹{totalCharge}</span>
                 </div>
 
@@ -436,11 +454,13 @@ const Companies = () => {
                   <div style={styles.infoField}>
                     <span style={styles.infoLabel}>Billing Plan Type</span>
                     <span style={{ ...styles.infoValue, textTransform: 'capitalize' }}>
-                      {selectedCompany.plan_type === 'annual' 
-                        ? 'Growth' 
-                        : selectedCompany.plan_type === 'demo' 
-                          ? 'Free Plan' 
-                          : 'Starter'}
+                      {(() => {
+                        const planKey = (selectedCompany.plan_type || '').toLowerCase();
+                        if (planKey === 'growth' || planKey === 'annual') return 'Growth';
+                        if (planKey === 'starter' || planKey === 'monthly') return 'Starter';
+                        if (planKey === 'demo') return 'Free Demo';
+                        return 'Basic';
+                      })()}
                     </span>
                   </div>
                   <div style={styles.infoField}>
@@ -455,9 +475,32 @@ const Companies = () => {
                     </span>
                   </div>
                   <div style={styles.infoField}>
-                    <span style={styles.infoLabel}>Monthly Revenue Generated</span>
+                    <span style={styles.infoLabel}>Annual Revenue Generated</span>
                     <span style={{ ...styles.infoValue, color: '#10b981', fontWeight: '800' }}>
-                      ₹{(selectedCompany.telecaller_count || 0) * (selectedCompany.plan_type === 'demo' ? 0 : (selectedCompany.plan_type === 'annual' ? 49 : 59))} ({(selectedCompany.telecaller_count || 0)} active telecallers)
+                      ₹{
+                        (() => {
+                          const addedTelecallers = selectedCompany.telecaller_count || 0;
+                          const planKey = (selectedCompany.plan_type || '').toLowerCase();
+                          let pricePerCaller = 29;
+                          let planText = 'Basic';
+                          if (planKey === 'growth' || planKey === 'annual') {
+                            pricePerCaller = 99;
+                            planText = 'Growth';
+                          } else if (planKey === 'starter' || planKey === 'monthly') {
+                            pricePerCaller = 49;
+                            planText = 'Starter';
+                          } else if (planKey === 'demo') {
+                            pricePerCaller = 0;
+                            planText = 'Free Demo';
+                          }
+                          const isRecEnabled = selectedCompany.call_recording_enabled === 1 || selectedCompany.call_recording_enabled === true;
+                          let totalCharge = addedTelecallers * pricePerCaller;
+                          if ((planText === 'Starter' || planKey === 'monthly') && isRecEnabled) {
+                            totalCharge += 3999;
+                          }
+                          return totalCharge;
+                        })()
+                      } ({(selectedCompany.telecaller_count || 0)} active telecallers)
                     </span>
                   </div>
                 </div>
