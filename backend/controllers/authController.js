@@ -475,11 +475,11 @@ exports.getSuperadminStats = async (req, res) => {
       const seats = comp.no_of_telecallers || 0;
       let subscriptionCharge = 0;
       if (plan === 'basic') {
-        subscriptionCharge = seats * 29;
+        subscriptionCharge = seats * 29 * 12;
       } else if (plan === 'starter') {
-        subscriptionCharge = seats * 49;
+        subscriptionCharge = seats * 49 * 12;
       } else if (plan === 'growth') {
-        subscriptionCharge = seats * 99;
+        subscriptionCharge = seats * 99 * 12;
       } else if (plan === 'demo') {
         subscriptionCharge = 0;
       } else if (plan === 'annual') {
@@ -498,15 +498,12 @@ exports.getSuperadminStats = async (req, res) => {
         const now = new Date();
         const expiry = db.parseSafeDate(comp.call_recording_end_date);
         if (expiry && expiry >= now) {
-          if (plan === 'starter') {
-            totalCharge += 399 * 12; // Starter plan recording charge
-          } else if (plan === 'growth') {
-            totalCharge += 0; // free recording on growth
-          } else if (plan === 'basic') {
-            totalCharge += 0; // not available on basic
+          if (plan === 'starter' || plan === 'monthly') {
+            totalCharge += 3999;
+          } else if (plan === 'growth' || plan === 'annual') {
+            totalCharge += 0;
           } else {
-            // legacy plans
-            totalCharge += plan === 'annual' ? 399 : 49;
+            totalCharge += 3999;
           }
         }
       }
@@ -1028,18 +1025,18 @@ exports.createRazorpayOrder = async (req, res) => {
 
   if (planType === 'basic') {
     pricePerCaller = 29;
-    totalAmount = numCallers * 29;
+    totalAmount = numCallers * 29 * 12;
     // basic plan does not support call recording
   } else if (planType === 'starter') {
     pricePerCaller = 49;
-    totalAmount = numCallers * 49;
+    totalAmount = numCallers * 49 * 12;
     if (includeCallRecording) {
-      recordingCharge = 399 * 12; // 399/monthly * 12 = 4788
+      recordingCharge = 3999;
       totalAmount += recordingCharge;
     }
   } else if (planType === 'growth') {
     pricePerCaller = 99;
-    totalAmount = numCallers * 99;
+    totalAmount = numCallers * 99 * 12;
     // call recording is free for growth plan
   } else {
     // legacy monthly/annual support

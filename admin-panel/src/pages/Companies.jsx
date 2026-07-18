@@ -302,7 +302,7 @@ const Companies = () => {
             }
 
             const isRecEnabled = c.call_recording_enabled === 1 || c.call_recording_enabled === true;
-            let totalCharge = purchasedSeats * pricePerCaller;
+            let totalCharge = purchasedSeats * pricePerCaller * 12;
             if ((planText === 'Starter' || planKey === 'monthly') && isRecEnabled) {
               totalCharge += 3999;
             }
@@ -481,6 +481,7 @@ const Companies = () => {
                       ₹{
                         (() => {
                           const addedTelecallers = selectedCompany.telecaller_count || 0;
+                          const purchasedSeats = selectedCompany.no_of_telecallers || 0;
                           const planKey = (selectedCompany.plan_type || '').toLowerCase();
                           let pricePerCaller = 29;
                           let planText = 'Basic';
@@ -495,13 +496,13 @@ const Companies = () => {
                             planText = 'Free Demo';
                           }
                           const isRecEnabled = selectedCompany.call_recording_enabled === 1 || selectedCompany.call_recording_enabled === true;
-                          let totalCharge = addedTelecallers * pricePerCaller;
+                          let totalCharge = purchasedSeats * pricePerCaller * 12;
                           if ((planText === 'Starter' || planKey === 'monthly') && isRecEnabled) {
                             totalCharge += 3999;
                           }
                           return totalCharge;
                         })()
-                      } ({(selectedCompany.telecaller_count || 0)} active telecallers)
+                      } ({selectedCompany.telecaller_count || 0} added / {selectedCompany.no_of_telecallers || 0} seats)
                     </span>
                   </div>
                 </div>

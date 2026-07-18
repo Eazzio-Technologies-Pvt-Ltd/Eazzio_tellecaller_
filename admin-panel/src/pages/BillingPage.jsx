@@ -81,11 +81,11 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
         
         let seatsBill = 0;
         if (plan === 'basic') {
-          seatsBill = seats * 29;
+          seatsBill = seats * 29 * 12;
         } else if (plan === 'starter') {
-          seatsBill = seats * 49;
+          seatsBill = seats * 49 * 12;
         } else if (plan === 'growth') {
-          seatsBill = seats * 99;
+          seatsBill = seats * 99 * 12;
         } else if (plan === 'demo') {
           seatsBill = 0;
         } else {
