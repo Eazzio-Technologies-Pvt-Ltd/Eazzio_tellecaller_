@@ -465,10 +465,29 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
 
   // Superadmin dashboard early return
   if (activeUser && (activeUser.companyRegNum === null || activeUser.email === 'tellecaller111@eazzio.com')) {
-    const totalMonthlyRevenue = safeData.companies
+    const totalAnnualRevenue = safeData.companies
       ? safeData.companies.reduce((sum, comp) => {
-          const rate = comp.plan_type === 'demo' ? 0 : (comp.plan_type === 'annual' ? 49 : 59);
-          return sum + (rate * (comp.telecaller_count || 0));
+          const plan = comp.plan_type || 'monthly';
+          const seats = comp.no_of_telecallers || 0;
+          let planPrice = 0;
+          if (plan === 'basic') {
+            planPrice = seats * 29 * 12;
+          } else if (plan === 'starter') {
+            planPrice = seats * 49 * 12;
+          } else if (plan === 'growth') {
+            planPrice = seats * 99 * 12;
+          } else if (plan === 'demo') {
+            planPrice = 0;
+          } else if (plan === 'annual') {
+            planPrice = seats * 49 * 12;
+          } else {
+            planPrice = seats * 59 * 12;
+          }
+          const isRecEnabled = comp.call_recording_enabled === 1 || comp.call_recording_enabled === true;
+          if ((plan === 'starter' || plan === 'monthly') && isRecEnabled) {
+            planPrice += 3999;
+          }
+          return sum + planPrice;
         }, 0)
       : 0;
 
@@ -562,7 +581,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             </div>
           </div>
 
-          {/* Card 3: Est. Monthly Revenue */}
+          {/* Card 3: Est. Annual Revenue */}
           <div className="glass-card stat-card stat-card-teal" style={{
             display: 'flex',
             flexDirection: 'row',
@@ -575,8 +594,8 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
               <IndianRupee size={22} />
             </div>
             <div className="stat-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <span className="stat-label" style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Est. Monthly Revenue</span>
-              <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0d9488' }}>₹{totalMonthlyRevenue.toLocaleString('en-IN')}</span>
+              <span className="stat-label" style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Est. Annual Revenue</span>
+              <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0d9488' }}>₹{totalAnnualRevenue.toLocaleString('en-IN')}</span>
             </div>
           </div>
 
@@ -597,7 +616,7 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Business</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Admin Details</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Plan Type</th>
-                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Callers</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Seats / Callers</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase' }}>Subscription Expiry</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase', textAlign: 'center' }}>Actions</th>
               </tr>
@@ -671,8 +690,8 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
                                   : 'Starter (Legacy ₹59)'}
                       </span>
                     </td>
-                    <td style={{ padding: '16px', fontSize: '0.95rem', color: '#10b981', fontWeight: '800' }}>
-                      {comp.telecaller_count || 0}
+                    <td style={{ padding: '16px', fontSize: '0.9rem', color: '#10b981', fontWeight: '800' }}>
+                      {comp.telecaller_count || 0} added / {comp.no_of_telecallers || 0} seats
                     </td>
                     <td style={{ padding: '16px', fontSize: '0.92rem' }}>
                       <span style={{
