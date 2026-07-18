@@ -779,9 +779,9 @@ select {
 
 .pricing-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 32px;
-  max-width: 880px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -2180,5 +2180,27 @@ body {
   
   .top-security-banner .banner-close-btn {
     right: 12px;
+  }
+}
+
+/* Media query override for small mobile devices (350px-450px) to stack pricing cards and optimize layouts */
+@media screen and (min-width: 350px) and (max-width: 450px) {
+  .pricing-grid {
+    grid-template-columns: 1fr !important;
+    max-width: 100% !important;
+    padding: 0 12px !important;
+    gap: 24px !important;
+  }
+  .pricing-card {
+    padding: 32px 24px !important;
+    border-radius: 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .pricing-price {
+    font-size: 2.40rem !important;
+  }
+  .pricing-features-list {
+    margin-bottom: 24px !important;
   }
 }
