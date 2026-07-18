@@ -285,6 +285,7 @@ const Companies = () => {
         <div className="live-monitor-grid" style={{ ...styles.grid, gridTemplateColumns: colsStyle }}>
           {filteredCompanies.map(c => {
             const addedTelecallers = c.telecaller_count || 0;
+            const purchasedSeats = c.no_of_telecallers || 0;
             const planKey = (c.plan_type || '').toLowerCase();
             
             let planText = 'Basic';
@@ -301,7 +302,7 @@ const Companies = () => {
             }
 
             const isRecEnabled = c.call_recording_enabled === 1 || c.call_recording_enabled === true;
-            let totalCharge = addedTelecallers * pricePerCaller;
+            let totalCharge = purchasedSeats * pricePerCaller;
             if ((planText === 'Starter' || planKey === 'monthly') && isRecEnabled) {
               totalCharge += 3999;
             }
@@ -379,7 +380,7 @@ const Companies = () => {
                       Telecallers Added
                     </div>
                     <span style={{ ...styles.itemValue, fontWeight: '700', color: 'var(--color-primary)' }}>
-                      {addedTelecallers} callers
+                      {addedTelecallers} added / {c.no_of_telecallers} seats
                     </span>
                   </div>
 

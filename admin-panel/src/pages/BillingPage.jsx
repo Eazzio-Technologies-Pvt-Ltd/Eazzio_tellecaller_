@@ -409,7 +409,9 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
                 <IndianRupee size={22} />
               </div>
               <div className="stat-info">
-                <span className="stat-label" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600' }}>CURRENT BILL CYCLE TOTAL</span>
+                <span className="stat-label" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600' }}>
+                  {planType === 'demo' ? 'DEMO BILL CYCLE TOTAL' : 'ANNUAL SUBSCRIPTION TOTAL'}
+                </span>
                 <span className="stat-value" style={{ fontSize: '1.8rem', fontWeight: '900', color: '#10b981', marginTop: '2px' }}>
                   ₹{companyBill}
                 </span>
@@ -517,7 +519,7 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
                           Inactive
                         </span>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginTop: '2px' }}>
-                          ₹399/month * 12 (₹4,788/yr)
+                          ₹3,999/annually
                         </span>
                         {paymentError && (
                           <span style={{ fontSize: '0.7rem', color: '#ef4444', display: 'block', marginTop: '4px' }}>
