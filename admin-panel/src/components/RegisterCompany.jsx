@@ -11,7 +11,7 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
   const [noOfTelecallers, setNoOfTelecallers] = useState(prefillNoOfTelecallers ? prefillNoOfTelecallers.toString() : '5');
   const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState('');
-  const [planType, setPlanType] = useState('monthly'); // 'monthly' or 'annual'
+  const [planType, setPlanType] = useState('basic'); // 'basic', 'starter', or 'growth'
   const [includeCallRecording, setIncludeCallRecording] = useState(false);
 
   // Status States
@@ -99,8 +99,8 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
         currency: 'INR',
         name: 'Eazzio Auto Dialer',
         description: renewalMode 
-          ? `Subscription Renewal for ${telecallersCount} seats (${planType === 'annual' ? 'Annual' : 'Monthly'})${includeCallRecording ? ' + Call Rec' : ''}`
-          : `Setup Fee for ${telecallersCount} Telecallers${includeCallRecording ? ' + Call Rec' : ''}`,
+          ? `Subscription Renewal for ${telecallersCount} seats (${planType.toUpperCase()})${includeCallRecording ? ' + Call Rec' : ''}`
+          : `Setup Fee for ${telecallersCount} Telecallers (${planType.toUpperCase()})${includeCallRecording ? ' + Call Rec' : ''}`,
         order_id: orderData.orderId,
         handler: async function (response) {
           setLoading(true);
@@ -350,71 +350,145 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
         {/* Plan Selection Cards */}
         <div style={{ marginBottom: '0.2rem' }}>
           <label style={styles.label}>Select Subscription Plan</label>
-          <div className="plan-selection-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
-            {/* Card 1: Monthly */}
+          <div className="plan-selection-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '4px' }}>
+            {/* Card 1: Basic */}
             <div 
-              onClick={() => setPlanType('monthly')}
+              onClick={() => {
+                setPlanType('basic');
+                setIncludeCallRecording(false);
+              }}
               style={{
                 ...styles.planCard,
-                borderColor: planType === 'monthly' ? '#6366f1' : 'var(--border-color)',
-                backgroundColor: planType === 'monthly' ? 'rgba(99, 102, 241, 0.05)' : 'var(--bg-primary)',
+                cursor: 'pointer',
+                border: '2px solid',
+                borderColor: planType === 'basic' ? '#6366f1' : 'var(--border-color)',
+                backgroundColor: planType === 'basic' ? 'rgba(99, 102, 241, 0.05)' : 'var(--bg-primary)',
               }}
             >
-              <div style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', color: planType === 'monthly' ? '#6366f1' : 'var(--text-secondary)', marginBottom: '2px' }}>Starter Plan</div>
-              <span style={{ fontSize: '1.15rem', fontWeight: '900', color: planType === 'monthly' ? '#6366f1' : 'var(--text-primary)' }}>₹59</span>
-              <span style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)', marginTop: '0px' }}>/ telecaller / month</span>
-              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>billed monthly</span>
+              <div style={{ fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', color: planType === 'basic' ? '#6366f1' : 'var(--text-secondary)', marginBottom: '2px' }}>Basic Plan</div>
+              <span style={{ fontSize: '1.1rem', fontWeight: '900', color: planType === 'basic' ? '#6366f1' : 'var(--text-primary)' }}>₹29</span>
+              <span style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-secondary)' }}>/ seat / year</span>
+              <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', marginTop: '2px', textTransform: 'uppercase' }}>10 Campaigns max</span>
             </div>
 
-            {/* Card 2: Annual */}
+            {/* Card 2: Starter */}
             <div 
-              onClick={() => setPlanType('annual')}
+              onClick={() => setPlanType('starter')}
               style={{
                 ...styles.planCard,
-                borderColor: planType === 'annual' ? '#10b981' : 'var(--border-color)',
-                backgroundColor: planType === 'annual' ? 'rgba(16, 185, 129, 0.05)' : 'var(--bg-primary)',
+                cursor: 'pointer',
+                border: '2px solid',
+                borderColor: planType === 'starter' ? '#10b981' : 'var(--border-color)',
+                backgroundColor: planType === 'starter' ? 'rgba(16, 185, 129, 0.05)' : 'var(--bg-primary)',
               }}
             >
-              <div style={styles.popularBadge}>Best Value</div>
-              <div style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', color: planType === 'annual' ? '#10b981' : 'var(--text-secondary)', marginBottom: '2px' }}>Growth Plan</div>
-              <span style={{ fontSize: '1.15rem', fontWeight: '900', color: planType === 'annual' ? '#10b981' : 'var(--text-primary)' }}>₹49</span>
-              <span style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)', marginTop: '0px' }}>/ telecaller / month</span>
-              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>billed annually</span>
+              <div style={{ fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', color: planType === 'starter' ? '#10b981' : 'var(--text-secondary)', marginBottom: '2px' }}>Starter Plan</div>
+              <span style={{ fontSize: '1.1rem', fontWeight: '900', color: planType === 'starter' ? '#10b981' : 'var(--text-primary)' }}>₹49</span>
+              <span style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-secondary)' }}>/ seat / year</span>
+              <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', marginTop: '2px', textTransform: 'uppercase' }}>30 Campaigns max</span>
+            </div>
+
+            {/* Card 3: Growth */}
+            <div 
+              onClick={() => {
+                setPlanType('growth');
+                setIncludeCallRecording(true);
+              }}
+              style={{
+                ...styles.planCard,
+                cursor: 'pointer',
+                border: '2px solid',
+                borderColor: planType === 'growth' ? '#a855f7' : 'var(--border-color)',
+                backgroundColor: planType === 'growth' ? 'rgba(168, 85, 247, 0.05)' : 'var(--bg-primary)',
+              }}
+            >
+              <div style={{ fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', color: planType === 'growth' ? '#a855f7' : 'var(--text-secondary)', marginBottom: '2px' }}>Growth Plan</div>
+              <span style={{ fontSize: '1.1rem', fontWeight: '900', color: planType === 'growth' ? '#a855f7' : 'var(--text-primary)' }}>₹99</span>
+              <span style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-secondary)' }}>/ seat / year</span>
+              <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', marginTop: '2px', textTransform: 'uppercase' }}>Unlimited Camp.</span>
             </div>
           </div>
         </div>
+
         {/* Call Recording Add-on selection */}
-        <div style={{
-          marginTop: '6px',
-          marginBottom: '6px',
-          padding: '8px 10px',
-          borderRadius: '6px',
-          border: '1px dashed var(--border-color)',
-          backgroundColor: 'rgba(255,255,255,0.02)',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '8px',
-          cursor: 'pointer'
-         }} onClick={() => setIncludeCallRecording(!includeCallRecording)}>
-          <input 
-            type="checkbox" 
-            className="auth-checkbox"
-            checked={includeCallRecording}
-            onChange={(e) => {
-              e.stopPropagation();
-              setIncludeCallRecording(e.target.checked);
-            }}
-            style={{ marginTop: '2px', cursor: 'pointer', flexShrink: 0 }}
-          />
-          <div>
-            <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-              Include Call Recording Add-on
-            </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '1px' }}>
-              Record all telecaller calls automatically. Only {planType === 'annual' ? '₹399 / year' : '₹49 / month'}.
+        {planType === 'basic' ? (
+          <div style={{
+            marginTop: '6px',
+            marginBottom: '6px',
+            padding: '8px 10px',
+            borderRadius: '6px',
+            border: '1px dashed var(--border-color)',
+            backgroundColor: 'rgba(255,255,255,0.02)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            opacity: 0.6
+          }}>
+            <input type="checkbox" checked={false} disabled style={{ marginTop: '2px', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-muted)' }}>
+                Call Recording Not Available
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '1px' }}>
+                Basic Plan does not support call recording. Upgrade to Starter or Growth plan.
+              </div>
             </div>
           </div>
-        </div>
+        ) : planType === 'growth' ? (
+          <div style={{
+            marginTop: '6px',
+            marginBottom: '6px',
+            padding: '8px 10px',
+            borderRadius: '6px',
+            border: '1px dashed rgba(168, 85, 247, 0.3)',
+            backgroundColor: 'rgba(168, 85, 247, 0.03)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+          }}>
+            <input type="checkbox" checked={true} disabled style={{ marginTop: '2px', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#a855f7' }}>
+                Call Recording Included
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '1px' }}>
+                Call Recording is FREE and fully included in the Growth Plan.
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            marginTop: '6px',
+            marginBottom: '6px',
+            padding: '8px 10px',
+            borderRadius: '6px',
+            border: '1px dashed var(--border-color)',
+            backgroundColor: 'rgba(255,255,255,0.02)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            cursor: 'pointer'
+          }} onClick={() => setIncludeCallRecording(!includeCallRecording)}>
+            <input 
+              type="checkbox" 
+              className="auth-checkbox"
+              checked={includeCallRecording}
+              onChange={(e) => {
+                e.stopPropagation();
+                setIncludeCallRecording(e.target.checked);
+              }}
+              style={{ marginTop: '2px', cursor: 'pointer', flexShrink: 0 }}
+            />
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                Include Call Recording Add-on
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '1px' }}>
+                Record all calls automatically. Only ₹399 / month * 12 (₹4,788 billed annually).
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="form-group" style={{ marginBottom: '0px' }}>
           <label style={styles.label}>Admin Email Address</label>

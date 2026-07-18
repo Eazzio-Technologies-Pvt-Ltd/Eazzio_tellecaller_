@@ -79,9 +79,33 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
           }
         }
         
-        const seatsBill = plan === 'demo' ? 0 : (plan === 'annual' ? seats * rate * 12 : seats * rate);
+        let seatsBill = 0;
+        if (plan === 'basic') {
+          seatsBill = seats * 29;
+        } else if (plan === 'starter') {
+          seatsBill = seats * 49;
+        } else if (plan === 'growth') {
+          seatsBill = seats * 99;
+        } else if (plan === 'demo') {
+          seatsBill = 0;
+        } else {
+          // Legacy monthly/annual
+          seatsBill = plan === 'annual' ? seats * rate * 12 : seats * rate;
+        }
+
         const editSurcharge = plan === 'demo' ? 0 : Math.max(0, edits - 3) * 20;
-        const recordingBill = plan === 'demo' ? 0 : (recActive ? (plan === 'annual' ? 399 : 49) : 0);
+
+        let recordingBill = 0;
+        if (plan === 'growth') {
+          recordingBill = 0;
+        } else if (plan === 'starter' && recActive) {
+          recordingBill = 399 * 12; // 399/monthly * 12 = 4788
+        } else if (plan === 'basic') {
+          recordingBill = 0;
+        } else if (recActive) {
+          recordingBill = plan === 'annual' ? 399 : 49;
+        }
+
         setCompanyBill(seatsBill + editSurcharge + recordingBill);
       } else {
         // Superadmin: Fetch global metrics and all registered companies
@@ -334,16 +358,21 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
                     Your free 7-day trial workspace is active. Choose a paid subscription plan to keep all your data and get a permanent registration code.
                   </p>
                   <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-                    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem 1.5rem', minWidth: '160px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#6366f1' }}>₹59</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600' }}>per seat / month</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Starter Plan</div>
+                    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem 1.5rem', minWidth: '130px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#6366f1' }}>₹29</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>per seat / year</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Basic Plan</div>
                     </div>
-                    <div style={{ background: 'var(--bg-card)', border: '2px solid #6366f1', borderRadius: '12px', padding: '1rem 1.5rem', minWidth: '160px', textAlign: 'center', position: 'relative' }}>
-                      <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#6366f1', color: '#fff', fontSize: '0.65rem', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' }}>BEST VALUE</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#6366f1' }}>₹49</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600' }}>per seat / month</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Growth Plan (Annual)</div>
+                    <div style={{ background: 'var(--bg-card)', border: '2px solid #10b981', borderRadius: '12px', padding: '1rem 1.5rem', minWidth: '130px', textAlign: 'center', position: 'relative' }}>
+                      <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#10b981', color: '#fff', fontSize: '0.6rem', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' }}>POPULAR</div>
+                      <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#10b981' }}>₹49</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>per seat / year</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Starter Plan</div>
+                    </div>
+                    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem 1.5rem', minWidth: '130px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#a855f7' }}>₹99</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>per seat / year</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Growth Plan</div>
                     </div>
                   </div>
                   <button
@@ -409,10 +438,14 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
               <div className="stat-info">
                 <span className="stat-label" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600' }}>ACTIVE BILLING PLAN</span>
                 <span className="stat-value" style={{ fontSize: '1.6rem', fontWeight: '900', color: '#f59e0b', marginTop: '2px' }}>
-                  {planType === 'demo' ? 'Free Demo' : (planType === 'annual' ? 'Growth Plan' : 'Starter Plan')}
+                  {planType === 'basic' ? 'Basic Plan' : 
+                   planType === 'starter' ? 'Starter Plan' : 
+                   planType === 'growth' ? 'Growth Plan' : 
+                   planType === 'demo' ? 'Free Demo' : 
+                   planType === 'annual' ? 'Growth Plan (Legacy)' : 'Starter Plan (Legacy)'}
                 </span>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  {planType === 'demo' ? 'Free subscription' : `₹${pricePerTelecaller} / seat / ${planType === 'annual' ? 'year' : 'month'}`}
+                  {planType === 'demo' ? 'Free subscription' : `₹${pricePerTelecaller} / seat / year`}
                 </span>
               </div>
             </div>
@@ -426,7 +459,9 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
                 
                 {(() => {
                   let recActive = false;
-                  if (callRecordingEnabled && callRecordingEndDate) {
+                  if (planType === 'growth') {
+                    recActive = true;
+                  } else if (callRecordingEnabled && callRecordingEndDate) {
                     const now = new Date();
                     let expiryStr = callRecordingEndDate.toString();
                     if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
@@ -436,6 +471,32 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
                     if (expiry >= now) {
                       recActive = true;
                     }
+                  }
+
+                  if (planType === 'basic') {
+                    return (
+                      <>
+                        <span className="stat-value" style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                          Not Available
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginTop: '2px' }}>
+                          Upgrade subscription to record calls.
+                        </span>
+                      </>
+                    );
+                  }
+
+                  if (planType === 'growth') {
+                    return (
+                      <>
+                        <span className="stat-value" style={{ fontSize: '1.6rem', fontWeight: '900', color: '#10b981', marginTop: '2px', display: 'block' }}>
+                          Active (Free)
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginTop: '2px' }}>
+                          Fully included in Growth Plan.
+                        </span>
+                      </>
+                    );
                   }
 
                   if (recActive) {
@@ -456,7 +517,7 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
                           Inactive
                         </span>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginTop: '2px' }}>
-                          ₹{planType === 'annual' ? '399/year' : '49/month'}
+                          ₹399/month * 12 (₹4,788/yr)
                         </span>
                         {paymentError && (
                           <span style={{ fontSize: '0.7rem', color: '#ef4444', display: 'block', marginTop: '4px' }}>
@@ -562,16 +623,20 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
                 <tbody>
                   <tr style={styles.tr}>
                     <td style={{ ...styles.td, fontWeight: '700', color: 'var(--text-primary)' }}>
-                      {planType === 'demo' ? 'Free Trial Demo Workspace (7-Day Duration)' : (planType === 'annual' ? 'Growth Plan Telecaller Seats (Annual Billing — 1 Year)' : 'Starter Plan Telecaller Seats (Monthly Billing)')}
+                      {planType === 'basic' ? 'Basic Plan Telecaller Seats (Annual Billing)' :
+                       planType === 'starter' ? 'Starter Plan Telecaller Seats (Annual Billing)' :
+                       planType === 'growth' ? 'Growth Plan Telecaller Seats (Annual Billing)' :
+                       planType === 'demo' ? 'Free Trial Demo Workspace (7-Day Duration)' :
+                       planType === 'annual' ? 'Growth Plan Telecaller Seats (Legacy Annual)' : 'Starter Plan Telecaller Seats (Legacy Monthly)'}
                     </td>
                     <td style={styles.td}>
-                      {planType === 'demo' ? '₹0 (Free)' : `₹${pricePerTelecaller} / seat / ${planType === 'annual' ? 'year' : 'month'}`}
+                      {planType === 'demo' ? '₹0 (Free)' : `₹${pricePerTelecaller} / seat / year`}
                     </td>
                     <td style={styles.td}>
                       {planType === 'demo' ? '1 Demo Seat allowed' : `${noOfTelecallers} seats purchased`}
                     </td>
                     <td style={{ ...styles.td, textAlign: 'right', fontWeight: '800', color: '#10b981' }}>
-                      ₹{planType === 'demo' ? 0 : (planType === 'annual' ? noOfTelecallers * pricePerTelecaller * 12 : noOfTelecallers * pricePerTelecaller)}
+                      ₹{planType === 'demo' ? 0 : noOfTelecallers * pricePerTelecaller}
                     </td>
                   </tr>
                   <tr style={styles.tr}>
@@ -586,7 +651,9 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
                   </tr>
                   {(() => {
                     let recActive = false;
-                    if (callRecordingEnabled && callRecordingEndDate) {
+                    if (planType === 'growth') {
+                      recActive = true;
+                    } else if (callRecordingEnabled && callRecordingEndDate) {
                       const now = new Date();
                       let expiryStr = callRecordingEndDate.toString();
                       if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
@@ -597,16 +664,36 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
                         recActive = true;
                       }
                     }
+
+                    if (planType === 'basic') {
+                      return null;
+                    }
+
+                    if (planType === 'growth') {
+                      return (
+                        <tr style={styles.tr}>
+                          <td style={{ ...styles.td, fontWeight: '700', color: 'var(--text-primary)' }}>
+                            Call Recording & Storage Add-on
+                          </td>
+                          <td style={styles.td}>FREE</td>
+                          <td style={styles.td}>Active (Included in Growth)</td>
+                          <td style={{ ...styles.td, textAlign: 'right', fontWeight: '800', color: '#10b981' }}>
+                            ₹0
+                          </td>
+                        </tr>
+                      );
+                    }
+
                     if (recActive) {
                       return (
                         <tr style={styles.tr}>
                           <td style={{ ...styles.td, fontWeight: '700', color: 'var(--text-primary)' }}>
-                            Call Recording Add-on ({planType === 'annual' ? 'Growth Plan — 1 Year' : 'Starter Plan — 1 Month'})
+                            Call Recording Add-on ({planType === 'starter' ? 'Starter Plan — 1 Year' : (planType === 'annual' ? 'Growth Plan (Legacy) — 1 Year' : 'Starter Plan (Legacy) — 1 Month')})
                           </td>
-                          <td style={styles.td}>₹{planType === 'annual' ? '399' : '49'} / {planType === 'annual' ? 'year' : 'month'}</td>
+                          <td style={styles.td}>₹{planType === 'starter' ? 399 * 12 : (planType === 'annual' ? 399 : 49)} / year</td>
                           <td style={styles.td}>Active (Expires: {formatDate(callRecordingEndDate)})</td>
                           <td style={{ ...styles.td, textAlign: 'right', fontWeight: '800', color: '#10b981' }}>
-                            ₹{planType === 'annual' ? '399' : '49'}
+                            ₹{planType === 'starter' ? 399 * 12 : (planType === 'annual' ? 399 : 49)}
                           </td>
                         </tr>
                       );

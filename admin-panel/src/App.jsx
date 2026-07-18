@@ -313,6 +313,61 @@ const DemoValidityBanner = ({ subscriptionEnd, onClose }) => {
 };
 
 
+const SecurityBanner = ({ onClose }) => {
+  return (
+    <div style={{
+      background: '#090d16',
+      color: '#e2e8f0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '0.8rem',
+      fontWeight: '500',
+      height: '38px',
+      padding: '0 40px 0 10px',
+      textAlign: 'center',
+      borderBottom: '1px solid #1e293b',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+      gap: '8px',
+      width: '100%',
+      boxSizing: 'border-box',
+      position: 'relative',
+      zIndex: 1020,
+      letterSpacing: '0.3px',
+      userSelect: 'none'
+    }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center' }}>🔒</span>
+      <span>
+        Your data is safe and secure with us Encrypted by AES 256-bit Encryption
+      </span>
+      <button 
+        onClick={onClose}
+        style={{
+          position: 'absolute',
+          right: '15px',
+          background: 'none',
+          border: 'none',
+          color: '#94a3b8',
+          cursor: 'pointer',
+          fontSize: '0.85rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '4px',
+          zIndex: 1021,
+          transition: 'color 0.2s',
+        }}
+        onMouseEnter={(e) => e.target.style.color = '#ffffff'}
+        onMouseLeave={(e) => e.target.style.color = '#94a3b8'}
+        title="Dismiss banner"
+      >
+        ✕
+      </button>
+    </div>
+  );
+};
+
+
 const App = () => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
@@ -330,6 +385,9 @@ const App = () => {
   const [theme, setTheme] = useState('light');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showDemoBanner, setShowDemoBanner] = useState(true);
+  const [showSecurityBanner, setShowSecurityBanner] = useState(() => {
+    return localStorage.getItem('eazzio_hide_security_banner') !== 'true';
+  });
   const [isRegistering, setIsRegistering] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('register') === 'true';
@@ -726,6 +784,9 @@ const App = () => {
       case 'telecallers':
         return <Telecallers />;
       case 'monitor-grid':
+        if (user && user.planType === 'basic') {
+          return <Dashboard setActiveTab={setActiveTab} theme={theme} user={user} />;
+        }
         return <MonitorGrid />;
       case 'campaigns':
         return <Campaigns user={user} />;
@@ -1508,14 +1569,21 @@ const App = () => {
   }
 
   const isDemoUser = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
+  const offsetHeight = (isDemoUser && showDemoBanner ? 38 : 0) + (showSecurityBanner ? 38 : 0);
 
   // Render main dashboard template if authenticated
   return (
-    <div className="app-container" style={isDemoUser ? { display: 'block' } : {}}>
+    <div className="app-container" style={(isDemoUser || showSecurityBanner) ? { display: 'block' } : {}}>
       {isDemoUser && showDemoBanner && (
         <DemoValidityBanner subscriptionEnd={user?.subscriptionEnd} onClose={() => setShowDemoBanner(false)} />
       )}
-      <div className="app-layout-wrapper" style={{ display: 'flex', width: '100%', minHeight: (isDemoUser && showDemoBanner) ? 'calc(100vh - 38px)' : '100vh' }}>
+      {showSecurityBanner && (
+        <SecurityBanner onClose={() => {
+          setShowSecurityBanner(false);
+          localStorage.setItem('eazzio_hide_security_banner', 'true');
+        }} />
+      )}
+      <div className="app-layout-wrapper" style={{ display: 'flex', width: '100%', minHeight: offsetHeight > 0 ? `calc(100vh - ${offsetHeight}px)` : '100vh' }}>
         <div className="mobile-header">
           <Logo theme={theme} mode="sidebar" />
           <button 
@@ -1541,6 +1609,7 @@ const App = () => {
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           showDemoBanner={showDemoBanner}
+          showSecurityBanner={showSecurityBanner}
         />
         <main className="main-content">
           {renderActivePage()}

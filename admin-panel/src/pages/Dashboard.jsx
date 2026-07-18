@@ -634,23 +634,41 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
                         textTransform: 'uppercase',
                         padding: '4px 8px',
                         borderRadius: '6px',
-                        backgroundColor: comp.plan_type === 'annual' 
-                          ? 'rgba(37, 99, 235, 0.12)' 
-                          : comp.plan_type === 'demo' 
+                        backgroundColor: comp.plan_type === 'basic' 
+                          ? 'rgba(99, 102, 241, 0.12)' 
+                          : comp.plan_type === 'starter' 
                             ? 'rgba(16, 185, 129, 0.12)' 
-                            : 'rgba(124, 58, 237, 0.12)',
-                        color: comp.plan_type === 'annual' 
-                          ? '#2563eb' 
-                          : comp.plan_type === 'demo' 
+                            : comp.plan_type === 'growth' 
+                              ? 'rgba(168, 85, 247, 0.12)' 
+                              : comp.plan_type === 'demo' 
+                                ? 'rgba(245, 158, 11, 0.12)' 
+                                : comp.plan_type === 'annual' 
+                                  ? 'rgba(37, 99, 235, 0.12)' 
+                                  : 'rgba(124, 58, 237, 0.12)',
+                        color: comp.plan_type === 'basic' 
+                          ? '#6366f1' 
+                          : comp.plan_type === 'starter' 
                             ? '#10b981' 
-                            : '#7c3aed',
+                            : comp.plan_type === 'growth' 
+                              ? '#a855f7' 
+                              : comp.plan_type === 'demo' 
+                                ? '#f59e0b' 
+                                : comp.plan_type === 'annual' 
+                                  ? '#2563eb' 
+                                  : '#7c3aed',
                         letterSpacing: '0.5px'
                       }}>
-                        {comp.plan_type === 'annual' 
-                          ? 'Growth (₹49)' 
-                          : comp.plan_type === 'demo' 
-                            ? 'Free Plan (₹0)' 
-                            : 'Starter (₹59)'}
+                        {comp.plan_type === 'basic' 
+                          ? 'Basic (₹29)' 
+                          : comp.plan_type === 'starter' 
+                            ? 'Starter (₹49)' 
+                            : comp.plan_type === 'growth' 
+                              ? 'Growth (₹99)' 
+                              : comp.plan_type === 'demo' 
+                                ? 'Free Plan (₹0)' 
+                                : comp.plan_type === 'annual' 
+                                  ? 'Growth (Legacy ₹49)' 
+                                  : 'Starter (Legacy ₹59)'}
                       </span>
                     </td>
                     <td style={{ padding: '16px', fontSize: '0.95rem', color: '#10b981', fontWeight: '800' }}>
@@ -1241,7 +1259,13 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
             </button>
 
             <button 
-              onClick={() => setActiveTab('monitor-grid')}
+              onClick={() => {
+                if (activeUser && activeUser.planType === 'basic') {
+                  alert('Monitor Grid is not available on the Basic Plan. Please upgrade your subscription to access live monitoring.');
+                } else {
+                  setActiveTab('monitor-grid');
+                }
+              }}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -1250,24 +1274,31 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
                 padding: '1rem',
                 borderRadius: '12px',
                 border: '1px solid var(--border-color)',
-                backgroundColor: 'rgba(245, 158, 11, 0.05)',
+                backgroundColor: (activeUser && activeUser.planType === 'basic') ? 'rgba(239, 68, 68, 0.02)' : 'rgba(245, 158, 11, 0.05)',
                 color: 'var(--text-primary)',
-                cursor: 'pointer',
+                cursor: (activeUser && activeUser.planType === 'basic') ? 'not-allowed' : 'pointer',
+                opacity: (activeUser && activeUser.planType === 'basic') ? 0.5 : 1,
                 transition: 'all 0.2s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.borderColor = '#f59e0b';
+                if (activeUser && activeUser.planType !== 'basic') {
+                  e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.borderColor = '#f59e0b';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.05)';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.borderColor = 'var(--border-color)';
+                if (activeUser && activeUser.planType !== 'basic') {
+                  e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.05)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                }
               }}
             >
-              <LayoutGrid size={20} color="#f59e0b" />
-              <span style={{ fontSize: '0.82rem', fontWeight: '700' }}>Monitor Live Feed</span>
+              <LayoutGrid size={20} color={(activeUser && activeUser.planType === 'basic') ? '#6b7280' : '#f59e0b'} />
+              <span style={{ fontSize: '0.82rem', fontWeight: '700' }}>
+                {(activeUser && activeUser.planType === 'basic') ? 'Monitor Feed (Locked)' : 'Monitor Live Feed'}
+              </span>
             </button>
           </div>
         </div>
@@ -1290,27 +1321,49 @@ const Dashboard = ({ setActiveTab, theme, user }) => {
                     padding: '4px 10px',
                     borderRadius: '8px',
                     width: 'fit-content',
-                    backgroundColor: activeUser.planType === 'annual' 
-                      ? 'rgba(37, 99, 235, 0.12)' 
-                      : activeUser.planType === 'demo' 
-                        ? 'rgba(16, 185, 129, 0.12)' 
-                        : 'rgba(124, 58, 237, 0.12)',
-                    color: activeUser.planType === 'annual' 
-                      ? '#2563eb' 
-                      : activeUser.planType === 'demo' 
-                        ? '#10b981' 
-                        : '#7c3aed',
-                    border: activeUser.planType === 'annual'
-                      ? '1px solid rgba(37, 99, 235, 0.25)'
-                      : activeUser.planType === 'demo'
+                    backgroundColor: activeUser.planType === 'basic'
+                      ? 'rgba(99, 102, 241, 0.12)'
+                      : activeUser.planType === 'starter'
+                        ? 'rgba(16, 185, 129, 0.12)'
+                        : activeUser.planType === 'growth'
+                          ? 'rgba(168, 85, 247, 0.12)'
+                          : activeUser.planType === 'demo'
+                            ? 'rgba(245, 158, 11, 0.12)'
+                            : activeUser.planType === 'annual'
+                              ? 'rgba(37, 99, 235, 0.12)'
+                              : 'rgba(124, 58, 237, 0.12)',
+                    color: activeUser.planType === 'basic'
+                      ? '#6366f1'
+                      : activeUser.planType === 'starter'
+                        ? '#10b981'
+                        : activeUser.planType === 'growth'
+                          ? '#a855f7'
+                          : activeUser.planType === 'demo'
+                            ? '#f59e0b'
+                            : activeUser.planType === 'annual'
+                              ? '#2563eb'
+                              : '#7c3aed',
+                    border: activeUser.planType === 'basic'
+                      ? '1px solid rgba(99, 102, 241, 0.25)'
+                      : activeUser.planType === 'starter'
                         ? '1px solid rgba(16, 185, 129, 0.25)'
-                        : '1px solid rgba(124, 58, 237, 0.25)'
+                        : activeUser.planType === 'growth'
+                          ? '1px solid rgba(168, 85, 247, 0.25)'
+                          : activeUser.planType === 'demo'
+                            ? '1px solid rgba(245, 158, 11, 0.25)'
+                            : '1px solid rgba(124, 58, 237, 0.25)'
                   }}>
-                    {activeUser.planType === 'annual' 
-                      ? 'Growth Plan (Annual)' 
-                      : activeUser.planType === 'demo' 
-                        ? 'Free Demo Plan' 
-                        : 'Starter Plan (Monthly)'}
+                    {activeUser.planType === 'basic'
+                      ? 'Basic Plan'
+                      : activeUser.planType === 'starter'
+                        ? 'Starter Plan'
+                        : activeUser.planType === 'growth'
+                          ? 'Growth Plan'
+                          : activeUser.planType === 'demo'
+                            ? 'Free Demo Plan'
+                            : activeUser.planType === 'annual'
+                              ? 'Growth Plan (Legacy)'
+                              : 'Starter Plan (Legacy)'}
                   </span>
                 </div>
                 

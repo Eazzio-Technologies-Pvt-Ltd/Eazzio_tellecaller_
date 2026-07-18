@@ -22,9 +22,9 @@ const CallLogs = ({ user, setActiveTab }) => {
 
   const isCompanyAdmin = user && user.companyRegNum;
   const isDemo = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
-  const isAnnual = user?.planType === 'annual';
-  // Pricing: ₹49/month extra for monthly plan, ₹399/year for annual plan
-  const recordingPrice = isAnnual ? '₹399/year' : '₹49/month';
+  const isAnnual = user?.planType === 'annual' || user?.planType === 'starter' || user?.planType === 'growth';
+  // Pricing: Starter add-on: 399*12, Growth: free, Basic: N/A, Legacy monthly: 49, Legacy annual: 399
+  const recordingPrice = user?.planType === 'growth' ? 'FREE' : (user?.planType === 'starter' ? '₹399/month * 12 (₹4,788 billed annually)' : (user?.planType === 'basic' ? 'Not Available' : (isAnnual ? '₹399/year' : '₹49/month')));
 
   const parseDbDate = (dateString) => {
     if (!dateString) return new Date();
@@ -426,7 +426,9 @@ const CallLogs = ({ user, setActiveTab }) => {
       {/* Allow Recording Banner — only for company admins */}
       {isCompanyAdmin && (() => {
         let recActive = false;
-        if (recordingEndDate) {
+        if (user?.planType === 'growth') {
+          recActive = true;
+        } else if (recordingEndDate) {
           const now = new Date();
           let expiryStr = recordingEndDate.toString();
           if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
@@ -437,7 +439,7 @@ const CallLogs = ({ user, setActiveTab }) => {
             recActive = true;
           }
         }
-        const isRecordingWorking = recordingEnabled && recActive;
+        const isRecordingWorking = (recordingEnabled || user?.planType === 'growth') && recActive;
 
         return (
           <div style={styles.recordingBanner}>
@@ -463,13 +465,21 @@ const CallLogs = ({ user, setActiveTab }) => {
                     color: isRecordingWorking ? '#10b981' : '#ef4444',
                     border: `1px solid ${isRecordingWorking ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.2)'}`,
                   }}>
-                    {isRecordingWorking 
-                      ? '● Active' 
-                      : (recordingEnabled ? '● Suspended (Expired)' : '● Disabled')}
+                    {user?.planType === 'basic'
+                      ? '● Not Available'
+                      : user?.planType === 'growth'
+                        ? '● Active (Free)'
+                        : isRecordingWorking 
+                          ? '● Active' 
+                          : (recordingEnabled ? '● Suspended (Expired)' : '● Disabled')}
                   </span>
                 </div>
                 <div style={styles.recordingSubtitle}>
-                  {recordingEnabled && recActive ? (
+                  {user?.planType === 'basic' ? (
+                    'Call recording is not available on the Basic Plan. Please upgrade to the Starter or Growth plan to start recording calls.'
+                  ) : user?.planType === 'growth' ? (
+                    "Call recording is free and active. All telecallers' calls are recorded automatically."
+                  ) : recordingEnabled && recActive ? (
                     `Telecallers' calls are being recorded and stored. Subscription valid until ${formatDate(recordingEndDate)}.`
                   ) : recActive ? (
                     `Call recording is paid and active (until ${formatDate(recordingEndDate)}) but currently disabled. Allow recording on the right.`
@@ -511,7 +521,19 @@ const CallLogs = ({ user, setActiveTab }) => {
           </div>
 
           <div style={styles.recordingBannerRight}>
-            {isDemo ? (
+            {user?.planType === 'basic' ? (
+              <div 
+                style={{ ...styles.recordingUpgradeBadge, cursor: 'pointer' }}
+                onClick={() => setActiveTab('billing')}
+              >
+                <Lock size={14} style={{ marginRight: '4px' }} />
+                <span>Upgrade Plan</span>
+              </div>
+            ) : user?.planType === 'growth' ? (
+              <div style={{ ...styles.recordingUpgradeBadge, backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16,185,129,0.3)', color: '#10b981' }}>
+                <span>Free & Active</span>
+              </div>
+            ) : isDemo ? (
               <div style={styles.recordingUpgradeBadge}>
                 <Lock size={14} />
                 <span>Upgrade to enable recording</span>

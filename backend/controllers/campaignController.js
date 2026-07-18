@@ -10,6 +10,32 @@ exports.createCampaign = async (req, res) => {
   }
 
   try {
+    // 1. Get company plan type from master DB
+    let planType = 'monthly';
+    if (req.user.companyRegNum) {
+      const compRes = await db.queryMain('SELECT plan_type FROM companies WHERE reg_num = $1', [req.user.companyRegNum]);
+      if (compRes.rows.length > 0) {
+        planType = compRes.rows[0].plan_type || 'monthly';
+      }
+    }
+
+    // 2. Count existing campaigns in the tenant DB
+    const countRes = await db.query('SELECT COUNT(*) FROM campaigns');
+    const currentCampaignsCount = parseInt(countRes.rows[0].count) || 0;
+
+    // 3. Enforce plan limits (Basic: 10, Starter: 30)
+    if (planType === 'basic' && currentCampaignsCount >= 10) {
+      return res.status(403).json({ 
+        error: 'Campaign limit reached. Basic plan is limited to 10 campaigns. Please upgrade your subscription.' 
+      });
+    }
+
+    if (planType === 'starter' && currentCampaignsCount >= 30) {
+      return res.status(403).json({ 
+        error: 'Campaign limit reached. Starter plan is limited to 30 campaigns. Please upgrade your subscription.' 
+      });
+    }
+
     const result = await db.query(
       'INSERT INTO campaigns (name, description, status, created_by) VALUES ($1, $2, $3, $4) RETURNING *',
       [name, description, 'pending', createdBy]

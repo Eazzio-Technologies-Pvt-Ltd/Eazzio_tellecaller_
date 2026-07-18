@@ -426,8 +426,10 @@ class _CallingScreenState extends State<CallingScreen> {
     // Request state updates only when call connects
     _telemetry.setCallingState(true);
 
-    // Start Recording Mic audio
-    _recorder.startRecording();
+    // Start Recording Mic audio ONLY if callRecordingEnabled is true
+    if (_profileUser?['callRecordingEnabled'] == true) {
+      _recorder.startRecording();
+    }
 
     // Start timer for duration UI
     _callDurationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -530,7 +532,9 @@ class _CallingScreenState extends State<CallingScreen> {
     _telemetry.setCallingState(false);
 
     // Stop mic recording and grab filepath
-    final String? recPath = await _recorder.stopRecording();
+    final String? recPath = (_profileUser?['callRecordingEnabled'] == true)
+        ? await _recorder.stopRecording()
+        : null;
 
     // Bring app back to foreground
     try {
@@ -1076,6 +1080,52 @@ class _CallingScreenState extends State<CallingScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 8),
+          if (_profileUser?['callRecordingEnabled'] == true)
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.mic, color: Colors.green, size: 14),
+                SizedBox(width: 4),
+                Text('Call Recording Enabled', style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
+              ],
+            )
+          else
+            GestureDetector(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: const Color(0xFF12131A),
+                    title: const Row(
+                      children: [
+                        Icon(Icons.lock, color: Colors.redAccent, size: 24),
+                        SizedBox(width: 8),
+                        Text('Upgrade Subscription', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    content: const Text(
+                      'Call Recording is not included in your current subscription plan. Please contact your company administrator to upgrade to the Starter or Growth plan to enable call recording features.',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('OK', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.mic_off, color: Colors.orange, size: 14),
+                  SizedBox(width: 4),
+                  Text('Record (Upgrade Plan)', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                ],
+              ),
+            ),
           SizedBox(height: layout.scale(24.0, 40.0)),
 
           // Calling controls
@@ -1100,7 +1150,43 @@ class _CallingScreenState extends State<CallingScreen> {
                   style: TextStyle(fontSize: layout.fontSizeLargeCount, fontWeight: FontWeight.bold, color: textColor),
                 ),
                 const SizedBox(height: 8),
-                const Text('Active Call Recording...', style: TextStyle(color: Color(0xFF10B981))),
+                if (_profileUser?['callRecordingEnabled'] == true)
+                  const Text('Active Call Recording...', style: TextStyle(color: Color(0xFF10B981)))
+                else
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          backgroundColor: const Color(0xFF12131A),
+                          title: const Row(
+                            children: [
+                              Icon(Icons.lock, color: Colors.redAccent, size: 24),
+                              SizedBox(width: 8),
+                              Text('Upgrade Subscription', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          content: const Text(
+                            'Call Recording is not included in your current subscription plan. Please contact your company administrator to upgrade to the Starter or Growth plan to enable call recording features.',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('OK', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.lock, size: 14, color: Colors.white),
+                    label: const Text('Record (Upgrade Plan)', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                  ),
               ],
             ),
           ] else ...[

@@ -20,7 +20,7 @@ import {
 
 import Logo from './Logo';
 
-const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, isOpen, onClose, showDemoBanner }) => {
+const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, isOpen, onClose, showDemoBanner, showSecurityBanner }) => {
   const [isCompact, setIsCompact] = useState(false);
   const isSuperadmin = user && user.email === 'tellecaller111@eazzio.com';
   const isDemoUser = user && user.companyRegNum && user.companyRegNum.startsWith('EAZ-DEMO-') && user.planType === 'demo';
@@ -55,12 +55,25 @@ const Sidebar = ({ activeTab, setActiveTab, user, onLogout, theme, toggleTheme, 
         { id: 'settings',    label: 'Settings',        icon: Settings },
       ];
 
-  const menuItems = rawMenuItems;
+  const menuItems = rawMenuItems.filter(item => {
+    if (item.id === 'monitor-grid' && !isSuperadmin && user && user.planType === 'basic') {
+      return false;
+    }
+    return true;
+  });
+
+  const isDemoBannerVisible = isDemoUser && showDemoBanner;
+  const isSecurityBannerVisible = showSecurityBanner;
+  let offsetTop = 0;
+  if (isDemoBannerVisible) offsetTop += 38;
+  if (isSecurityBannerVisible) offsetTop += 38;
+
+  const topStyle = offsetTop > 0 ? { top: `${offsetTop}px`, height: `calc(100vh - ${offsetTop}px)` } : {};
 
   return (
     <aside style={{
       ...styles.sidebar,
-      ...(isDemoUser && showDemoBanner ? { top: '38px', height: 'calc(100vh - 38px)' } : {}),
+      ...topStyle,
       ...(isCompact ? { padding: '1rem 0.75rem' } : {})
     }} className={isOpen ? 'open' : ''}>
       {/* Brand Header */}

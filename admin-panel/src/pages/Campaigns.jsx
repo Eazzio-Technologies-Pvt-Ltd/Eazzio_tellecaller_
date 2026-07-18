@@ -136,6 +136,18 @@ const Campaigns = ({ user }) => {
       return;
     }
 
+    if (user) {
+      const currentCampaignsCount = campaigns.length;
+      if (user.planType === 'basic' && currentCampaignsCount >= 10) {
+        setFormError('Campaign limit reached. Basic plan is limited to 10 campaigns. Please upgrade your subscription.');
+        return;
+      }
+      if (user.planType === 'starter' && currentCampaignsCount >= 30) {
+        setFormError('Campaign limit reached. Starter plan is limited to 30 campaigns. Please upgrade your subscription.');
+        return;
+      }
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/campaigns`, {
         method: 'POST',

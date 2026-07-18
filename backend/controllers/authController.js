@@ -474,7 +474,13 @@ exports.getSuperadminStats = async (req, res) => {
       const plan = comp.plan_type || 'monthly';
       const seats = comp.no_of_telecallers || 0;
       let subscriptionCharge = 0;
-      if (plan === 'demo') {
+      if (plan === 'basic') {
+        subscriptionCharge = seats * 29;
+      } else if (plan === 'starter') {
+        subscriptionCharge = seats * 49;
+      } else if (plan === 'growth') {
+        subscriptionCharge = seats * 99;
+      } else if (plan === 'demo') {
         subscriptionCharge = 0;
       } else if (plan === 'annual') {
         subscriptionCharge = seats * 49 * 12;
@@ -492,7 +498,16 @@ exports.getSuperadminStats = async (req, res) => {
         const now = new Date();
         const expiry = db.parseSafeDate(comp.call_recording_end_date);
         if (expiry && expiry >= now) {
-          totalCharge += plan === 'annual' ? 399 : 49;
+          if (plan === 'starter') {
+            totalCharge += 399 * 12; // Starter plan recording charge
+          } else if (plan === 'growth') {
+            totalCharge += 0; // free recording on growth
+          } else if (plan === 'basic') {
+            totalCharge += 0; // not available on basic
+          } else {
+            // legacy plans
+            totalCharge += plan === 'annual' ? 399 : 49;
+          }
         }
       }
     }
@@ -642,18 +657,35 @@ exports.getMe = async (req, res) => {
     let workTimeLimitHours = 8;
     let talkTimeLimitHours = 4;
     let proxyLimitMinutes = 10;
+    let planType = 'monthly';
+    let callRecordingEnabled = false;
+    let callRecordingEndDate = null;
     if (regNum) {
-      const compRes = await db.queryMain('SELECT work_time_limit_hours, talk_time_limit_hours, proxy_limit_minutes FROM companies WHERE reg_num = $1', [regNum]);
+      const compRes = await db.queryMain('SELECT work_time_limit_hours, talk_time_limit_hours, proxy_limit_minutes, plan_type, call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1', [regNum]);
       if (compRes.rows.length > 0) {
         const company = compRes.rows[0];
         workTimeLimitHours = company.work_time_limit_hours !== undefined && company.work_time_limit_hours !== null ? company.work_time_limit_hours : 8;
         talkTimeLimitHours = company.talk_time_limit_hours !== undefined && company.talk_time_limit_hours !== null ? company.talk_time_limit_hours : 4;
         proxyLimitMinutes = company.proxy_limit_minutes !== undefined && company.proxy_limit_minutes !== null ? company.proxy_limit_minutes : 10;
+        planType = company.plan_type || 'monthly';
+        callRecordingEndDate = company.call_recording_end_date || null;
+        
+        if (planType === 'growth') {
+          callRecordingEnabled = true;
+        } else if (planType === 'starter' && company.call_recording_enabled === 1 && callRecordingEndDate) {
+          const now = new Date();
+          const expiry = db.parseSafeDate(callRecordingEndDate);
+          if (expiry && expiry >= now) {
+            callRecordingEnabled = true;
+          }
+        }
       }
     }
     user.workTimeLimitHours = workTimeLimitHours;
     user.talkTimeLimitHours = talkTimeLimitHours;
     user.proxyLimitMinutes = proxyLimitMinutes;
+    user.planType = planType;
+    user.callRecordingEnabled = callRecordingEnabled;
 
     res.json(user);
   } catch (error) {
@@ -971,7 +1003,7 @@ exports.getCompanyBillingDetails = async (req, res) => {
       planType: company.plan_type || 'monthly',
       subscriptionStart: company.subscription_start || null,
       subscriptionEnd: company.subscription_end || null,
-      pricePerTelecaller: company.plan_type === 'demo' ? 0 : (company.plan_type === 'annual' ? 49 : 59),
+      pricePerTelecaller: company.plan_type === 'basic' ? 29 : (company.plan_type === 'starter' ? 49 : (company.plan_type === 'growth' ? 99 : (company.plan_type === 'demo' ? 0 : (company.plan_type === 'annual' ? 49 : 59)))),
       callRecordingEnabled: company.call_recording_enabled === 1,
       callRecordingEndDate: company.call_recording_end_date || null,
       telecallers: telecallersResult.rows
@@ -982,7 +1014,7 @@ exports.getCompanyBillingDetails = async (req, res) => {
   }
 };
 
-// Create Razorpay Order (Public) — supports monthly (₹59) and annual (₹49×12) plans
+// Create Razorpay Order (Public) — supports basic (₹29/year), starter (₹49/year + ₹4788 call recording option), and growth (₹99/year with free call recording) plans
 exports.createRazorpayOrder = async (req, res) => {
   const { noOfTelecallers, planType, includeCallRecording } = req.body;
   if (!noOfTelecallers || isNaN(noOfTelecallers) || parseInt(noOfTelecallers) <= 0) {
@@ -990,22 +1022,38 @@ exports.createRazorpayOrder = async (req, res) => {
   }
 
   const numCallers = parseInt(noOfTelecallers);
-  const plan = planType === 'annual' ? 'annual' : 'monthly';
-  const MONTHLY_RATE = 59;
-  const ANNUAL_RATE = 49;
-
-  // Monthly: ₹59 × callers, Annual: ₹49 × callers × 12
-  let totalAmount = plan === 'annual'
-    ? numCallers * ANNUAL_RATE * 12
-    : numCallers * MONTHLY_RATE;
-
+  let totalAmount = 0;
+  let pricePerCaller = 0;
   let recordingCharge = 0;
-  if (includeCallRecording) {
-    recordingCharge = plan === 'annual' ? 399 : 49;
-    totalAmount += recordingCharge;
+
+  if (planType === 'basic') {
+    pricePerCaller = 29;
+    totalAmount = numCallers * 29;
+    // basic plan does not support call recording
+  } else if (planType === 'starter') {
+    pricePerCaller = 49;
+    totalAmount = numCallers * 49;
+    if (includeCallRecording) {
+      recordingCharge = 399 * 12; // 399/monthly * 12 = 4788
+      totalAmount += recordingCharge;
+    }
+  } else if (planType === 'growth') {
+    pricePerCaller = 99;
+    totalAmount = numCallers * 99;
+    // call recording is free for growth plan
+  } else {
+    // legacy monthly/annual support
+    const plan = planType === 'annual' ? 'annual' : 'monthly';
+    const MONTHLY_RATE = 59;
+    const ANNUAL_RATE = 49;
+    totalAmount = plan === 'annual' ? numCallers * ANNUAL_RATE * 12 : numCallers * MONTHLY_RATE;
+    pricePerCaller = plan === 'annual' ? ANNUAL_RATE : MONTHLY_RATE;
+    if (includeCallRecording) {
+      recordingCharge = plan === 'annual' ? 399 : 49;
+      totalAmount += recordingCharge;
+    }
   }
 
-  const pricePerCaller = plan === 'annual' ? ANNUAL_RATE : MONTHLY_RATE;
   const amountInPaise = totalAmount * 100; // Razorpay expects amount in paise
 
   try {
@@ -1018,7 +1066,7 @@ exports.createRazorpayOrder = async (req, res) => {
 
     const authHeader = 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
     
-    console.log(`[Razorpay] Creating ${plan} order for ${numCallers} callers (Call Recording: ${includeCallRecording ? 'Yes' : 'No'}): INR ${totalAmount} (${amountInPaise} paise)`);
+    console.log(`[Razorpay] Creating ${planType} order for ${numCallers} callers (Call Recording: ${includeCallRecording ? 'Yes' : 'No'}): INR ${totalAmount} (${amountInPaise} paise)`);
     
     const response = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
@@ -1046,7 +1094,7 @@ exports.createRazorpayOrder = async (req, res) => {
       orderId: orderData.id,
       amount: orderData.amount,
       keyId: keyId,
-      plan,
+      plan: planType,
       pricePerCaller,
       totalAmount
     });
@@ -1177,16 +1225,34 @@ exports.registerCompanyWithPayment = async (req, res) => {
     const adminPasswordHash = await bcrypt.hash(password, salt);
 
     const numCallers = parseInt(noOfTelecallers) || 0;
-    const plan = planType === 'annual' ? 'annual' : 'monthly';
-    const MONTHLY_RATE = 59;
-    const ANNUAL_RATE = 49;
-    const pricePerCaller = plan === 'annual' ? ANNUAL_RATE : MONTHLY_RATE;
+    let pricePerCaller = 0;
+    let callRecordingEnabledValue = 0;
+
+    if (planType === 'basic') {
+      pricePerCaller = 29;
+      callRecordingEnabledValue = 0;
+    } else if (planType === 'starter') {
+      pricePerCaller = 49;
+      callRecordingEnabledValue = includeCallRecording ? 1 : 0;
+    } else if (planType === 'growth') {
+      pricePerCaller = 99;
+      callRecordingEnabledValue = 1; // free & always enabled
+    } else {
+      // legacy support
+      const plan = planType === 'annual' ? 'annual' : 'monthly';
+      const MONTHLY_RATE = 59;
+      const ANNUAL_RATE = 49;
+      pricePerCaller = plan === 'annual' ? ANNUAL_RATE : MONTHLY_RATE;
+      callRecordingEnabledValue = includeCallRecording ? 1 : 0;
+    }
 
     // Calculate subscription dates
     const now = new Date();
     const subscriptionStart = now.toISOString();
     let subscriptionEnd;
-    if (plan === 'annual') {
+    
+    // basic, starter, growth are all annual plans
+    if (planType === 'basic' || planType === 'starter' || planType === 'growth' || planType === 'annual') {
       const end = new Date(now);
       end.setFullYear(end.getFullYear() + 1);
       subscriptionEnd = end.toISOString();
@@ -1199,7 +1265,7 @@ exports.registerCompanyWithPayment = async (req, res) => {
     // Insert company into master db companies table
     await db.queryMain(
       'INSERT INTO companies (name, nature, no_of_telecallers, reg_num, admin_email, admin_password_hash, admin_plain_password, price_per_telecaller, plan_type, subscription_start, subscription_end, edit_count, call_recording_enabled, call_recording_end_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
-      [name, nature, numCallers, regNum, email, adminPasswordHash, password, pricePerCaller, plan, subscriptionStart, subscriptionEnd, 0, includeCallRecording ? 1 : 0, includeCallRecording ? subscriptionEnd : null]
+      [name, nature, numCallers, regNum, email, adminPasswordHash, password, pricePerCaller, planType, subscriptionStart, subscriptionEnd, 0, callRecordingEnabledValue, callRecordingEnabledValue === 1 ? subscriptionEnd : null]
     );
 
     // Provision the isolated database schema for the company
@@ -1259,16 +1325,34 @@ exports.renewSubscriptionWithPayment = async (req, res) => {
     }
 
     const numCallers = parseInt(noOfTelecallers) || 0;
-    const plan = planType === 'annual' ? 'annual' : 'monthly';
-    const MONTHLY_RATE = 59;
-    const ANNUAL_RATE = 49;
-    const pricePerCaller = plan === 'annual' ? ANNUAL_RATE : MONTHLY_RATE;
+    let pricePerCaller = 0;
+    let callRecordingEnabledValue = 0;
+
+    if (planType === 'basic') {
+      pricePerCaller = 29;
+      callRecordingEnabledValue = 0;
+    } else if (planType === 'starter') {
+      pricePerCaller = 49;
+      callRecordingEnabledValue = includeCallRecording ? 1 : 0;
+    } else if (planType === 'growth') {
+      pricePerCaller = 99;
+      callRecordingEnabledValue = 1; // free & always enabled
+    } else {
+      // legacy support
+      const plan = planType === 'annual' ? 'annual' : 'monthly';
+      const MONTHLY_RATE = 59;
+      const ANNUAL_RATE = 49;
+      pricePerCaller = plan === 'annual' ? ANNUAL_RATE : MONTHLY_RATE;
+      callRecordingEnabledValue = includeCallRecording ? 1 : 0;
+    }
 
     // Calculate subscription dates from now
     const now = new Date();
     const subscriptionStart = now.toISOString();
     let subscriptionEnd;
-    if (plan === 'annual') {
+    
+    // basic, starter, growth are all annual plans
+    if (planType === 'basic' || planType === 'starter' || planType === 'growth' || planType === 'annual') {
       const end = new Date(now);
       end.setFullYear(end.getFullYear() + 1);
       subscriptionEnd = end.toISOString();
@@ -1317,7 +1401,7 @@ exports.renewSubscriptionWithPayment = async (req, res) => {
              call_recording_enabled = CASE WHEN $7 = 1 THEN 1 ELSE call_recording_enabled END,
              call_recording_end_date = CASE WHEN $7 = 1 THEN $6 ELSE call_recording_end_date END
          WHERE reg_num = $8`,
-        [finalRegNum, numCallers, plan, pricePerCaller, subscriptionStart, subscriptionEnd, includeCallRecording ? 1 : 0, oldRegNum]
+        [finalRegNum, numCallers, planType, pricePerCaller, subscriptionStart, subscriptionEnd, callRecordingEnabledValue, oldRegNum]
       );
 
       // Update support tickets with the new company registration code
@@ -1341,7 +1425,7 @@ exports.renewSubscriptionWithPayment = async (req, res) => {
              call_recording_enabled = CASE WHEN $6 = 1 THEN 1 ELSE call_recording_enabled END,
              call_recording_end_date = CASE WHEN $6 = 1 THEN $5 ELSE call_recording_end_date END
          WHERE reg_num = $7`,
-        [numCallers, plan, pricePerCaller, subscriptionStart, subscriptionEnd, includeCallRecording ? 1 : 0, oldRegNum]
+        [numCallers, planType, pricePerCaller, subscriptionStart, subscriptionEnd, callRecordingEnabledValue, oldRegNum]
       );
     }
 
@@ -1360,7 +1444,7 @@ exports.renewSubscriptionWithPayment = async (req, res) => {
 
     res.json({
       success: true,
-      plan,
+      plan: planType,
       subscriptionEnd,
       newRegNum: finalRegNum,
       token: newToken,
@@ -1522,14 +1606,19 @@ exports.toggleCallRecording = async (req, res) => {
     }
 
     // Verify company exists
-    const compCheck = await db.queryMain('SELECT reg_num, call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1', [targetRegNum]);
+    const compCheck = await db.queryMain('SELECT reg_num, call_recording_enabled, call_recording_end_date, plan_type FROM companies WHERE reg_num = $1', [targetRegNum]);
     if (compCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Company not found.' });
     }
+    const company = compCheck.rows[0];
+    const planType = company.plan_type || 'monthly';
 
-    // If company admin is trying to toggle ON, verify their subscription is active
-    if (req.user.companyRegNum && enabled) {
-      const company = compCheck.rows[0];
+    if (planType === 'basic') {
+      return res.status(403).json({ error: 'Call recording is not available on the Basic Plan. Please upgrade to the Starter or Growth plan.' });
+    }
+
+    // If company admin is trying to toggle ON, verify their subscription is active (Growth plan is free)
+    if (req.user.companyRegNum && enabled && planType !== 'growth') {
       const endDate = company.call_recording_end_date;
       if (!endDate) {
         return res.status(403).json({ error: 'You must pay to activate the Call Recording subscription.' });
@@ -1576,8 +1665,22 @@ exports.createCallRecordingOrder = async (req, res) => {
     const company = compCheck.rows[0];
     const plan = company.plan_type || 'monthly';
 
-    // Charge: Monthly is ₹49. Annual is ₹399
-    const totalAmount = plan === 'annual' ? 399 : 49;
+    if (plan === 'basic') {
+      return res.status(403).json({ error: 'Call recording is not available on the Basic Plan. Please upgrade to the Starter or Growth plan.' });
+    }
+
+    if (plan === 'growth') {
+      return res.status(400).json({ error: 'Call recording is already free and enabled on the Growth Plan.' });
+    }
+
+    // Charge: Starter is ₹399/month * 12 = ₹4788/year.
+    // Legacy support: Monthly is ₹49. Annual is ₹399.
+    let totalAmount = 399; // Default legacy annual
+    if (plan === 'starter') {
+      totalAmount = 399 * 12; // 399/monthly * 12 = 4788
+    } else if (plan === 'monthly') {
+      totalAmount = 49;
+    }
     const amountInPaise = totalAmount * 100;
 
     const keyId = process.env.RAZORPAY_KEY_ID;
@@ -1674,7 +1777,7 @@ exports.enableCallRecordingWithPayment = async (req, res) => {
     }
 
     let endDate = new Date(startDate);
-    if (plan === 'annual') {
+    if (plan === 'starter' || plan === 'growth' || plan === 'annual') {
       endDate.setFullYear(endDate.getFullYear() + 1);
     } else {
       endDate.setMonth(endDate.getMonth() + 1);

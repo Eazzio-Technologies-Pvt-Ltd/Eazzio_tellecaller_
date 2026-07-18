@@ -61,16 +61,24 @@ exports.createCallLog = async (req, res) => {
     let hasRecording = false;
     if (req.user && req.user.companyRegNum) {
       const compCheck = await db.queryMain(
-        'SELECT call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1',
+        'SELECT plan_type, call_recording_enabled, call_recording_end_date FROM companies WHERE reg_num = $1',
         [req.user.companyRegNum]
       );
-      if (compCheck.rows.length > 0 && compCheck.rows[0].call_recording_enabled === 1) {
-        const endDate = compCheck.rows[0].call_recording_end_date;
-        if (endDate) {
-          const now = new Date();
-          const expiry = db.parseSafeDate(endDate);
-          if (expiry && expiry >= now) {
-            hasRecording = true;
+      if (compCheck.rows.length > 0) {
+        const company = compCheck.rows[0];
+        const plan = company.plan_type || 'monthly';
+        if (plan === 'growth') {
+          hasRecording = true;
+        } else if (plan === 'basic') {
+          hasRecording = false;
+        } else if (company.call_recording_enabled === 1) {
+          const endDate = company.call_recording_end_date;
+          if (endDate) {
+            const now = new Date();
+            const expiry = db.parseSafeDate(endDate);
+            if (expiry && expiry >= now) {
+              hasRecording = true;
+            }
           }
         }
       }
