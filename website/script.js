@@ -102,4 +102,78 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 800);
     });
   }
+
+  // 5. Pricing Slider (3D Circular Carousel) Logic
+  const sliderContainer = document.querySelector('.pricing-slider-container');
+  if (sliderContainer) {
+    const cards = sliderContainer.querySelectorAll('.pricing-card');
+    const prevBtn = sliderContainer.querySelector('.prev-btn');
+    const nextBtn = sliderContainer.querySelector('.next-btn');
+    const dots = document.querySelectorAll('.pricing-dot');
+    let activeIndex = 1; // Default active card (Starter Plan)
+
+    const updateSlider = (newIndex) => {
+      activeIndex = (newIndex + 3) % 3;
+
+      cards.forEach((card, i) => {
+        card.classList.remove('card-left', 'card-center', 'card-right');
+        if (i === activeIndex) {
+          card.classList.add('card-center');
+        } else if (i === (activeIndex - 1 + 3) % 3) {
+          card.classList.add('card-left');
+        } else if (i === (activeIndex + 1) % 3) {
+          card.classList.add('card-right');
+        }
+      });
+
+      // Update dot states
+      if (dots.length > 0) {
+        dots.forEach((dot, i) => {
+          if (i === activeIndex) {
+            dot.classList.add('active');
+          } else {
+            dot.classList.remove('active');
+          }
+        });
+      }
+    };
+
+    // Button interactions
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        updateSlider(activeIndex - 1);
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        updateSlider(activeIndex + 1);
+      });
+    }
+
+    // Direct card click interaction
+    cards.forEach((card, i) => {
+      card.addEventListener('click', (e) => {
+        // If clicking on links or buttons inside the card, allow default action
+        if (e.target.closest('a') || e.target.closest('button')) return;
+        
+        if (i !== activeIndex) {
+          e.preventDefault();
+          updateSlider(i);
+        }
+      });
+    });
+
+    // Dot click interaction
+    if (dots.length > 0) {
+      dots.forEach((dot, i) => {
+        dot.addEventListener('click', () => {
+          updateSlider(i);
+        });
+      });
+    }
+
+    // Initial run
+    updateSlider(activeIndex);
+  }
 });
