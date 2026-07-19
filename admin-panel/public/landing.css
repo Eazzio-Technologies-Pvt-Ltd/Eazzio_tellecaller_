@@ -795,8 +795,8 @@ select {
 }
 
 .telecaller-bg.bg-features {
-  background-image: url('/features_bg.png');
-  opacity: 0.18;
+  background-image: url('/telecaller_agent.png');
+  opacity: 0.22; /* Keep it nice and visible */
 }
 
 .telecaller-bg.bg-pricing {
@@ -806,7 +806,12 @@ select {
 
 /* Adjust top offset specifically for Hero section since header is fixed */
 .hero-section .telecaller-bg {
-  top: 60%;
+  top: 76px;
+  bottom: 0;
+  transform: none;
+  width: 60%;
+  height: calc(100% - 76px);
+  background-position: right bottom;
 }
 
 /* ============================================================
@@ -2390,6 +2395,15 @@ body {
   .hero-section {
     padding-top: 90px !important;
     padding-bottom: 60px !important;
+  }
+
+  .hero-section .telecaller-bg {
+    width: 100% !important;
+    height: 50% !important;
+    top: auto !important;
+    bottom: 0 !important;
+    transform: none !important;
+    opacity: 0.12 !important;
   }
 
   .hero-grid {
