@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Features - eazzio telecaller</title>
+  <meta name="description"
+    content="Discover the powerful automated calling features of eazzio-telecaller, including SIM-based auto-dialing, integrations, team auditing, and call recordings.">
+  <link rel="icon" type="image/png" href="assets/headset.png">
+  <link rel="stylesheet" href="style.css?v=2">
+</head>
+
+<body class="light-theme">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="top-security-banner" id="topSecurityBanner">
+      <div class="banner-container">
+        <span class="lock-icon">🔒</span>
+        <span class="banner-text">Your data is safe and secure with us Encrypted by AES 256-bit Encryption</span>
+      </div>
+      <button class="banner-close-btn" id="closeSecurityBannerBtn" aria-label="Close security message">&times;</button>
+    </div>
+    <script>
+      (function () {
+        if (localStorage.getItem('securityBannerDismissed') === 'true') {
+          document.getElementById('topSecurityBanner').style.display = 'none';
+        }
+      })();
+    </script>
+    <div class="container nav-container">
+      <a href="index.html" class="logo-wrapper">
+        <img src="assets/logo-light.png" alt="Eazzio Logo" class="logo-img logo-for-dark-mode">
+        <img src="assets/logo-dark.png" alt="Eazzio Logo" class="logo-img logo-for-light-mode">
+      </a>
+
+      <ul class="nav-menu">
+        <li><a href="features.html" class="nav-link active">Features</a></li>
+        <li><a href="solutions.html" class="nav-link">Solutions</a></li>
+        <li><a href="pricing.html" class="nav-link">Pricing</a></li>
+        <li><a href="faq.html" class="nav-link">FAQs</a></li>
+        <li class="mobile-only-action"><a href="/?login=true" target="_parent" class="nav-link"
+            style="color: var(--color-secondary); font-weight: bold;">Login</a></li>
+        <li class="mobile-only-action" style="margin-top: 15px; width: 100%;"><a href="pricing.html"
+            class="btn btn-primary btn-mobile-nav"
+            style="display: block; text-align: center; width: 100%; padding: 10px;">Get Started</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <a href="/?login=true" target="_parent" class="btn btn-login">Login</a>
+        <a href="pricing.html" class="btn btn-primary">Get Started</a>
+      </div>
+
+      <button class="mobile-nav-toggle" aria-label="Toggle navigation menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Features Section -->
+  <section id="features" class="section" style="margin-top: 80px;">
+    <div class="hero-telecaller-bg" style="opacity: 0.05;"></div>
+    <div class="container">
+      <div class="features-header">
+        <h2 class="features-title">Features Built for Success</h2>
+        <p class="features-subtitle">All you need for automated outbound calling and team management.</p>
+      </div>
+
+      <div class="features-list">
+        <!-- Feature 1: Dialer -->
+        <div class="feature-item">
+          <div class="feature-img-wrapper">
+            <!-- Simulated Dialer Screen -->
+            <div
+              style="background-color: var(--bg-tertiary); padding: 24px; border-radius: var(--radius-sm); width: 100%; max-width: 320px; box-shadow: var(--card-shadow); text-align: center;">
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px;">Auto Dialer Active</div>
+              <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 4px;">Rahul Sharma</div>
+              <div style="font-size: 0.85rem; color: var(--color-accent); font-weight: 600; margin-bottom: 20px;">
+                DIALING +91 98765 43210</div>
+
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">
+                <div
+                  style="width: 48px; height: 48px; border-radius: 50%; background-color: var(--bg-secondary); display: flex; items: center; justify-content: center; font-size: 1.2rem; align-items: center; margin: 0 auto;">
+                  🎙️</div>
+                <div
+                  style="width: 48px; height: 48px; border-radius: 50%; background-color: var(--bg-secondary); display: flex; items: center; justify-content: center; font-size: 1.2rem; align-items: center; margin: 0 auto;">
+                  🔇</div>
+                <div
+                  style="width: 48px; height: 48px; border-radius: 50%; background-color: var(--bg-secondary); display: flex; items: center; justify-content: center; font-size: 1.2rem; align-items: center; margin: 0 auto;">
+                  ⏸️</div>
+              </div>
+              <div
+                style="background-color: #ef4444; color: #ffffff; padding: 12px; border-radius: var(--radius-sm); font-weight: 700; cursor: pointer;">
+                HANG UP</div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">SIM-Based Auto Dialer</h3>
+            <p class="feature-desc">Increase call attempts by up to 200% with an automated outbound calling process. Be
+              it status-wise calling, click-to-dial, or campaign-based auto calling, choose your preferred calling
+              option from our auto dialer.</p>
+            <div>
+              <a href="pricing.html" class="btn btn-secondary">Learn More</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 2: Integrations -->
+        <div class="feature-item reverse">
+          <div class="feature-img-wrapper">
+            <!-- Simulated Node Network -->
+            <div style="display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 320px;">
+              <div
+                style="display: flex; align-items: center; gap: 12px; background-color: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <span style="font-size: 1.5rem;">📊</span>
+                <div style="text-align: left;">
+                  <div style="font-size: 0.8rem; font-weight: 600;">CRM Platform</div>
+                  <div style="font-size: 0.65rem; color: #10b981;">Connected & Active</div>
+                </div>
+              </div>
+              <div
+                style="display: flex; align-items: center; gap: 12px; background-color: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <span style="font-size: 1.5rem;">📄</span>
+                <div style="text-align: left;">
+                  <div style="font-size: 0.8rem; font-weight: 600;">Google Sheets</div>
+                  <div style="font-size: 0.65rem; color: #10b981;">Sync Complete</div>
+                </div>
+              </div>
+              <div
+                style="display: flex; align-items: center; gap: 12px; background-color: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <span style="font-size: 1.5rem;">🔗</span>
+                <div style="text-align: left;">
+                  <div style="font-size: 0.8rem; font-weight: 600;">Webhooks / APIs</div>
+                  <div style="font-size: 0.65rem; color: #10b981;">Logs transferring live</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">No-Code Integrations</h3>
+            <p class="feature-desc">Benefit from a real-time, no code integration process. Get custom integrations and
+              effortlessly connect your Eazzio account with your preferred platforms or CRM service provider.</p>
+            <div>
+              <a href="pricing.html" class="btn btn-secondary">Learn More</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 3: Customer Engagement -->
+        <div class="feature-item">
+          <div class="feature-img-wrapper">
+            <!-- Chat bubble simulation -->
+            <div
+              style="background-color: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-sm); width: 100%; max-width: 320px; box-shadow: var(--card-shadow); display: flex; flex-direction: column; gap: 12px;">
+              <div
+                style="background-color: var(--bg-secondary); padding: 10px; border-radius: 8px 8px 8px 0; text-align: left; max-width: 85%;">
+                <div style="font-size: 0.8rem; font-weight: 600; color: var(--color-accent); margin-bottom: 2px;">
+                  Whatsapp Bot</div>
+                <div style="font-size: 0.82rem; color: var(--text-primary);">Hello! Your call with Eazzio agent has
+                  concluded. Here is your ticket copy.</div>
+              </div>
+              <div
+                style="background-color: var(--color-primary-glow); border: 1px solid rgba(var(--color-primary-rgb), 0.15); padding: 10px; border-radius: 8px 8px 0 8px; text-align: left; max-width: 85%; align-self: flex-end;">
+                <div
+                  style="font-size: 0.8rem; font-weight: 600; color: var(--color-primary-light); margin-bottom: 2px;">
+                  Customer</div>
+                <div style="font-size: 0.82rem; color: var(--text-primary);">Thanks, got the link!</div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">Multichannel Engagement</h3>
+            <p class="feature-desc">Make the most of customer interaction. Build pre-defined message templates and
+              customizable scripts. Send SMS and WhatsApp automation right after concluding call logs - all without
+              saving any contact information on agent devices.</p>
+            <div>
+              <a href="pricing.html" class="btn btn-secondary">Learn More</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 4: Team Management -->
+        <div class="feature-item reverse">
+          <div class="feature-img-wrapper">
+            <!-- Simulated Leaderboard grid -->
+            <div
+              style="background-color: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-sm); width: 100%; max-width: 320px; box-shadow: var(--card-shadow); text-align: left;">
+              <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 16px;">Top Performers Today</div>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div
+                  style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                  <span style="font-size: 0.8rem; font-weight: 600;">1. Priya Patel</span>
+                  <span style="font-size: 0.8rem; color: #10b981; font-weight: 700;">180 Calls</span>
+                </div>
+                <div
+                  style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                  <span style="font-size: 0.8rem; font-weight: 600;">2. Amit Mishra</span>
+                  <span style="font-size: 0.8rem; color: #10b981; font-weight: 700;">162 Calls</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 4px;">
+                  <span style="font-size: 0.8rem; font-weight: 600;">3. Joy D'souza</span>
+                  <span style="font-size: 0.8rem; color: #10b981; font-weight: 700;">145 Calls</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">Real-Time Team Auditing</h3>
+            <p class="feature-desc">Know what and how your telecallers are doing through real-time reporting. Get
+              instant call metrics, break logs, active talk time metrics, and performance charts to drive higher levels
+              of productivity.</p>
+            <div>
+              <a href="pricing.html" class="btn btn-secondary">Learn More</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 5: Lead Management -->
+        <div class="feature-item">
+          <div class="feature-img-wrapper">
+            <!-- Simulated CRM List -->
+            <div
+              style="background-color: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-sm); width: 100%; max-width: 320px; box-shadow: var(--card-shadow); text-align: left; display: flex; flex-direction: column; gap: 10px;">
+              <div
+                style="display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                <div style="font-size: 0.75rem; font-weight: 600;">Karan Johar</div>
+                <span
+                  style="font-size: 0.65rem; padding: 2px 6px; background-color: rgba(245,158,11,0.12); color: #f59e0b; border-radius: 4px; font-weight: 700;">HIGH
+                  PRIORITY</span>
+              </div>
+              <div
+                style="display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                <div style="font-size: 0.75rem; font-weight: 600;">Ananya Pandey</div>
+                <span
+                  style="font-size: 0.65rem; padding: 2px 6px; background-color: rgba(16,185,129,0.12); color: #10b981; border-radius: 4px; font-weight: 700;">NEW
+                  LEAD</span>
+              </div>
+              <div
+                style="display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                <div style="font-size: 0.75rem; font-weight: 600;">Ranveer Singh</div>
+                <span
+                  style="font-size: 0.65rem; padding: 2px 6px; background-color: rgba(124,58,237,0.12); color: var(--color-primary-light); border-radius: 4px; font-weight: 700;">FOLLOW
+                  UP</span>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">Smart Lead Management</h3>
+            <p class="feature-desc">From lead allocation to setting priority weights to accessing live call history
+              logs, ensure a 360-degree lead environment. Stay in absolute control by distributing and tracking leads on
+              a unified dashboard.</p>
+            <div>
+              <a href="pricing.html" class="btn btn-secondary">Learn More</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 6: Reporting -->
+        <div class="feature-item reverse">
+          <div class="feature-img-wrapper">
+            <!-- Simulated report dashboard element -->
+            <div
+              style="background-color: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-sm); width: 100%; max-width: 320px; box-shadow: var(--card-shadow); text-align: left;">
+              <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 12px;">Call Log Recordings</div>
+              <div
+                style="background-color: var(--bg-secondary); padding: 12px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border-color);">
+                <div>
+                  <div style="font-size: 0.75rem; font-weight: 600;">Call_Recording_489.mp3</div>
+                  <div style="font-size: 0.62rem; color: var(--text-muted); margin-top: 2px;">Duration: 2m 45s</div>
+                </div>
+                <span style="font-size: 1.25rem; color: var(--color-primary); cursor: pointer;">▶️</span>
+              </div>
+            </div>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">Deep Call Analytics</h3>
+            <p class="feature-desc">Eazzio makes it easy to dive deep into team progress and lead conversions. Access
+              robust logs, audio recording playbacks, call outcomes tracking, and daily exported summaries instantly.
+            </p>
+            <div>
+              <a href="pricing.html" class="btn btn-secondary">Learn More</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="assets/logo-light.png" alt="Eazzio Logo" class="footer-logo-img logo-for-dark-mode">
+          <img src="assets/logo-dark.png" alt="Eazzio Logo" class="footer-logo-img logo-for-light-mode">
+          <p class="footer-brand-desc">SIM-based automated dialing dashboard and customer CRM for modern sales groups.</p>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Quick Links</h4>
+          <ul class="footer-links">
+            <li><a href="features.html" class="footer-link">SIM Auto Dialer</a></li>
+            <li><a href="features.html" class="footer-link">Lead Manager</a></li>
+            <li><a href="solutions.html" class="footer-link">Outreach Solutions</a></li>
+            <li><a href="faq.html" class="footer-link">FAQ Guide</a></li>
+            <li><a href="/?login=true" target="_parent" class="footer-link">Admin Login</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Contact Us On</h4>
+          <div class="footer-contact-item">
+            <span class="footer-contact-icon">📞</span>
+            <div>
+              <span class="footer-contact-sub">Mon - Fri (9:00AM to 7:00PM)</span>
+              <a href="tel:18005726671" class="footer-contact-val">18005726671</a>
+            </div>
+          </div>
+          <div class="footer-contact-item" style="margin-top: 16px;">
+            <span class="footer-contact-icon">✉️</span>
+            <div>
+              <span class="footer-contact-sub">Mail Us</span>
+              <a href="mailto:support.india@eazzio.com" class="footer-contact-val">support.india@eazzio.com</a>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Available On</h4>
+          <div class="footer-store-buttons-custom">
+            <a href="https://apps.apple.com/app/eazzio-telecaller" target="_blank" class="store-btn-custom">
+              <svg viewBox="0 0 170 170" width="16" height="16" fill="currentColor">
+                <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.34.13-9.04-1.93-14.12-6.17-3.59-3.03-7.51-7.85-11.77-14.47-4.99-7.73-9-16.63-12.04-26.7-3.32-10.9-4.99-21.2-4.99-30.87 0-14.42 3.59-25.75 10.77-33.99 7.18-8.24 16.03-12.42 26.54-12.55 5.26.13 10.66 1.63 16.2 4.49 5.54 2.87 9.4 4.3 11.59 4.3 1.94 0 5.86-1.49 11.77-4.49 5.91-2.99 11.36-4.43 16.35-4.3 11.83.63 20.9 4.8 27.22 12.54-9.35 11.45-13.89 24.52-13.6 39.18.3 11.75 4.82 21.6 13.56 29.56 8.74 7.96 19 12.28 30.79 12.94-2.52 7.64-5.91 14.88-10.17 21.72zM119.22 16.2c0 8.01-2.84 15.35-8.52 21.03-5.68 5.68-12.78 8.78-21.32 9.31-.13-1.28-.2-2.36-.2-3.24 0-7.87 3.03-15.17 9.1-21.9 6.07-6.73 13.25-10.42 21.54-11.07.27 1.96.4 3.91.4 5.87z"/>
+              </svg>
+              <div class="btn-text">
+                <span class="btn-text-sub">Download on the</span>
+                <span class="btn-text-main">App Store</span>
+              </div>
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=com.eazzio.telecaller" target="_blank" class="store-btn-custom">
+              <svg viewBox="0 0 512 512" width="16" height="16">
+                <path fill="#00f0ff" d="M12 28.5L256 256L12 483.5V28.5Z"/>
+                <path fill="#00ff00" d="M256 256L378 134L483.5 256L378 378L256 256Z"/>
+                <path fill="#ff007f" d="M12 28.5L378 134L256 256L12 28.5Z"/>
+                <path fill="#ffb900" d="M12 483.5L256 256L378 378L12 483.5Z"/>
+              </svg>
+              <div class="btn-text">
+                <span class="btn-text-sub">GET IT ON</span>
+                <span class="btn-text-main">Google Play</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div class="footer-copyright" style="width: 100%; display: flex; justify-content: space-between; border-top: 1px solid var(--border-light); padding-top: 20px;">
+          <span>© 2026 Eazzio Technologies Pvt. Ltd. All rights reserved.</span>
+          <span>Made with ❤️ for outbound operations.</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Eazzio AI Chatbot Widget -->
+  <div id="eazzio-chatbot-widget" class="chatbot-widget">
+    <!-- Chat Tooltip Banner -->
+    <div id="chatbot-tooltip" class="chatbot-tooltip">
+      Need help choosing a plan? 👋
+    </div>
+    <!-- Chat Launcher Button -->
+    <button id="chatbot-launcher" class="chatbot-launcher" aria-label="Open Chatbot">
+      <span class="chat-icon-svg">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+          <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h2v2H6V9zm5 0h2v2h-2V9zm5 0h2v2h-2V9z"/>
+        </svg>
+      </span>
+      <span class="pulse-ring"></span>
+      <span class="notification-badge"></span>
+    </button>
+
+    <!-- Chat Window Container -->
+    <div id="chatbot-window" class="chatbot-window hidden">
+      <!-- Chat Header -->
+      <div class="chatbot-header">
+        <div class="chatbot-avatar-container">
+          <div class="chatbot-avatar">🤖</div>
+          <span class="status-dot online"></span>
+        </div>
+        <div class="chatbot-header-info">
+          <h4 class="chatbot-title">Eazzio AI Assistant</h4>
+          <span class="chatbot-status">Online • Agent</span>
+        </div>
+        <button id="chatbot-close-btn" class="chatbot-close-btn" aria-label="Close chatbot">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Chat Messages Logs -->
+      <div id="chatbot-messages" class="chatbot-messages"></div>
+
+      <!-- Quick Replies Chips -->
+      <div id="chatbot-quick-replies" class="chatbot-quick-replies"></div>
+
+      <!-- Chat Input Area -->
+      <form id="chatbot-input-form" class="chatbot-input-form">
+        <input type="text" id="chatbot-input-field" class="chatbot-input-field" placeholder="Ask about Eazzio..." autocomplete="off" required>
+        <button type="submit" id="chatbot-send-btn" class="chatbot-send-btn" aria-label="Send message">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="script.js?v=2"></script>
+</body>
+
+</html>
