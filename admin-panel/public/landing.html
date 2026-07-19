@@ -8,7 +8,7 @@
   <meta name="description"
     content="eazzio-telecaller is the ultimate SIM-based telecalling auto-dialer and CRM to upgrade productivity, manage campaigns, and supercharge sales.">
   <link rel="icon" type="image/png" href="/headset.png">
-  <link rel="stylesheet" href="/landing.css">
+  <link rel="stylesheet" href="/landing.css?v=2">
 </head>
 
 <body class="light-theme">
@@ -23,7 +23,7 @@
       <button class="banner-close-btn" id="closeSecurityBannerBtn" aria-label="Close security message">&times;</button>
     </div>
     <script>
-      (function() {
+      (function () {
         if (localStorage.getItem('securityBannerDismissed') === 'true') {
           document.getElementById('topSecurityBanner').style.display = 'none';
         }
@@ -32,8 +32,8 @@
     <div class="container nav-container">
       <a href="#" class="logo-wrapper">
         <!-- Render light logo (logo-light.png) when dark mode is on, render dark logo (logo-dark.png) when light mode is on -->
-        <img src="/logo-light.png" alt="Eazzio Logo" class="logo-img logo-for-dark-mode">
-        <img src="/logo-dark.png" alt="Eazzio Logo" class="logo-img logo-for-light-mode">
+        <img src="assets/logo-light.png" alt="Eazzio Logo" class="logo-img logo-for-dark-mode">
+        <img src="assets/logo-dark.png" alt="Eazzio Logo" class="logo-img logo-for-light-mode">
       </a>
 
       <ul class="nav-menu">
@@ -41,8 +41,11 @@
         <li><a href="#solutions" class="nav-link">Solutions</a></li>
         <li><a href="#pricing" class="nav-link">Pricing</a></li>
         <li><a href="#faq" class="nav-link">FAQs</a></li>
-        <li class="mobile-only-action"><a href="/?login=true" target="_parent" class="nav-link" style="color: var(--color-secondary); font-weight: bold;">Login</a></li>
-        <li class="mobile-only-action" style="margin-top: 15px; width: 100%;"><a href="#pricing" class="btn btn-primary btn-mobile-nav" style="display: block; text-align: center; width: 100%; padding: 10px;">Get Started</a></li>
+        <li class="mobile-only-action"><a href="/?login=true" target="_parent" class="nav-link"
+            style="color: var(--color-secondary); font-weight: bold;">Login</a></li>
+        <li class="mobile-only-action" style="margin-top: 15px; width: 100%;"><a href="#pricing"
+            class="btn btn-primary btn-mobile-nav"
+            style="display: block; text-align: center; width: 100%; padding: 10px;">Get Started</a></li>
       </ul>
 
       <div class="nav-actions">
@@ -64,6 +67,7 @@
 
   <!-- Hero Section -->
   <section class="section hero-section">
+    <div class="hero-telecaller-bg"></div>
     <div class="container hero-grid">
       <div class="hero-content">
         <h1 class="hero-title">The only SIM-based <span>telecalling dialer</span> & CRM you'll ever need.</h1>
@@ -86,11 +90,15 @@
         </div>
 
         <!-- Enterprise-Grade Security and E2EE Banner -->
-        <div class="e2ee-security-banner" style="display: flex; gap: 12px; background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.15); padding: 16px; border-radius: 12px; margin-top: 24px; margin-bottom: 24px; max-width: 580px; align-items: flex-start; text-align: left;">
+        <div class="e2ee-security-banner"
+          style="display: flex; gap: 12px; background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.15); padding: 16px; border-radius: 12px; margin-top: 24px; margin-bottom: 24px; max-width: 580px; align-items: flex-start; text-align: left;">
           <div style="font-size: 1.5rem; line-height: 1;">🛡️</div>
           <div>
-            <h4 style="margin: 0 0 4px 0; font-size: 0.92rem; font-weight: 700; color: #8b5cf6; text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--font-family);">Your Data is Safe and Secure</h4>
-            <p style="margin: 0; font-size: 0.82rem; line-height: 1.45; color: var(--text-secondary); font-family: var(--font-family);">
+            <h4
+              style="margin: 0 0 4px 0; font-size: 0.92rem; font-weight: 700; color: #8b5cf6; text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--font-family);">
+              Your Data is Safe and Secure</h4>
+            <p
+              style="margin: 0; font-size: 0.82rem; line-height: 1.45; color: var(--text-secondary); font-family: var(--font-family);">
               Your Data is Safe and Secure, encrypted by AES 256 bit end to end Encryption.
             </p>
           </div>
@@ -121,7 +129,8 @@
           </div>
 
           <!-- Mock Stats -->
-          <div class="hero-mock-stats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+          <div class="hero-mock-stats"
+            style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
             <div
               style="background-color: var(--bg-secondary); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
               <div style="font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase;">Active Callers
@@ -475,55 +484,85 @@
         <p class="pricing-subtitle">Select the option that best fits your sales and calling volume goals.</p>
       </div>
 
-      <div class="pricing-grid">
-        <!-- Basic Plan -->
-        <div class="pricing-card">
-          <h3 class="pricing-plan-name">Basic Plan</h3>
-          <div class="pricing-price">₹29 <span>/ user / year</span></div>
-          <p class="pricing-plan-desc">Billed annually. Essential features for small calling campaigns.</p>
-          <ul class="pricing-features-list">
-            <li class="pricing-feature-item"><span>✓</span> SIM-Based Auto Dialer</li>
-            <li class="pricing-feature-item"><span>✓</span> Up to 10 Campaigns Max</li>
-            <li class="pricing-feature-item"><span>✓</span> Standard Lead Import</li>
-            <li class="pricing-feature-item"><span>✓</span> Basic Call Logs &amp; History</li>
-            <li class="pricing-feature-item unavailable"><span>✗</span> Live Monitor &amp; Audit Grid</li>
-            <li class="pricing-feature-item unavailable"><span>✗</span> Call Recording Feature</li>
-          </ul>
-          <a href="/?login=true&register=true" target="_parent" class="btn btn-secondary" style="margin-top: auto;">Get Started</a>
+      <!-- Carousel Slider Wrapper -->
+      <div class="pricing-slider-container">
+        <button class="pricing-slider-btn prev-btn" aria-label="Previous Plan">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+
+        <div class="pricing-carousel-track-wrapper">
+          <div class="pricing-carousel-track">
+            <!-- Basic Plan -->
+            <div class="pricing-card card-left" data-index="0">
+              <h3 class="pricing-plan-name">Basic Plan</h3>
+              <div class="pricing-price">₹29 <span>/ user / year</span></div>
+              <p class="pricing-plan-desc">Billed annually. Essential features for small calling campaigns.</p>
+              <ul class="pricing-features-list">
+                <li class="pricing-feature-item"><span>✓</span> SIM-Based Auto Dialer</li>
+                <li class="pricing-feature-item"><span>✓</span> Up to 10 Campaigns Max</li>
+                <li class="pricing-feature-item"><span>✓</span> Standard Lead Import</li>
+                <li class="pricing-feature-item"><span>✓</span> Basic Call Logs &amp; History</li>
+                <li class="pricing-feature-item unavailable"><span>✗</span> Live Monitor &amp; Audit Grid</li>
+                <li class="pricing-feature-item unavailable"><span>✗</span> Call Recording Feature</li>
+              </ul>
+              <a href="/?login=true&register=true" target="_parent" class="btn btn-secondary"
+                style="margin-top: auto; width: 100%; text-align: center;">Get Started</a>
+            </div>
+
+            <!-- Starter Plan -->
+            <div class="pricing-card card-center" data-index="1">
+              <h3 class="pricing-plan-name">Starter Plan</h3>
+              <div class="pricing-price">₹49 <span>/ user / year</span></div>
+              <p class="pricing-plan-desc">Billed annually. Complete team monitoring with flexible call recording.</p>
+              <ul class="pricing-features-list">
+                <li class="pricing-feature-item"><span>✓</span> SIM-Based Auto Dialer</li>
+                <li class="pricing-feature-item"><span>✓</span> Up to 30 Campaigns Max</li>
+                <li class="pricing-feature-item"><span>✓</span> Live Monitor &amp; Audit Grid</li>
+                <li class="pricing-feature-item"><span>✓</span> Call Recording (Add-on: ₹3,999/yr)</li>
+                <li class="pricing-feature-item"><span>✓</span> Basic Call Logs &amp; History</li>
+                <li class="pricing-feature-item"><span>✓</span> Standard Lead Import</li>
+              </ul>
+              <a href="/?login=true&register=true" target="_parent" class="btn btn-secondary"
+                style="margin-top: auto; width: 100%; text-align: center;">Get Started</a>
+            </div>
+
+            <!-- Growth Plan -->
+            <div class="pricing-card card-right" data-index="2">
+              <span class="pricing-popular-badge">Recommended</span>
+              <h3 class="pricing-plan-name">Growth Plan</h3>
+              <div class="pricing-price">₹99 <span>/ user / year</span></div>
+              <p class="pricing-plan-desc">Billed annually. Ultimate capacity, whatsapp scripts, and free call
+                recording.</p>
+              <ul class="pricing-features-list">
+                <li class="pricing-feature-item"><span>✓</span> SIM-Based Auto Dialer</li>
+                <li class="pricing-feature-item"><span>✓</span> Ultimate (Unlimited) Campaigns</li>
+                <li class="pricing-feature-item"><span>✓</span> Live Monitor &amp; Audit Grid</li>
+                <li class="pricing-feature-item"><span>✓</span> Call Recording (FREE / Included)</li>
+                <li class="pricing-feature-item"><span>✓</span> Whatsapp post-call scripts</li>
+                <li class="pricing-feature-item"><span>✓</span> Priority Customer Support</li>
+              </ul>
+              <a href="/?login=true&register=true" target="_parent" class="btn btn-primary"
+                style="margin-top: auto; width: 100%; text-align: center;">Get Started</a>
+            </div>
+          </div>
         </div>
 
-        <!-- Starter Plan -->
-        <div class="pricing-card">
-          <h3 class="pricing-plan-name">Starter Plan</h3>
-          <div class="pricing-price">₹49 <span>/ user / year</span></div>
-          <p class="pricing-plan-desc">Billed annually. Complete team monitoring with flexible call recording.</p>
-          <ul class="pricing-features-list">
-            <li class="pricing-feature-item"><span>✓</span> SIM-Based Auto Dialer</li>
-            <li class="pricing-feature-item"><span>✓</span> Up to 30 Campaigns Max</li>
-            <li class="pricing-feature-item"><span>✓</span> Live Monitor &amp; Audit Grid</li>
-            <li class="pricing-feature-item"><span>✓</span> Call Recording (Add-on: ₹3,999/yr)</li>
-            <li class="pricing-feature-item"><span>✓</span> Basic Call Logs &amp; History</li>
-            <li class="pricing-feature-item"><span>✓</span> Standard Lead Import</li>
-          </ul>
-          <a href="/?login=true&register=true" target="_parent" class="btn btn-secondary" style="margin-top: auto;">Get Started</a>
-        </div>
+        <button class="pricing-slider-btn next-btn" aria-label="Next Plan">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
 
-        <!-- Growth Plan -->
-        <div class="pricing-card popular">
-          <span class="pricing-popular-badge">Recommended</span>
-          <h3 class="pricing-plan-name">Growth Plan</h3>
-          <div class="pricing-price">₹99 <span>/ user / year</span></div>
-          <p class="pricing-plan-desc">Billed annually. Ultimate capacity, whatsapp scripts, and free call recording.</p>
-          <ul class="pricing-features-list">
-            <li class="pricing-feature-item"><span>✓</span> SIM-Based Auto Dialer</li>
-            <li class="pricing-feature-item"><span>✓</span> Ultimate (Unlimited) Campaigns</li>
-            <li class="pricing-feature-item"><span>✓</span> Live Monitor &amp; Audit Grid</li>
-            <li class="pricing-feature-item"><span>✓</span> Call Recording (FREE / Included)</li>
-            <li class="pricing-feature-item"><span>✓</span> Whatsapp post-call scripts</li>
-            <li class="pricing-feature-item"><span>✓</span> Priority Customer Support</li>
-          </ul>
-          <a href="/?login=true&register=true" target="_parent" class="btn btn-primary" style="margin-top: auto;">Get Started</a>
-        </div>
+      <!-- Carousel Slider Dots -->
+      <div class="pricing-slider-dots">
+        <span class="pricing-dot" data-index="0"></span>
+        <span class="pricing-dot active" data-index="1"></span>
+        <span class="pricing-dot" data-index="2"></span>
       </div>
     </div>
   </section>
@@ -653,29 +692,17 @@
               <div class="qr-code-wrapper">
                 <svg width="130" height="130" viewBox="0 0 29 29" fill="none" shape-rendering="crispEdges">
                   <path
-                    d="M0 0h7v7H0zM22 0h7v7h-7zM0 22h7v7H0zM2 2h3v3H2zM24 2h3v3h-3zM2 24h3v3H2zM9 0h1v1H9zM12 0h1v2h-1zM15 0h1v1h-1zM17 0h3v1h-3zM9 2h1v1H9zM11 2h2v1h-2zM15 2h1v2h-1zM18 2h1v1h-1zM20 2h1v1h-1zM9 4h3v1H9zM14 4h1v1h-1zM16 4h4v1h-4zM9 6h1v1H9zM11 6h3v1h-3zM15 6h1v1h-1zM17 6h2v1h-2zM2 9h1v3H2zM4 9h3v1H4zM8 9h1v1H8zM10 9h1v2H10zM13 9h2v1h-2zM16 9h1v1h-1zM19 9h2v1h-2zM21 9h1v1h-1zM23 9h1v1h-1zM26 9h2v1h-2zM0 11h1v1H0zM5 11h2v1H5zM8 11h1v1H8zM12 11h1v1h-1zM14 11h1v1h-1zM16 11h1v1h-1zM18 11h1v1h-1zM20 11h1v1h-1zM22 11h2v1h-2zM25 11h3v1h-3zM1 13h2v1H1zM4 13h1v1H4zM6 13h2v1H6zM9 13h1v1H9zM11 13h1v1h-1zM13 13h1v1h-1zM15 13h2v1h-2zM18 13h3v1h-3zM22 13h1v1h-1zM25 13h1v1h-2zM27 13h1v1h-1zM0 15h1v1H0zM2 15h1v1H2zM4 15h3v1H4zM8 15h2v1H8zM11 15h3v1h-3zM15 15h1v1h-1zM17 15h1v1h-1zM20 15h2v1h-2zM23 15h2v1h-2zM26 15h1v1h-1zM28 15h1v1h-1zM1 17h1v1H1zM3 17h1v1H3zM5 17h1v1H5zM8 17h2v1H8zM11 17h2v1h-2zM14 17h2v1h-2zM17 17h1v1h-1zM19 17h1v1h-1zM22 17h3v1h-3zM26 17h2v1h-2zM0 19h2v1H0zM3 19h1v1H3zM5 19h2v1H5zM8 19h1v1H8zM10 19h1v1h-1zM12 19h1v1h-1zM14 19h2v1h-2zM17 19h1v1h-1zM19 19h1v1h-1zM21 19h3v1h-3zM26 19h1v1h-1zM28 19h1v1h-1zM9 22h1v1H9zM11 22h2v1h-2zM14 22h1v1h-1zM16 22h1v1h-1zM18 22h1v1h-1zM20 22h1v1h-1zM23 22h1v1h-1zM25 22h2v1h-2zM9 24h1v1H9zM11 24h2v1h-2zM15 24h1v1h-1zM17 24h2v1h-2zM20 24h1v1h-1z/mn-badges-img"
-                    class="app-banner-badges-img">
+                    d="M0 0h7v7H0zM22 0h7v7h-7zM0 22h7v7H0zM2 2h3v3H2zM24 2h3v3h-3zM2 24h3v3H2zM9 0h1v1H9zM12 0h1v2h-1zM15 0h1v1h-1zM17 0h3v1h-3zM9 2h1v1H9zM11 2h2v1h-2zM15 2h1v2h-1zM18 2h1v1h-1zM20 2h1v1h-1zM9 4h3v1H9zM14 4h1v1h-1zM16 4h4v1h-4zM9 6h1v1H9zM11 6h3v1h-3zM15 6h1v1h-1zM17 6h2v1h-2zM2 9h1v3H2zM4 9h3v1H4zM8 9h1v1H8zM10 9h1v2H10zM13 9h2v1h-2zM16 9h1v1h-1zM19 9h2v1h-2zM21 9h1v1h-1zM23 9h1v1h-1zM26 9h2v1h-2zM0 11h1v1H0zM5 11h2v1H5zM8 11h1v1H8zM12 11h1v1h-1zM14 11h1v1h-1zM16 11h1v1h-1zM18 11h1v1h-1zM20 11h1v1h-1zM22 11h2v1h-2zM25 11h3v1h-3zM1 13h2v1H1zM4 13h1v1H4zM6 13h2v1H6zM9 13h1v1H9zM11 13h1v1h-1zM13 13h1v1h-1zM15 13h2v1h-2zM18 13h3v1h-3zM22 13h1v1h-1zM25 13h1v1h-2zM27 13h1v1h-1zM0 15h1v1H0zM2 15h1v1H2zM4 15h3v1H4zM8 15h2v1H8zM11 15h3v1h-3zM15 15h1v1h-1zM17 15h1v1h-1zM20 15h2v1h-2zM23 15h2v1h-2zM26 15h1v1h-1zM28 15h1v1h-1zM1 17h1v1H1zM3 17h1v1H3zM5 17h1v1H5zM8 17h2v1H8zM11 17h2v1h-2zM14 17h2v1h-2zM17 17h1v1h-1zM19 17h1v1h-1zM22 17h3v1h-3zM26 17h2v1h-2zM0 19h2v1H0zM3 19h1v1H3zM5 19h2v1H5zM8 19h1v1H8zM10 19h1v1h-1zM12 19h1v1h-1zM14 19h2v1h-2zM17 19h1v1h-1zM19 19h1v1h-1zM21 19h3v1h-3zM26 19h1v1h-1zM28 19h1v1h-1zM9 22h1v1H9zM11 22h2v1h-2zM14 22h1v1h-1zM16 22h1v1h-1zM18 22h1v1h-1zM20 22h1v1h-1zM23 22h1v1h-1zM25 22h2v1h-2zM9 24h1v1H9zM11 24h2v1h-2zM15 24h1v1h-1zM17 24h2v1h-2zM20 24h1v1h-1zM23 24h2v1h-2zM27 24h1v1h-1zM9 26h1v1H9zM11 26h1v1h-1zM13 26h2v1h-2zM16 26h1v1h-1zM18 26h1v1h-1zM20 26h1v1h-1zM22 26h2v1h-2zM25 26h1v1h-1zM27 26h2v1h-2z"
+                    fill="#0f172a" />
+                </svg>
               </div>
-            </div>
-            <div class="app-banner-mockup">
-              <div class="phone-mockup">
-                <div class="phone-speaker"></div>
-                <div class="phone-screen">
-                  <div class="qr-container">
-                    <div class="qr-code-wrapper">
-                      <svg width="130" height="130" viewBox="0 0 29 29" fill="none" shape-rendering="crispEdges">
-                        <path
-                          d="M0 0h7v7H0zM22 0h7v7h-7zM0 22h7v7H0zM2 2h3v3H2zM24 2h3v3h-3zM2 24h3v3H2zM9 0h1v1H9zM12 0h1v2h-1zM15 0h1v1h-1zM17 0h3v1h-3zM9 2h1v1H9zM11 2h2v1h-2zM15 2h1v2h-1zM18 2h1v1h-1zM20 2h1v1h-1zM9 4h3v1H9zM14 4h1v1h-1zM16 4h4v1h-4zM9 6h1v1H9zM11 6h3v1h-3zM15 6h1v1h-1zM17 6h2v1h-2zM2 9h1v3H2zM4 9h3v1H4zM8 9h1v1H8zM10 9h1v2H10zM13 9h2v1h-2zM16 9h1v1h-1zM19 9h2v1h-2zM21 9h1v1h-1zM23 9h1v1h-1zM26 9h2v1h-2zM0 11h1v1H0zM5 11h2v1H5zM8 11h1v1H8zM12 11h1v1h-1zM14 11h1v1h-1zM16 11h1v1h-1zM18 11h1v1h-1zM20 11h1v1h-1zM22 11h2v1h-2zM25 11h3v1h-3zM1 13h2v1H1zM4 13h1v1H4zM6 13h2v1H6zM9 13h1v1H9zM11 13h1v1h-1zM13 13h1v1h-1zM15 13h2v1h-2zM18 13h3v1h-3zM22 13h1v1h-1zM25 13h1v1h-2zM27 13h1v1h-1zM0 15h1v1H0zM2 15h1v1H2zM4 15h3v1H4zM8 15h2v1H8zM11 15h3v1h-3zM15 15h1v1h-1zM17 15h1v1h-1zM20 15h2v1h-2zM23 15h2v1h-2zM26 15h1v1h-1zM28 15h1v1h-1zM1 17h1v1H1zM3 17h1v1H3zM5 17h1v1H5zM8 17h2v1H8zM11 17h2v1h-2zM14 17h2v1h-2zM17 17h1v1h-1zM19 17h1v1h-1zM22 17h3v1h-3zM26 17h2v1h-2zM0 19h2v1H0zM3 19h1v1H3zM5 19h2v1H5zM8 19h1v1H8zM10 19h1v1h-1zM12 19h1v1h-1zM14 19h2v1h-2zM17 19h1v1h-1zM19 19h1v1h-1zM21 19h3v1h-3zM26 19h1v1h-1zM28 19h1v1h-1zM9 22h1v1H9zM11 22h2v1h-2zM14 22h1v1h-1zM16 22h1v1h-1zM18 22h1v1h-1zM20 22h1v1h-1zM23 22h1v1h-1zM25 22h2v1h-2zM9 24h1v1H9zM11 24h2v1h-2zM15 24h1v1h-1zM17 24h2v1h-2zM20 24h1v1h-1zM23 24h2v1h-2zM27 24h1v1h-1zM9 26h1v1H9zM11 26h1v1h-1zM13 26h2v1h-2zM16 26h1v1h-1zM18 26h1v1h-1zM20 26h1v1h-1zM22 26h2v1h-2zM25 26h1v1h-1zM27 26h2v1h-2z"
-                          fill="#0f172a" />
-                      </svg>
-                    </div>
-                    <span class="qr-caption">Scan to download</span>
-                  </div>
-                </div>
-                <div class="phone-home-btn"></div>
-              </div>
+              <span class="qr-caption">Scan to download</span>
             </div>
           </div>
+          <div class="phone-home-btn"></div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- Footer -->
@@ -849,7 +876,7 @@
     </div>
   </footer>
 
-  <script src="/landing.js"></script>
+  <script src="/landing.js?v=2"></script>
 </body>
 
 </html>
