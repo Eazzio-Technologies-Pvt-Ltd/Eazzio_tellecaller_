@@ -545,53 +545,407 @@ select {
   overflow: hidden;
   box-shadow: 0 24px 80px rgba(99, 102, 241, 0.14);
   aspect-ratio: 16/9;
-  background: linear-gradient(135deg, #eef2ff, #e0f7ff);
+  background: #0f172a; /* Sleek dark theme background for video player */
+  display: flex;
+  flex-direction: column;
+}
+
+.video-screen {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  height: calc(100% - 60px);
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.video-mock-thumbnail {
+.video-part {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(14, 165, 233, 0.85) 100%);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 40px;
+  box-sizing: border-box;
+}
+
+.video-part.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Animations for each step */
+.phone-mockup-video {
+  background: #1e293b;
+  border: 4px solid #334155;
+  border-radius: 24px;
+  width: 240px;
+  height: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  animation: phonePulse 2s infinite ease-in-out;
+  color: #fff;
+  text-align: center;
+}
+
+@keyframes phonePulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+.phone-call-status {
+  font-size: 0.75rem;
+  color: #38bdf8;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+.phone-customer-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.phone-call-number {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-bottom: 24px;
+}
+
+.phone-call-duration {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 24px;
+  background: rgba(56, 189, 248, 0.1);
+  padding: 6px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.phone-action-buttons {
+  width: 100%;
+}
+
+.phone-icon-btn {
+  display: block;
+  width: 80%;
+  margin: 0 auto;
+  padding: 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: #ef4444;
+  color: #fff;
+}
+
+/* Team Monitor Mockup styles */
+.monitor-mockup-video {
+  width: 90%;
+  max-width: 500px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  color: #fff;
+}
+
+.monitor-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #334155;
+  padding-bottom: 10px;
+  color: #38bdf8;
+}
+
+.monitor-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-box {
+  background: #0f172a;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  border: 1px solid #334155;
+}
+
+.stat-val {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.stat-val.highlight { color: #f59e0b; }
+.stat-val.green { color: #10b981; }
+
+.agent-list-video {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-row-video {
+  display: flex;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.03);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  border-left: 3px solid #38bdf8;
+}
+
+.agent-row-video .calls-count {
+  font-weight: 700;
+  color: #10b981;
+}
+
+/* CRM and WhatsApp styles */
+.crm-mockup-video {
+  width: 90%;
+  max-width: 480px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  color: #fff;
+}
+
+.crm-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #a855f7;
+  text-align: center;
+}
+
+.whatsapp-bubble-video {
+  background: #075e54;
+  border-radius: 8px 8px 8px 0;
+  padding: 14px;
+  max-width: 85%;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  margin: 10px 0;
+  animation: slideInBubble 0.8s ease-out;
+}
+
+@keyframes slideInBubble {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.whatsapp-bot-tag {
+  font-weight: 700;
+  color: #128c7e;
+  background: rgba(255,255,255,0.9);
+  padding: 2px 6px;
+  font-size: 0.65rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+/* Call Analytics styles */
+.analytics-mockup-video {
+  width: 90%;
+  max-width: 460px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  color: #fff;
+}
+
+.analytics-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #ec4899;
+}
+
+.recording-bar-video {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.82rem;
+  margin-bottom: 20px;
+}
+
+.recording-bar-video .play-icon {
+  color: #ec4899;
+  font-size: 1.2rem;
+  animation: playPulse 1.5s infinite;
+}
+
+@keyframes playPulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.recording-bar-video .rec-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.recording-bar-video .rec-dur {
+  color: #94a3b8;
+}
+
+.outcome-chart-video {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 80px;
+  border-bottom: 2px solid #334155;
+  padding-bottom: 8px;
+}
+
+.chart-bar-video {
+  width: 30px;
+  background: #334155;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.5s ease;
+}
+
+.chart-bar-video.highlight {
+  background: #ec4899;
+}
+
+/* Captions / Subtitles */
+.video-subtitles {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  padding: 12px 20px;
+  color: #f1f5f9;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,0.08);
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+/* Video Controls overlay */
+.video-controls {
+  background: #1e293b;
+  border-top: 1px solid #334155;
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.progress-bar-container {
+  height: 5px;
+  background: #475569;
+  border-radius: 3px;
   position: relative;
   cursor: pointer;
 }
 
-.video-play-btn {
-  width: 84px;
-  height: 84px;
-  background-color: #ffffff;
-  border-radius: 50%;
+.video-progress {
+  height: 100%;
+  background: #38bdf8;
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+.controls-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.control-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-primary);
-  font-size: 32px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
-  padding-left: 5px;
+  transition: background 0.2s;
 }
 
-.video-mock-thumbnail:hover .video-play-btn {
-  transform: scale(1.12);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+.control-btn:hover {
+  background: rgba(255,255,255,0.1);
 }
 
-.video-intro-text {
-  position: absolute;
-  bottom: 28px;
-  left: 28px;
-  font-family: var(--font-title);
+.time-display {
+  color: #94a3b8;
+}
+
+.controls-center {
   font-weight: 700;
-  font-size: 1.2rem;
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  color: #f1f5f9;
+  font-size: 0.85rem;
 }
+
+.controls-right {
+  display: flex;
+  align-items: center;
+}
+
+.lang-selector {
+  background: #0f172a;
+  color: #fff;
+  border: 1px solid #334155;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  outline: none;
+  font-weight: 600;
+}
+
 
 .highlight-cards-grid {
   display: grid;

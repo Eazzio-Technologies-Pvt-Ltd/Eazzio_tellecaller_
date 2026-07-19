@@ -170,12 +170,100 @@
         <p style="color: var(--text-secondary);">Empower your team with automated calling workflows, live break-states tracking, custom calling scripts, and direct lead distributions.</p>
       </div>
 
-      <div class="highlight-video-container">
-        <div class="video-mock-thumbnail">
-          <button class="video-play-btn" aria-label="Play video demo">▶</button>
-          <div class="video-intro-text">eazzio-telecaller - Smarter Telecalling, Better Results</div>
+      <!-- Interactive Video Presentation Player -->
+      <div class="highlight-video-container" id="eazzioVideoPlayer">
+        <!-- Video Screen -->
+        <div class="video-screen">
+          <!-- Part 1: Dialer Mockup -->
+          <div class="video-part active" id="part-dialer">
+            <div class="phone-mockup-video">
+              <div class="phone-call-status">Auto Dialer Active</div>
+              <div class="phone-customer-name">Rahul Sharma</div>
+              <div class="phone-call-number">DIALING +91 98765 43210</div>
+              <div class="phone-call-duration">Duration: <span class="dur-counter">0m 00s</span></div>
+              <div class="phone-action-buttons">
+                <span class="phone-icon-btn red">Hang Up</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Part 2: Team Monitoring Mockup -->
+          <div class="video-part" id="part-monitor">
+            <div class="monitor-mockup-video">
+              <div class="monitor-title">Live Caller Monitor</div>
+              <div class="monitor-stats">
+                <div class="stat-box">Active callers: <span class="stat-val highlight">42</span></div>
+                <div class="stat-box">Connected: <span class="stat-val green">84%</span></div>
+              </div>
+              <div class="agent-list-video">
+                <div class="agent-row-video">1. Priya Patel <span class="calls-count">180 Calls</span></div>
+                <div class="agent-row-video">2. Amit Mishra <span class="calls-count">162 Calls</span></div>
+                <div class="agent-row-video">3. Joy D'souza <span class="calls-count">145 Calls</span></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Part 3: CRM Sync & WhatsApp Mockup -->
+          <div class="video-part" id="part-crm">
+            <div class="crm-mockup-video">
+              <div class="crm-title">No-Code CRM Integration</div>
+              <div class="whatsapp-bubble-video">
+                <div class="whatsapp-bot-tag">Whatsapp Bot</div>
+                <div class="whatsapp-msg-content" id="whatsappMsgText">Hello! Your call with Eazzio agent has concluded. Here is your ticket copy.</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Part 4: Audio Logs & Analytics Mockup -->
+          <div class="video-part" id="part-analytics">
+            <div class="analytics-mockup-video">
+              <div class="analytics-title">Call Log Recordings</div>
+              <div class="recording-bar-video">
+                <span class="play-icon">▶</span>
+                <div class="rec-name">Call_Recording_489.mp3</div>
+                <div class="rec-dur">2m 45s</div>
+              </div>
+              <div class="outcome-chart-video">
+                <div class="chart-bar-video" style="height: 40%"></div>
+                <div class="chart-bar-video highlight" style="height: 80%"></div>
+                <div class="chart-bar-video" style="height: 65%"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Video Subtitles / Captions -->
+          <div class="video-subtitles" id="videoSubtitles">
+            Loading Eazzio explanation...
+          </div>
+        </div>
+        
+        <!-- Video Controls Overlay -->
+        <div class="video-controls">
+          <div class="progress-bar-container" id="progressBarContainer">
+            <div class="video-progress" id="videoProgress"></div>
+          </div>
+          <div class="controls-row">
+            <div class="controls-left">
+              <button class="control-btn play-pause-btn" id="playPauseBtn" aria-label="Play or Pause">⏸</button>
+              <span class="time-display" id="timeDisplay">0:00 / 0:40</span>
+            </div>
+            <div class="controls-row-center controls-center" id="partIndicator">
+              Part 1: SIM-Based Auto Dialer
+            </div>
+            <div class="controls-right">
+              <!-- Language Changer Dropdown -->
+              <div class="lang-selector-wrapper">
+                <select class="lang-selector" id="videoLangSelector" aria-label="Change video language">
+                  <option value="en">English</option>
+                  <option value="hi">हिन्दी</option>
+                  <option value="ta">தமிழ்</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
 
       <div class="highlight-cards-grid">
         <div class="highlight-card">

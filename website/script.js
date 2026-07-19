@@ -83,24 +83,166 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 4. Feature Image Auto-Rotation & Interaction Demo
-  const playButton = document.querySelector('.video-play-btn');
-  const mockThumbnail = document.querySelector('.video-mock-thumbnail');
+  // 4. Interactive Video Presentation Player Logic
+  const player = document.getElementById('eazzioVideoPlayer');
+  if (player) {
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const partIndicator = document.getElementById('partIndicator');
+    const videoSubtitles = document.getElementById('videoSubtitles');
+    const videoProgress = document.getElementById('videoProgress');
+    const progressBarContainer = document.getElementById('progressBarContainer');
+    const videoLangSelector = document.getElementById('videoLangSelector');
+    const videoParts = player.querySelectorAll('.video-part');
+    const whatsappMsgText = document.getElementById('whatsappMsgText');
+    const phoneDurationCounter = player.querySelector('.dur-counter');
+    
+    let isPlaying = true;
+    let currentTime = 0; // 0 to 40 seconds
+    const duration = 40; // 40 seconds total
+    let currentLang = 'en';
 
-  if (playButton && mockThumbnail) {
-    mockThumbnail.addEventListener('click', () => {
-      // Simulate playing by injecting a mock message
-      const introText = mockThumbnail.querySelector('.video-intro-text');
-      if (introText) {
-        introText.textContent = "Connecting to Eazzio Demo Environment...";
-      }
-      setTimeout(() => {
-        alert("Eazzio Fast auto-dialer simulation initiated! To try the full dashboard, click on 'Login' or 'Request Demo'.");
-        if (introText) {
-          introText.textContent = "Eazzio FAST - Smarter Telecalling, Better Results";
+    const videoData = {
+      parts: [
+        {
+          indicator: {
+            en: "Part 1: SIM-Based Auto Dialer",
+            hi: "भाग 1: सिम-आधारित ऑटो डायलर",
+            ta: "பகுதி 1: சிம்-அடிப்படையிலான ஆட்டோ டயலர்"
+          },
+          subtitle: {
+            en: "Eazzio Telecaller dials leads directly using your agent's SIM card calling plans. This eliminates expensive VoIP calling charges and allows you to run unlimited outbound campaigns.",
+            hi: "ईज़ियो टेलीकॉलर आपके एजेंट के सिम कार्ड कॉलिंग प्लान का उपयोग करके सीधे लीड्स को डायल करता है। यह महंगे वीओआईपी कॉलिंग शुल्कों को समाप्त करता है और आपको असीमित आउटबाउंड अभियान चलाने की अनुमति देता है।",
+            ta: "ஈசியோ டெலிகாலர் உங்கள் முகவரின் சிம் கார்டு அழைப்பு திட்டங்களை பயன்படுத்தி நேரடியாக அழைப்புகளை மேற்கொள்கிறது. இது விலையுயர்ந்த விஓஐபி கட்டணங்களை தவிர்க்கிறது மற்றும் வரம்பற்ற பிரச்சாரங்களை நடத்த அனுமதிக்கிறது."
+          }
+        },
+        {
+          indicator: {
+            en: "Part 2: Real-Time Team Monitoring",
+            hi: "भाग 2: वास्तविक समय टीम निगरानी",
+            ta: "பகுதி 2: நிகழ்நேர குழு கண்காணிப்பு"
+          },
+          subtitle: {
+            en: "Monitor agent activity, break states, talk times, and campaign status live. Admins can audit performance instantly and drive outbound calling efficiency.",
+            hi: "एजेंट की गतिविधि, ब्रेक की स्थिति, बात करने का समय और अभियान की स्थिति को लाइव देखें। व्यवस्थापक तुरंत प्रदर्शन का ऑडिट कर सकते हैं और आउटबाउंड कॉलिंग दक्षता बढ़ा सकते हैं।",
+            ta: "முகவர் செயல்பாடு, இடைவேளை நிலைகள், பேசும் நேரம் மற்றும் பிரச்சார நிலையை நேரலையாக கண்காணிக்கவும். நிர்வாகிகள் செயல்திறனை உடனடியாக தணிக்கை செய்து அழைப்பு திறனை அதிகரிக்கலாம்."
+          }
+        },
+        {
+          indicator: {
+            en: "Part 3: CRM Integrations & WhatsApp",
+            hi: "भाग 3: सीआरएम सिंक और व्हाट्सएप स्वचालन",
+            ta: "பகுதி 3: சிஆர்எம் ஒத்திசைவு & வாட்ஸ்அப்"
+          },
+          subtitle: {
+            en: "Sync contacts automatically with CRM platforms or Google Sheets. Send follow-up WhatsApp messages immediately after a call concludes, without storing numbers.",
+            hi: "सीआरएम प्लेटफॉर्म या गूगल शीट्स के साथ संपर्कों को स्वचालित रूप से सिंक करें। कॉल समाप्त होने के तुरंत बाद नंबरों को सहेजने की आवश्यकता के बिना अनुवर्ती व्हाट्सएप संदेश भेजें।",
+            ta: "சிஆர்எம் தளங்கள் அல்லது கூகிள் தாள்களுடன் தொடர்புகளை தானாக ஒத்திசைக்கவும். அழைப்பு முடிந்தவுடன் எண்களை சேமிக்காமலேயே வாட்ஸ்அப் பின்தொடர் செய்திகளை அனுப்பலாம்."
+          },
+          whatsapp: {
+            en: "Hello! Your call with Eazzio agent has concluded. Here is your ticket copy.",
+            hi: "नमस्ते! ईज़ियो एजेंट के साथ आपकी कॉल समाप्त हो गई है। यह आपकी टिकट प्रति है।",
+            ta: "வணக்கம்! ஈசியோ முகவருடனான உங்கள் அழைப்பு முடிவடைந்தது. இதோ உங்கள் டிக்கெட் நகல்."
+          }
+        },
+        {
+          indicator: {
+            en: "Part 4: Audio Logs & Deep Analytics",
+            hi: "भाग 4: कॉल रिकॉर्डिंग और विश्लेषिकी",
+            ta: "பகுதி 4: அழைப்பு பதிவு & பகுப்பாய்வு"
+          },
+          subtitle: {
+            en: "Access automatic call recordings and call summaries stored securely in the cloud. Analyze conversion speed, outcomes, and daily team summaries on a unified dashboard.",
+            hi: "क्लाउड में सुरक्षित रूप से संग्रहीत स्वचालित कॉल रिकॉर्डिंग और कॉल सारांश तक पहुँचें। एक एकीकृत डैशबोर्ड पर रूपांतरण गति, परिणामों और दैनिक टीम सारांशों का विश्लेषण करें।",
+            ta: "கிளவுடில் பாதுகாப்பாக சேமிக்கப்பட்ட தானியங்கி அழைப்பு பதிவுகள் மற்றும் அழைப்பு சுருக்கங்களை அணுகவும். ஒரு ஒருங்கிணைந்த டாஷ்போர்டில் தினசரி குழு சுருக்கங்களை பகுப்பாய்வு செய்யுங்கள்."
+          }
         }
-      }, 800);
+      ]
+    };
+
+    function updatePlayer() {
+      // Find current part index
+      const partIndex = Math.min(Math.floor(currentTime / 10), 3);
+      
+      // Update active video part display
+      videoParts.forEach((part, index) => {
+        if (index === partIndex) {
+          part.classList.add('active');
+        } else {
+          part.classList.remove('active');
+        }
+      });
+
+      // Update text values according to selected language
+      const data = videoData.parts[partIndex];
+      partIndicator.textContent = data.indicator[currentLang];
+      videoSubtitles.textContent = data.subtitle[currentLang];
+
+      // Part specific dynamic counters/texts
+      if (partIndex === 0 && phoneDurationCounter) {
+        const offsetSec = Math.floor(currentTime % 10);
+        phoneDurationCounter.textContent = `0m 0${offsetSec}s`;
+      }
+      if (partIndex === 2 && whatsappMsgText && data.whatsapp) {
+        whatsappMsgText.textContent = data.whatsapp[currentLang];
+      }
+
+      // Update progress bar
+      const progressPercent = (currentTime / duration) * 100;
+      videoProgress.style.width = `${progressPercent}%`;
+
+      // Update time display
+      const displayMin = Math.floor(currentTime / 60);
+      const displaySec = Math.floor(currentTime % 60);
+      const displaySecStr = displaySec < 10 ? `0${displaySec}` : displaySec;
+      
+      const totalMin = Math.floor(duration / 60);
+      const totalSec = Math.floor(duration % 60);
+      const totalSecStr = totalSec < 10 ? `0${totalSec}` : totalSec;
+
+      timeDisplay.textContent = `${displayMin}:${displaySecStr} / ${totalMin}:${totalSecStr}`;
+    }
+
+    // Toggle Play / Pause
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      playPauseBtn.textContent = isPlaying ? '⏸' : '▶';
+    }
+
+    playPauseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePlay();
     });
+
+    // ProgressBar seeking
+    progressBarContainer.addEventListener('click', (e) => {
+      const rect = progressBarContainer.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const width = rect.width;
+      const clickPercent = clickX / width;
+      currentTime = clickPercent * duration;
+      updatePlayer();
+    });
+
+    // Language selection
+    videoLangSelector.addEventListener('change', (e) => {
+      currentLang = e.target.value;
+      updatePlayer();
+    });
+
+    // Player tick loop
+    setInterval(() => {
+      if (isPlaying) {
+        currentTime += 0.1;
+        if (currentTime >= duration) {
+          currentTime = 0;
+        }
+        updatePlayer();
+      }
+    }, 100);
+
+    // Initial update
+    updatePlayer();
   }
 
   // 5. Smooth Scroll for Anchor Links (fixes iframe and parent routing issues)
