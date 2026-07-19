@@ -96,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const videoParts = player.querySelectorAll('.video-part');
     const whatsappMsgText = document.getElementById('whatsappMsgText');
     const phoneDurationCounter = player.querySelector('.dur-counter');
+    const muteBtn = document.getElementById('muteBtn');
     
     let isPlaying = true;
     let currentTime = 0; // 0 to 40 seconds
@@ -103,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentLang = 'en';
     let lastPartIndex = -1;
     let lastLang = 'en';
+    let isMuted = false;
 
     const videoData = {
       parts: [
@@ -168,6 +170,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function speakText(text, langCode) {
+      if (isMuted) {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
+        return;
+      }
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         
@@ -267,6 +275,27 @@ document.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
       togglePlay();
     });
+
+    if (muteBtn) {
+      muteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        isMuted = !isMuted;
+        muteBtn.textContent = isMuted ? '🔇' : '🔊';
+        muteBtn.setAttribute('aria-label', isMuted ? 'Unmute' : 'Mute');
+        if (isMuted) {
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+          }
+        } else {
+          // If we unmute and the video is playing, trigger the narration immediately
+          if (isPlaying) {
+            const partIndex = Math.min(Math.floor(currentTime / 10), 3);
+            const data = videoData.parts[partIndex];
+            speakText(data.subtitle[currentLang], currentLang);
+          }
+        }
+      });
+    }
 
     // ProgressBar seeking
     progressBarContainer.addEventListener('click', (e) => {
