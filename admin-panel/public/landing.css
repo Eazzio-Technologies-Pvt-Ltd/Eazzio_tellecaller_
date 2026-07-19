@@ -766,10 +766,9 @@ select {
   transform: translateY(-50%);
   width: 45%;
   height: 85%;
-  background-image: url('/telecaller_bg.png');
   background-size: contain;
   background-repeat: no-repeat;
-  opacity: 0.22; /* More visible watermark effect */
+  opacity: 0.20; /* standard watermark visibility */
   pointer-events: none;
   z-index: 0;
 }
@@ -782,6 +781,27 @@ select {
 .telecaller-bg.bg-left {
   left: 0;
   background-position: left center;
+}
+
+/* Specific section watermark overrides */
+.telecaller-bg.bg-hero {
+  background-image: url('/telecaller_bg.png');
+  opacity: 0.22;
+}
+
+.telecaller-bg.bg-solutions {
+  background-image: url('/headset.png');
+  opacity: 0.15; /* keep headset subtle */
+}
+
+.telecaller-bg.bg-features {
+  background-image: url('/features_bg.png');
+  opacity: 0.18;
+}
+
+.telecaller-bg.bg-pricing {
+  background-image: url('/pricing_bg.png');
+  opacity: 0.18;
 }
 
 /* Adjust top offset specifically for Hero section since header is fixed */
