@@ -101,6 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTime = 0; // 0 to 40 seconds
     const duration = 40; // 40 seconds total
     let currentLang = 'en';
+    let lastPartIndex = -1;
+    let lastLang = 'en';
 
     const videoData = {
       parts: [
@@ -160,6 +162,26 @@ document.addEventListener('DOMContentLoaded', () => {
       ]
     };
 
+    function speakText(text, langCode) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        if (langCode === 'en') {
+          utterance.lang = 'en-US';
+        } else if (langCode === 'hi') {
+          utterance.lang = 'hi-IN';
+        } else if (langCode === 'ta') {
+          utterance.lang = 'ta-IN';
+        }
+        
+        utterance.rate = 0.95; // Slightly slower for clear understanding
+        utterance.pitch = 1.0;
+        
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
     function updatePlayer() {
       // Find current part index
       const partIndex = Math.min(Math.floor(currentTime / 10), 3);
@@ -201,12 +223,28 @@ document.addEventListener('DOMContentLoaded', () => {
       const totalSecStr = totalSec < 10 ? `0${totalSec}` : totalSec;
 
       timeDisplay.textContent = `${displayMin}:${displaySecStr} / ${totalMin}:${totalSecStr}`;
+
+      // Trigger Speech Narration if part index or language changed while playing
+      if (isPlaying && (partIndex !== lastPartIndex || currentLang !== lastLang)) {
+        speakText(data.subtitle[currentLang], currentLang);
+        lastPartIndex = partIndex;
+        lastLang = currentLang;
+      }
     }
 
     // Toggle Play / Pause
     function togglePlay() {
       isPlaying = !isPlaying;
       playPauseBtn.textContent = isPlaying ? '⏸' : '▶';
+      if (!isPlaying) {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
+      } else {
+        const partIndex = Math.min(Math.floor(currentTime / 10), 3);
+        const data = videoData.parts[partIndex];
+        speakText(data.subtitle[currentLang], currentLang);
+      }
     }
 
     playPauseBtn.addEventListener('click', (e) => {
@@ -221,12 +259,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const width = rect.width;
       const clickPercent = clickX / width;
       currentTime = clickPercent * duration;
+      lastPartIndex = -1; // Reset to force immediate Speech trigger
       updatePlayer();
     });
 
     // Language selection
     videoLangSelector.addEventListener('change', (e) => {
       currentLang = e.target.value;
+      lastPartIndex = -1; // Reset to force immediate Speech trigger
       updatePlayer();
     });
 
