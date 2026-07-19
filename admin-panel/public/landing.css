@@ -760,19 +760,33 @@ select {
 /* ============================================================
    Telecaller Background Overlay
    ============================================================ */
-.hero-telecaller-bg {
+.telecaller-bg {
   position: absolute;
-  top: 100px;
-  right: 0;
-  width: 50%;
-  height: 80%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 45%;
+  height: 85%;
   background-image: url('/telecaller_bg.png');
   background-size: contain;
   background-repeat: no-repeat;
-  background-position: right center;
-  opacity: 0.10; /* subtle watermark effect */
+  opacity: 0.22; /* More visible watermark effect */
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
+}
+
+.telecaller-bg.bg-right {
+  right: 0;
+  background-position: right center;
+}
+
+.telecaller-bg.bg-left {
+  left: 0;
+  background-position: left center;
+}
+
+/* Adjust top offset specifically for Hero section since header is fixed */
+.hero-section .telecaller-bg {
+  top: 60%;
 }
 
 /* ============================================================
