@@ -162,20 +162,36 @@ document.addEventListener('DOMContentLoaded', () => {
       ]
     };
 
+    // Prime the voices list on load to prevent delays/empty list on first play
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+    }
+
     function speakText(text, langCode) {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         
         const utterance = new SpeechSynthesisUtterance(text);
-        if (langCode === 'en') {
-          utterance.lang = 'en-US';
-        } else if (langCode === 'hi') {
-          utterance.lang = 'hi-IN';
+        let targetLang = 'en-US';
+        if (langCode === 'hi') {
+          targetLang = 'hi-IN';
         } else if (langCode === 'ta') {
-          utterance.lang = 'ta-IN';
+          targetLang = 'ta-IN';
+        }
+        utterance.lang = targetLang;
+        
+        // Find a matching voice for the target language to make it sound native
+        const voices = window.speechSynthesis.getVoices();
+        let voice = voices.find(v => v.lang.toLowerCase() === targetLang.toLowerCase());
+        if (!voice) {
+          // Fallback to match language prefix (e.g. 'hi')
+          voice = voices.find(v => v.lang.toLowerCase().startsWith(langCode.toLowerCase()));
+        }
+        if (voice) {
+          utterance.voice = voice;
         }
         
-        utterance.rate = 0.95; // Slightly slower for clear understanding
+        utterance.rate = 0.90; // Slightly slower for clear understanding
         utterance.pitch = 1.0;
         
         window.speechSynthesis.speak(utterance);
