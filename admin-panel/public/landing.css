@@ -819,112 +819,57 @@ select {
 /* ============================================================
    Pricing Slider (3D Circular Carousel)
    ============================================================ */
-.pricing-slider-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  width: 100%;
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
   max-width: 1200px;
   margin: 40px auto 20px auto;
-  padding: 0 40px;
 }
 
-.pricing-carousel-track-wrapper {
-  overflow: visible;
-  width: 100%;
-  max-width: 1000px;
-  height: 640px;
-  position: relative;
-  perspective: 1200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pricing-carousel-track {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  transform-style: preserve-3d;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pricing-slider-container .pricing-card {
-  position: absolute !important;
-  width: 340px !important;
-  height: 580px !important;
-  margin: 0 !important;
+.pricing-card {
   background-color: #ffffff;
   border: 1.5px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 36px 30px;
+  padding: 44px 36px;
   display: flex;
   flex-direction: column;
   box-shadow: var(--card-shadow);
-  transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  transition: all 0.32s ease;
   overflow: hidden;
-  z-index: 1;
-  backface-visibility: hidden;
 }
 
-/* 3D Positions */
-.pricing-slider-container .pricing-card.card-left {
-  transform: translate3d(-260px, 0, -100px) scale(0.85);
-  opacity: 0.45;
-  filter: grayscale(60%) blur(1px);
-  z-index: 1;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-.pricing-slider-container .pricing-card.card-center {
-  transform: translate3d(0, 0, 80px) scale(1.05);
-  opacity: 1;
-  filter: none;
-  z-index: 3;
-  border-color: var(--color-primary);
-  box-shadow: 0 24px 64px rgba(99, 102, 241, 0.18), 0 8px 24px rgba(0, 0, 0, 0.08);
-  pointer-events: auto;
-}
-
-.pricing-slider-container .pricing-card.card-right {
-  transform: translate3d(260px, 0, -100px) scale(0.85);
-  opacity: 0.45;
-  filter: grayscale(60%) blur(1px);
-  z-index: 1;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-/* Hover on center card only */
-.pricing-slider-container .pricing-card.card-center:hover {
-  transform: translate3d(0, -15px, 100px) scale(1.06);
-  box-shadow: 0 32px 80px rgba(99, 102, 241, 0.25), 0 12px 36px rgba(0, 0, 0, 0.1);
-}
-
-.pricing-slider-container .pricing-card::after {
+.pricing-card::after {
   content: '';
   position: absolute;
   bottom: 0;
   left: 0;
-  right: 0;
-  height: 4px;
+  width: 100%;
+  height: 5px;
   background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
   transform: scaleX(0);
-  transition: transform 0.3s ease;
+  transition: transform 0.35s ease;
   transform-origin: left;
 }
 
-.pricing-slider-container .pricing-card.card-center::after {
+.pricing-card:hover {
+  transform: translateY(-10px);
+  border-color: var(--color-primary);
+  box-shadow: var(--card-shadow-hover);
+}
+
+.pricing-card:hover::after {
   transform: scaleX(1);
 }
 
-.pricing-slider-container .pricing-card.popular {
+.pricing-card.popular {
   border-color: var(--color-primary);
   background: linear-gradient(180deg, #ffffff 0%, rgba(99, 102, 241, 0.03) 100%);
+}
+
+.pricing-card.popular::after {
+  transform: scaleX(1);
 }
 
 .pricing-popular-badge {
@@ -933,116 +878,27 @@ select {
   right: 18px;
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   color: #ffffff;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 800;
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 99px;
   letter-spacing: 0.8px;
   text-transform: uppercase;
-  z-index: 5;
 }
 
-/* Slider Controls */
-.pricing-slider-btn {
-  background-color: #ffffff;
-  border: 1.5px solid var(--border-color);
-  color: var(--color-primary);
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 10;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
-  transition: all 0.25s ease;
-}
-
-.pricing-slider-btn:hover {
-  background-color: var(--color-primary);
-  color: #ffffff;
-  border-color: var(--color-primary);
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);
-}
-
-.pricing-slider-btn.prev-btn {
-  left: -10px;
-}
-
-.pricing-slider-btn.next-btn {
-  right: -10px;
-}
-
-/* Slider Dots */
-.pricing-slider-dots {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin-top: 30px;
-}
-
-.pricing-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: var(--text-muted);
-  opacity: 0.4;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.pricing-dot.active {
-  background-color: var(--color-primary);
-  opacity: 1;
-  width: 24px;
-  border-radius: 99px;
-}
-
-/* Responsive adjustments for Carousel */
+/* Responsive adjustments for Grid */
 @media (max-width: 991px) {
-  .pricing-carousel-track-wrapper {
-    max-width: 500px;
-  }
-  .pricing-slider-container .pricing-card.card-left {
-    transform: translate3d(-140px, 0, -80px) scale(0.8);
-    opacity: 0.35;
-  }
-  .pricing-slider-container .pricing-card.card-right {
-    transform: translate3d(140px, 0, -80px) scale(0.8);
-    opacity: 0.35;
+  .pricing-grid {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 0 20px;
   }
 }
 
 @media (max-width: 768px) {
-  .pricing-slider-container {
-    padding: 0 10px;
-  }
-  .pricing-carousel-track-wrapper {
-    max-width: 320px;
-    height: 600px;
-  }
-  .pricing-slider-container .pricing-card {
-    width: 300px !important;
-    height: 560px !important;
-  }
-  .pricing-slider-container .pricing-card.card-left {
-    transform: translate3d(-80px, 0, -80px) scale(0.75);
-    opacity: 0.2;
-    visibility: hidden;
-  }
-  .pricing-slider-container .pricing-card.card-right {
-    transform: translate3d(80px, 0, -80px) scale(0.75);
-    opacity: 0.2;
-    visibility: hidden;
-  }
-  .pricing-slider-container .pricing-card.card-center {
-    transform: translate3d(0, 0, 0) scale(1);
-    visibility: visible;
+  .pricing-grid {
+    grid-template-columns: 1fr;
+    padding: 0 20px;
+    gap: 24px;
   }
 }
 

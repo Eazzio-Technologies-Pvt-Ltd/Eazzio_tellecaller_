@@ -103,79 +103,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 5. Pricing Slider (3D Circular Carousel) Logic
-  const sliderContainer = document.querySelector('.pricing-slider-container');
-  if (sliderContainer) {
-    const cards = sliderContainer.querySelectorAll('.pricing-card');
-    const prevBtn = sliderContainer.querySelector('.prev-btn');
-    const nextBtn = sliderContainer.querySelector('.next-btn');
-    const dots = document.querySelectorAll('.pricing-dot');
-    let activeIndex = 1; // Default active card (Starter Plan)
-
-    const updateSlider = (newIndex) => {
-      activeIndex = (newIndex + 3) % 3;
-
-      cards.forEach((card, i) => {
-        card.classList.remove('card-left', 'card-center', 'card-right');
-        if (i === activeIndex) {
-          card.classList.add('card-center');
-        } else if (i === (activeIndex - 1 + 3) % 3) {
-          card.classList.add('card-left');
-        } else if (i === (activeIndex + 1) % 3) {
-          card.classList.add('card-right');
+  // 5. Smooth Scroll for Anchor Links (fixes iframe and parent routing issues)
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      const targetId = this.getAttribute('href');
+      if (targetId === '#') return; // Ignore dummy hashes
+      
+      const targetElement = document.querySelector(targetId);
+      if (targetElement) {
+        e.preventDefault();
+        
+        // If it's a mobile menu link, close the menu
+        const navMenu = document.querySelector('.nav-menu');
+        if (navMenu && navMenu.classList.contains('active')) {
+          navMenu.classList.remove('active');
+          document.body.style.overflow = '';
         }
-      });
-
-      // Update dot states
-      if (dots.length > 0) {
-        dots.forEach((dot, i) => {
-          if (i === activeIndex) {
-            dot.classList.add('active');
-          } else {
-            dot.classList.remove('active');
-          }
+        
+        targetElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
         });
       }
-    };
-
-    // Button interactions
-    if (prevBtn) {
-      prevBtn.addEventListener('click', () => {
-        updateSlider(activeIndex - 1);
-      });
-    }
-
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
-        updateSlider(activeIndex + 1);
-      });
-    }
-
-    // Direct card click interaction
-    cards.forEach((card, i) => {
-      card.addEventListener('click', (e) => {
-        // If clicking on links or buttons inside the card, allow default action
-        if (e.target.closest('a') || e.target.closest('button')) return;
-        
-        if (i !== activeIndex) {
-          e.preventDefault();
-          updateSlider(i);
-        }
-      });
     });
-
-    // Dot click interaction
-    if (dots.length > 0) {
-      dots.forEach((dot, i) => {
-        dot.addEventListener('click', () => {
-          updateSlider(i);
-        });
-      });
-    }
-
-    // Initial run
-    updateSlider(activeIndex);
-  }
+  });
 
   // ============================================================
   // Eazzio AI Chatbot Logic
