@@ -258,6 +258,28 @@ exports.login = async (req, res) => {
       return res.status(400).json({ error: 'Invalid email or password.' });
     }
 
+    // Check if demo trial company has expired or needs IP tracking update
+    if (company.reg_num && company.reg_num.startsWith('EAZ-DEMO-')) {
+      if (company.subscription_end) {
+        const now = new Date();
+        const expiry = db.parseSafeDate(company.subscription_end);
+        if (expiry && expiry < now) {
+          return res.status(403).json({
+            error: 'free_trial_already_used',
+            message: 'Your free trial has expired. Please purchase a subscription to continue using Eazzio Auto Dialer.'
+          });
+        }
+      }
+
+      const rawIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || req.connection?.remoteAddress || '';
+      const clientIp = rawIp.replace(/^::ffff:/, '');
+      if (clientIp && !company.ip_address) {
+        try {
+          await db.queryMain('UPDATE companies SET ip_address = $1 WHERE id = $2', [clientIp, company.id]);
+        } catch (ipErr) { /* ignore */ }
+      }
+    }
+
     // Generate token with companyRegNum (non-expiring for permanent login)
     const token = jwt.sign(
       { id: 1, name: company.name + ' Admin', email: company.admin_email, role: 'admin', companyRegNum: company.reg_num },
@@ -348,31 +370,16 @@ exports.registerCompany = async (req, res) => {
 
 // Register a new demo company (1 week trial working mode)
 exports.registerDemoCompany = async (req, res) => {
-  const { name, email, password, macAddress, companyName: inputCompanyName, nature: inputNature, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+  const { name, email, password, macAddress, companyName: inputCompanyName, nature: inputNature } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Please provide both name and email.' });
   }
 
   try {
-    // Optional Razorpay Payment Verification for trial authorization
-    if (razorpay_order_id && razorpay_payment_id && razorpay_signature) {
-      const crypto = require('crypto');
-      const keySecret = process.env.RAZORPAY_KEY_SECRET;
-      if (keySecret) {
-        const signatureText = razorpay_order_id + '|' + razorpay_payment_id;
-        const expectedSignature = crypto
-          .createHmac('sha256', keySecret)
-          .update(signatureText)
-          .digest('hex');
-
-        if (expectedSignature !== razorpay_signature) {
-          console.warn('[Razorpay] Trial registration signature mismatch verification failed!');
-          return res.status(400).json({ error: 'Payment verification signature mismatch. Trial registration aborted.' });
-        }
-        console.log('[Razorpay] Trial authorization payment signature verified successfully.');
-      }
-    }
+    // Extract client IP address
+    const rawIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || req.connection?.remoteAddress || '';
+    const clientIp = rawIp.replace(/^::ffff:/, '');
 
     // Check if company admin email already exists in master db companies table
     const companyExists = await db.queryMain('SELECT * FROM companies WHERE admin_email = $1', [email]);
@@ -380,11 +387,17 @@ exports.registerDemoCompany = async (req, res) => {
       return res.status(400).json({ error: 'A company with this admin email is already registered.' });
     }
 
-    // Check MAC Address/Device lock for demo accounts
-    if (macAddress) {
-      const checkMac = await db.queryMain("SELECT * FROM companies WHERE mac_address = $1 AND reg_num LIKE 'EAZ-DEMO-%'", [macAddress]);
-      if (checkMac.rows.length > 0) {
-        return res.status(400).json({ error: 'please take subscription' });
+    // Check MAC Address & Client IP Address lock for free trial demo accounts
+    if (macAddress || clientIp) {
+      const checkLock = await db.queryMain(
+        "SELECT * FROM companies WHERE ((mac_address IS NOT NULL AND mac_address = $1) OR (ip_address IS NOT NULL AND ip_address = $2)) AND reg_num LIKE 'EAZ-DEMO-%'",
+        [macAddress || 'NO_MAC_GIVEN', clientIp || 'NO_IP_GIVEN']
+      );
+      if (checkLock.rows.length > 0) {
+        return res.status(403).json({
+          error: 'free_trial_already_used',
+          message: 'A free trial has already been used on this device or IP network. Please purchase a subscription to continue.'
+        });
       }
     }
 
@@ -413,10 +426,10 @@ exports.registerDemoCompany = async (req, res) => {
     // Postgres format (YYYY-MM-DD HH:MM:SS)
     const formattedExpiry = expiry.toISOString().replace('T', ' ').substring(0, 19);
 
-    // Insert company into master db
+    // Insert company into master db with mac_address and ip_address
     await db.queryMain(
-      'INSERT INTO companies (name, nature, no_of_telecallers, reg_num, admin_email, admin_password_hash, admin_plain_password, price_per_telecaller, subscription_start, subscription_end, plan_type, mac_address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, $9, $10, $11)',
-      [companyName, companyNature, 1, regNum, email, adminPasswordHash, defaultPassword, 0, formattedExpiry, 'demo', macAddress || null]
+      'INSERT INTO companies (name, nature, no_of_telecallers, reg_num, admin_email, admin_password_hash, admin_plain_password, price_per_telecaller, subscription_start, subscription_end, plan_type, mac_address, ip_address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, $9, $10, $11, $12)',
+      [companyName, companyNature, 1, regNum, email, adminPasswordHash, defaultPassword, 0, formattedExpiry, 'demo', macAddress || null, clientIp || null]
     );
 
     // Provision the isolated database schema
@@ -1136,8 +1149,7 @@ exports.createRazorpayOrder = async (req, res) => {
         is_trial: isTrialOrder ? 'true' : 'false',
         authorization_amount: `INR ${authorizationAmountInINR}`,
         future_recurring_amount: `INR ${totalAmount}`,
-        recurring_schedule: `Annual ${targetPlan.toUpperCase()} Plan (₹${pricePerCaller}/seat/year)`,
-        autodebit: 'true'
+        plan_schedule: `Annual ${targetPlan.toUpperCase()} Plan (₹${pricePerCaller}/seat/year)`
       }
     };
 

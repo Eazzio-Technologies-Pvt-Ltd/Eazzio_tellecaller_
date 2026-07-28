@@ -589,6 +589,10 @@ const App = () => {
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.error === 'free_trial_already_used' || data.error === 'please take subscription' || (data.message && data.message.includes('subscription'))) {
+          setShowRegisterCompanyModal(true);
+          throw new Error(data.message || 'Free trial limit reached for this device or network IP. Please purchase a subscription.');
+        }
         throw new Error(data.error || 'Login failed.');
       }
 
@@ -723,115 +727,47 @@ const App = () => {
     }
 
     try {
-      // 1. Load Razorpay script
-      const loaded = await loadRazorpayScript();
-      if (!loaded) {
-        throw new Error('Failed to load Razorpay SDK. Please check your internet connection.');
-      }
-
-      // 2. Create Trial Razorpay Order (₹1 Token Authorization)
-      const orderRes = await fetch(`${API_BASE_URL}/api/auth/razorpay-order`, {
+      // Direct Free Trial Workspace Initialization (100% Free - Price ₹0)
+      const regRes = await fetch(`${API_BASE_URL}/api/auth/register-demo-company`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          noOfTelecallers: 1,
-          planType: 'basic',
-          isTrial: true,
+          name: demoName,
           email: demoEmail,
-          name: demoName
-        }),
+          password: demoPassword,
+          companyName: demoCompanyName,
+          nature: demoCompanyNature,
+          macAddress: getDemoDeviceId()
+        })
       });
 
-      const orderData = await orderRes.json();
-      if (!orderRes.ok) {
-        throw new Error(orderData.error || 'Failed to create trial payment order.');
+      const data = await regRes.json();
+      if (!regRes.ok) {
+        if (data.error === 'free_trial_already_used' || data.error === 'please take subscription') {
+          setShowRegisterCompanyModal(true);
+          throw new Error(data.message || 'A free trial has already been used on this device or IP network. Please purchase a subscription to continue.');
+        }
+        throw new Error(data.message || data.error || 'Failed to initialize demo workspace.');
       }
 
-      // 3. Open Razorpay Checkout Modal with Autodebit recurring mandate enablement
-      const options = {
-        key: orderData.keyId,
-        amount: orderData.amount, // 100 paise = ₹1 nominal token fee
-        currency: 'INR',
-        name: 'Eazzio Auto Dialer',
-        description: `Free Trial Demo (₹1 Token Authorization) — Future recurring charge: ₹${orderData.totalAmount || 348}/year (BASIC Plan)`,
-        order_id: orderData.orderId,
-        ...(orderData.customerId ? { customer_id: orderData.customerId } : {}),
-        recurring: true,
-        notes: {
-          plan_id: 'basic',
-          is_trial: 'true',
-          autodebit: 'true',
-          future_recurring_amount: `₹${orderData.totalAmount || 348}/year`,
-          mandate_disclosure: 'Trial authorization fee: ₹1. Auto-debit recurring charges apply after trial.'
-        },
-        handler: async function (response) {
-          setDemoLoading(true);
-          try {
-            // 4. Verify payment and initialize demo company workspace
-            const regRes = await fetch(`${API_BASE_URL}/api/auth/register-demo-company`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                name: demoName,
-                email: demoEmail,
-                password: demoPassword,
-                companyName: demoCompanyName,
-                nature: demoCompanyNature,
-                macAddress: getDemoDeviceId(),
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-              })
-            });
+      // Auto-login with returned token & user details
+      localStorage.setItem('token', data.token);
+      setToken(data.token);
+      setUser(data.user);
+      setActiveTab('dashboard');
+      setShowDemoPage(false);
 
-            const data = await regRes.json();
-            if (!regRes.ok) {
-              throw new Error(data.error || 'Failed to initialize demo workspace.');
-            }
-
-            // Auto-login with returned token & user details
-            localStorage.setItem('token', data.token);
-            setToken(data.token);
-            setUser(data.user);
-            setActiveTab('dashboard');
-            setShowDemoPage(false);
-
-            // Reset demo registration states
-            setDemoName('');
-            setDemoEmail('');
-            setDemoPassword('');
-            setDemoCompanyName('');
-            setDemoCompanyNature('');
-          } catch (err) {
-            setDemoError(err.message);
-          } finally {
-            setDemoLoading(false);
-          }
-        },
-        prefill: {
-          name: demoName,
-          email: demoEmail
-        },
-        theme: {
-          color: '#f59e0b'
-        },
-        modal: {
-          ondismiss: function () {
-            setDemoLoading(false);
-            setDemoError('Trial payment authorization was cancelled.');
-          }
-        }
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-
+      // Reset demo registration states
+      setDemoName('');
+      setDemoEmail('');
+      setDemoPassword('');
+      setDemoCompanyName('');
+      setDemoCompanyNature('');
     } catch (err) {
       setDemoError(err.message);
+    } finally {
       setDemoLoading(false);
     }
   };
@@ -1062,7 +998,7 @@ const App = () => {
               </button>
 
               <div style={{ marginTop: '8px', textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-secondary, #64748b)', lineHeight: '1.4' }}>
-                Recurring Basic Plan charge (₹348/yr) starts after your 7-day trial.
+                100% Free 7-Day Trial • Instant Access • No Payment Required
               </div>
             </form>
 

@@ -201,8 +201,6 @@ const BillingPage = ({ theme, user, setToken, setUser }) => {
         name: 'Eazzio Auto Dialer',
         description: `Call Recording Add-on (${planType === 'annual' ? 'Annual' : 'Monthly'})`,
         order_id: orderData.orderId,
-        ...(orderData.customerId ? { customer_id: orderData.customerId } : {}),
-        recurring: true,
         handler: async function (response) {
           setPaymentLoading(true);
           try {
