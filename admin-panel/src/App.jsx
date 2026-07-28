@@ -738,7 +738,9 @@ const App = () => {
         body: JSON.stringify({
           noOfTelecallers: 1,
           planType: 'basic',
-          isTrial: true
+          isTrial: true,
+          email: demoEmail,
+          name: demoName
         }),
       });
 
@@ -747,7 +749,7 @@ const App = () => {
         throw new Error(orderData.error || 'Failed to create trial payment order.');
       }
 
-      // 3. Open Razorpay Checkout Modal
+      // 3. Open Razorpay Checkout Modal with Autodebit recurring mandate enablement
       const options = {
         key: orderData.keyId,
         amount: orderData.amount, // 100 paise = ₹1 nominal token fee
@@ -755,11 +757,14 @@ const App = () => {
         name: 'Eazzio Auto Dialer',
         description: `Free Trial Demo (₹1 Token Authorization) — Future recurring charge: ₹${orderData.totalAmount || 348}/year (BASIC Plan)`,
         order_id: orderData.orderId,
+        ...(orderData.customerId ? { customer_id: orderData.customerId } : {}),
+        recurring: true,
         notes: {
           plan_id: 'basic',
           is_trial: 'true',
+          autodebit: 'true',
           future_recurring_amount: `₹${orderData.totalAmount || 348}/year`,
-          mandate_disclosure: 'Trial authorization fee: ₹1. Future recurring charges apply after 7-day trial ends.'
+          mandate_disclosure: 'Trial authorization fee: ₹1. Auto-debit recurring charges apply after trial.'
         },
         handler: async function (response) {
           setDemoLoading(true);

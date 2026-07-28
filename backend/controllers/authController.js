@@ -1032,7 +1032,7 @@ exports.getCompanyBillingDetails = async (req, res) => {
 
 // Create Razorpay Order (Public) — supports basic (₹29/year), starter (₹49/year + ₹4788 call recording option), and growth (₹99/year with free call recording) plans
 exports.createRazorpayOrder = async (req, res) => {
-  const { noOfTelecallers, planType, includeCallRecording, isTrial, isDemo, trial } = req.body;
+  const { noOfTelecallers, planType, includeCallRecording, isTrial, isDemo, trial, email, name } = req.body;
   if (!noOfTelecallers || isNaN(noOfTelecallers) || parseInt(noOfTelecallers) <= 0) {
     return res.status(400).json({ error: 'Please provide a valid number of telecallers.' });
   }
@@ -1086,6 +1086,31 @@ exports.createRazorpayOrder = async (req, res) => {
 
     const authHeader = 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
     
+    // Optionally create/fetch Razorpay customer for autodebit mandate binding
+    let customerId = null;
+    if (email) {
+      try {
+        const custRes = await fetch('https://api.razorpay.com/v1/customers', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader
+          },
+          body: JSON.stringify({
+            name: name || 'Eazzio Customer',
+            email: email,
+            fail_existing: 0
+          })
+        });
+        if (custRes.ok) {
+          const custData = await custRes.json();
+          customerId = custData.id;
+        }
+      } catch (custErr) {
+        console.log('[Razorpay] Customer creation skipped or existing:', custErr.message);
+      }
+    }
+
     // TASK 1: Detailed logging around Razorpay order creation call
     console.log('[Razorpay Order Creation Details]:', {
       timestamp: new Date().toISOString(),
@@ -1098,7 +1123,8 @@ exports.createRazorpayOrder = async (req, res) => {
       authorizationAmountINR: authorizationAmountInINR,
       authorizationAmountPaise: amountInPaise,
       futureRecurringAmountINR: totalAmount,
-      currency: 'INR'
+      currency: 'INR',
+      customerId
     });
     
     const razorpayPayload = {
@@ -1110,7 +1136,8 @@ exports.createRazorpayOrder = async (req, res) => {
         is_trial: isTrialOrder ? 'true' : 'false',
         authorization_amount: `INR ${authorizationAmountInINR}`,
         future_recurring_amount: `INR ${totalAmount}`,
-        recurring_schedule: `Annual ${targetPlan.toUpperCase()} Plan (₹${pricePerCaller}/seat/year)`
+        recurring_schedule: `Annual ${targetPlan.toUpperCase()} Plan (₹${pricePerCaller}/seat/year)`,
+        autodebit: 'true'
       }
     };
 
@@ -1138,6 +1165,7 @@ exports.createRazorpayOrder = async (req, res) => {
       orderId: orderData.id,
       amount: orderData.amount,
       keyId: keyId,
+      customerId: customerId,
       plan: targetPlan,
       pricePerCaller,
       totalAmount,

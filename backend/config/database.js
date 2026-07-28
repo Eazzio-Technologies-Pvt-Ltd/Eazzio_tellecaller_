@@ -33,7 +33,10 @@ if (connectionString) {
     connectionString,
     ssl: {
       rejectUnauthorized: false
-    }
+    },
+    max: 30,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000
   });
 } else {
   pgPool = new Pool({
@@ -44,7 +47,10 @@ if (connectionString) {
     database: process.env.DB_NAME,
     ssl: {
       rejectUnauthorized: false
-    }
+    },
+    max: 30,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000
   });
 }
 
@@ -631,11 +637,18 @@ async function initializeCompanySchema(regNum, companyName, adminEmail, adminPas
   }
 }
 
+// Set to track initialized tenant company database schemas in memory to avoid DDL bottleneck on every request
+const initializedCompanySchemas = new Set();
+
 /**
  * Ensures the company database is created and fully provisioned.
  */
 async function ensureCompanySchema(regNum, companyName, adminEmail, adminPasswordHash, adminPlainPassword) {
+  if (initializedCompanySchemas.has(regNum)) {
+    return;
+  }
   await initializeCompanySchema(regNum, companyName, adminEmail, adminPasswordHash, adminPlainPassword);
+  initializedCompanySchemas.add(regNum);
 }
 
 /**

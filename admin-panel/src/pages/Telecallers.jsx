@@ -259,6 +259,8 @@ const Telecallers = () => {
         name: 'Eazzio Auto Dialer',
         description: `Extra Telecaller Seat — ₹${orderData.rate} (${limitErrorDetails.planType === 'annual' ? 'Billed Annually' : 'Billed Monthly'})`,
         order_id: orderData.orderId,
+        ...(orderData.customerId ? { customer_id: orderData.customerId } : {}),
+        recurring: true,
         handler: async function (response) {
           setLoading(true);
           try {

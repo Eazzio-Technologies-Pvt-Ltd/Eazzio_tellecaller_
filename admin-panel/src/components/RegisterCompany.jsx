@@ -83,7 +83,9 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
         body: JSON.stringify({ 
           noOfTelecallers: telecallersCount,
           planType: planType,
-          includeCallRecording: includeCallRecording
+          includeCallRecording: includeCallRecording,
+          email: email,
+          name: name
         }),
       });
 
@@ -104,9 +106,12 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
             ? `Subscription Renewal for ${telecallersCount} seats (${planType.toUpperCase()})${includeCallRecording ? ' + Call Rec' : ''}`
             : `Setup Fee for ${telecallersCount} Telecallers (${planType.toUpperCase()})${includeCallRecording ? ' + Call Rec' : ''}`),
         order_id: orderData.orderId,
+        ...(orderData.customerId ? { customer_id: orderData.customerId } : {}),
+        recurring: true,
         notes: {
           plan_id: planType || 'basic',
           is_trial: orderData.isTrial ? 'true' : 'false',
+          autodebit: 'true',
           future_recurring_amount: `₹${orderData.totalAmount}/year`,
           mandate_disclosure: orderData.isTrial ? 'Trial authorization fee: ₹1. Future recurring charges apply after trial.' : 'Standard Subscription Charge'
         },
