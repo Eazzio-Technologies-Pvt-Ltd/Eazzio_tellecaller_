@@ -284,7 +284,7 @@ const DemoValidityBanner = ({ subscriptionEnd, onClose }) => {
           {timeLeft}
         </span>
       </span>
-      <button 
+      <button
         onClick={() => {
           setVisible(false);
           if (onClose) onClose();
@@ -340,7 +340,7 @@ const SecurityBanner = ({ onClose }) => {
       <span>
         Your data is safe and secure with us Encrypted by AES 256-bit Encryption
       </span>
-      <button 
+      <button
         onClick={onClose}
         style={{
           position: 'absolute',
@@ -475,7 +475,7 @@ const App = () => {
     window.addEventListener('popstate', handleUrlParams);
     return () => window.removeEventListener('popstate', handleUrlParams);
   }, []);
-  
+
   // Login Form States
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -529,48 +529,48 @@ const App = () => {
           'Authorization': `Bearer ${token}`
         }
       })
-      .then(res => {
-        if (!res.ok) {
-          // Only log out if it is an explicit authentication error (401 Unauthorized, 403 Forbidden, 404 Not Found)
-          // This keeps user logged in during backend restarts or network drops
-          if (res.status === 401 || res.status === 403 || res.status === 404) {
+        .then(res => {
+          if (!res.ok) {
+            // Only log out if it is an explicit authentication error (401 Unauthorized, 403 Forbidden, 404 Not Found)
+            // This keeps user logged in during backend restarts or network drops
+            if (res.status === 401 || res.status === 403 || res.status === 404) {
+              handleLogout();
+            }
+            throw new Error(`Token validation failed with status: ${res.status}`);
+          }
+          return res.json();
+        })
+        .then(userData => {
+          if (userData.role !== 'admin' && userData.role !== 'superadmin') {
             handleLogout();
+            throw new Error('Unauthorized role access.');
           }
-          throw new Error(`Token validation failed with status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(userData => {
-        if (userData.role !== 'admin' && userData.role !== 'superadmin') {
-          handleLogout();
-          throw new Error('Unauthorized role access.');
-        }
-        setUser(userData);
-        // Check subscription expiry for company admins
-        if (userData.companyRegNum && userData.subscriptionEnd) {
-          const now = new Date();
-          let expiryStr = userData.subscriptionEnd;
-          if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
-            expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+          setUser(userData);
+          // Check subscription expiry for company admins
+          if (userData.companyRegNum && userData.subscriptionEnd) {
+            const now = new Date();
+            let expiryStr = userData.subscriptionEnd;
+            if (!expiryStr.includes('Z') && !expiryStr.includes('T')) {
+              expiryStr = expiryStr.replace(' ', 'T') + 'Z';
+            }
+            const expiry = new Date(expiryStr);
+            if (expiry < now) {
+              setSubscriptionExpired(true);
+            } else {
+              setSubscriptionExpired(false);
+            }
           }
-          const expiry = new Date(expiryStr);
-          if (expiry < now) {
-            setSubscriptionExpired(true);
-          } else {
-            setSubscriptionExpired(false);
-          }
-        }
-      })
-      .catch(err => {
-        console.error('Session validation error:', err);
-      });
+        })
+        .catch(err => {
+          console.error('Session validation error:', err);
+        });
     }
   }, [token]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
-    
+
     if (!email || !password) {
       setLoginError('Please enter both email and password.');
       return;
@@ -735,7 +735,7 @@ const App = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           noOfTelecallers: 1,
           planType: 'basic',
           isTrial: true
@@ -770,8 +770,8 @@ const App = () => {
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({ 
-                name: demoName, 
+              body: JSON.stringify({
+                name: demoName,
                 email: demoEmail,
                 password: demoPassword,
                 companyName: demoCompanyName,
@@ -895,8 +895,8 @@ const App = () => {
   if (!token || !user || showDemoPage) {
     if (!showLogin && !showDemoPage) {
       return (
-        <iframe 
-          src="/landing.html" 
+        <iframe
+          src="/landing.html"
           style={{
             border: 'none',
             width: '100vw',
@@ -1051,13 +1051,13 @@ const App = () => {
                 ) : (
                   <>
                     <LogIn size={18} />
-                    START 1-WEEK TRIAL (₹1 AUTHORIZATION)
+                    START 1-WEEK TRIAL
                   </>
                 )}
               </button>
 
               <div style={{ marginTop: '8px', textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-secondary, #64748b)', lineHeight: '1.4' }}>
-                🔒 <strong>Autodebit Mandate Disclosure:</strong> Nominal ₹1 authorization fee today. Recurring Basic Plan charge (₹348/yr) starts after your 7-day trial.
+                Recurring Basic Plan charge (₹348/yr) starts after your 7-day trial.
               </div>
             </form>
 
@@ -1077,13 +1077,13 @@ const App = () => {
                 <h3 className="auth-footer-col-title">Follow us on</h3>
                 <div className="auth-social-icons-row">
                   <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="auth-social-circle-btn" aria-label="Facebook">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/></svg>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z" /></svg>
                   </a>
                   <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="auth-social-circle-btn" aria-label="X (Twitter)">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
                   </a>
                   <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="auth-social-circle-btn" aria-label="LinkedIn">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" /></svg>
                   </a>
                 </div>
               </div>
@@ -1138,8 +1138,8 @@ const App = () => {
               <div style={{ textAlign: 'center', marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                 <h2 className="auth-header-title" style={{ fontSize: '1.4rem' }}>Reset password</h2>
                 <p className="auth-header-desc" style={{ fontSize: '0.88rem' }}>
-                  {forgotStep === 1 
-                    ? 'Enter your email address to receive a password reset code.' 
+                  {forgotStep === 1
+                    ? 'Enter your email address to receive a password reset code.'
                     : 'Enter the verification OTP and your new password below.'}
                 </p>
               </div>
@@ -1173,9 +1173,9 @@ const App = () => {
                     <label className="auth-input-label">Email Address</label>
                     <div className="auth-input-container">
                       <Mail size={18} className="auth-input-icon" />
-                      <input 
-                        type="email" 
-                        placeholder="Enter registered email address" 
+                      <input
+                        type="email"
+                        placeholder="Enter registered email address"
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
                         className="auth-input-field"
@@ -1184,9 +1184,9 @@ const App = () => {
                     </div>
                   </div>
 
-                  <button 
-                    type="submit" 
-                    className="btn-gradient-auth" 
+                  <button
+                    type="submit"
+                    className="btn-gradient-auth"
                     style={{ marginTop: '0.75rem' }}
                     disabled={forgotLoading}
                   >
@@ -1222,9 +1222,9 @@ const App = () => {
                     <label className="auth-input-label">Verification OTP Code</label>
                     <div className="auth-input-container">
                       <Lock size={18} className="auth-input-icon" />
-                      <input 
-                        type="text" 
-                        placeholder="Enter 6-digit OTP code" 
+                      <input
+                        type="text"
+                        placeholder="Enter 6-digit OTP code"
                         value={resetOtp}
                         onChange={(e) => setResetOtp(e.target.value)}
                         className="auth-input-field"
@@ -1238,9 +1238,9 @@ const App = () => {
                     <label className="auth-input-label">New Password</label>
                     <div className="auth-input-container">
                       <Lock size={18} className="auth-input-icon" />
-                      <input 
-                        type={showNewPassword ? "text" : "password"} 
-                        placeholder="Enter new password (min 6 chars)" 
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        placeholder="Enter new password (min 6 chars)"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         className="auth-input-field"
@@ -1274,9 +1274,9 @@ const App = () => {
                     <label className="auth-input-label">Confirm New Password</label>
                     <div className="auth-input-container">
                       <Lock size={18} className="auth-input-icon" />
-                      <input 
-                        type={showConfirmPassword ? "text" : "password"} 
-                        placeholder="Confirm new password" 
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Confirm new password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         className="auth-input-field"
@@ -1306,9 +1306,9 @@ const App = () => {
                     </div>
                   </div>
 
-                  <button 
-                    type="submit" 
-                    className="btn-gradient-auth" 
+                  <button
+                    type="submit"
+                    className="btn-gradient-auth"
                     style={{ marginTop: '0.75rem' }}
                     disabled={forgotLoading}
                   >
@@ -1320,9 +1320,9 @@ const App = () => {
           ) : (
             <>
               {/* Card Header: Back to Website on left, SIGN UP on right */}
-              <div 
-                className="auth-card-header" 
-                style={{ 
+              <div
+                className="auth-card-header"
+                style={{
                   display: 'flex',
                   flexDirection: 'row',
                   justifyContent: 'space-between',
@@ -1359,9 +1359,9 @@ const App = () => {
                   {loginType === 'superadmin' ? 'Go to Company Login' : 'Back to Website'}
                 </button>
                 {loginType !== 'superadmin' && (
-                  <button 
-                    className="auth-signup-btn" 
-                    type="button" 
+                  <button
+                    className="auth-signup-btn"
+                    type="button"
                     onClick={() => setIsRegistering(true)}
                     style={{
                       width: 'auto',
@@ -1381,15 +1381,15 @@ const App = () => {
 
               {/* Centered Logo above Sign In */}
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.4rem' }}>
-                <img 
-                  src="/logo-dark.png" 
-                  alt="Eazzio Telecaller" 
-                  className="auth-logo-img" 
+                <img
+                  src="/logo-dark.png"
+                  alt="Eazzio Telecaller"
+                  className="auth-logo-img"
                   style={{ height: '42px', maxWidth: '180px', objectFit: 'contain' }}
                 />
               </div>
 
-               <h2 className="auth-main-title" style={{ marginTop: '0.5rem' }}>
+              <h2 className="auth-main-title" style={{ marginTop: '0.5rem' }}>
                 {loginType === 'superadmin' ? 'Admin' : 'Company Login'}
               </h2>
               <p className="auth-main-subtitle">
@@ -1397,7 +1397,7 @@ const App = () => {
               </p>
 
 
-                <form onSubmit={handleLogin} className="auth-form-content">
+              <form onSubmit={handleLogin} className="auth-form-content">
                 {loginError && (
                   <div style={styles.errorAlert}>
                     <AlertCircle size={18} style={{ flexShrink: 0 }} />
@@ -1409,9 +1409,9 @@ const App = () => {
                   <label className="auth-input-label-callyzer">
                     Email Address <span>*</span>
                   </label>
-                  <input 
-                    type="email" 
-                    placeholder="Enter Your Email Address" 
+                  <input
+                    type="email"
+                    placeholder="Enter Your Email Address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="auth-input-field-callyzer"
@@ -1424,9 +1424,9 @@ const App = () => {
                     Password <span>*</span>
                   </label>
                   <div className="auth-password-wrapper">
-                    <input 
-                      type={showPassword ? "text" : "password"} 
-                      placeholder="Enter Your Password" 
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter Your Password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="auth-input-field-callyzer password-input"
@@ -1459,9 +1459,9 @@ const App = () => {
                   </button>
                 </div>
 
-                <button 
-                  type="submit" 
-                  className="btn-signin-callyzer" 
+                <button
+                  type="submit"
+                  className="btn-signin-callyzer"
                   disabled={loggingIn}
                 >
                   {loggingIn ? 'Signing In...' : 'SIGN IN'}
@@ -1469,13 +1469,13 @@ const App = () => {
 
                 <div className="auth-or-separator">OR</div>
 
-                <button 
+                <button
                   type="button"
                   onClick={handleGoogleSignInClick}
                   className="btn-google-callyzer"
                 >
                   <svg className="google-icon-svg" viewBox="0 0 24 24">
-                    <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.86-3.577-7.86-8s3.53-8 7.86-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.11C18.28 1.845 15.483 1 12.24 1 6.01 1 1 6.01 1 12.24s5.01 11.24 11.24 11.24c6.5 0 10.822-4.574 10.822-11.023 0-.74-.08-1.302-.178-1.742H12.24z"/>
+                    <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.86-3.577-7.86-8s3.53-8 7.86-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.11C18.28 1.845 15.483 1 12.24 1 6.01 1 1 6.01 1 12.24s5.01 11.24 11.24 11.24c6.5 0 10.822-4.574 10.822-11.023 0-.74-.08-1.302-.178-1.742H12.24z" />
                   </svg>
                   <span>Sign In with Google</span>
                 </button>
@@ -1486,8 +1486,8 @@ const App = () => {
                       {loginType === 'superadmin' ? (
                         <>
                           Are you a company?{' '}
-                          <a 
-                            href="#" 
+                          <a
+                            href="#"
                             onClick={(e) => {
                               e.preventDefault();
                               setTriggerEffect(true);
@@ -1496,7 +1496,7 @@ const App = () => {
                               setPassword('');
                               setLoginError('');
                               setTimeout(() => setTriggerEffect(false), 800);
-                            }} 
+                            }}
                             style={{
                               color: '#f59e0b',
                               fontWeight: '600',
@@ -1510,12 +1510,12 @@ const App = () => {
                       ) : (
                         <>
                           Are you a system administrator?{' '}
-                          <a 
-                            href="#" 
+                          <a
+                            href="#"
                             onClick={(e) => {
                               e.preventDefault();
                               handleAdminLoginClick();
-                            }} 
+                            }}
                             style={{
                               color: '#f59e0b',
                               fontWeight: '600',
@@ -1543,12 +1543,12 @@ const App = () => {
                     <a href="/" className="auth-footer-link-item">Home</a>
                     <a href="/#features" className="auth-footer-link-item">Features</a>
                     <a href="/#pricing" className="auth-footer-link-item">Pricing</a>
-                    <a 
-                      href="#" 
+                    <a
+                      href="#"
                       onClick={(e) => {
                         e.preventDefault();
                         handleAdminLoginClick();
-                      }} 
+                      }}
                       className="auth-footer-link-item"
                     >
                       Admin
@@ -1559,13 +1559,13 @@ const App = () => {
                   <h3 className="auth-footer-col-title">Follow us on</h3>
                   <div className="auth-social-icons-row">
                     <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="auth-social-circle-btn" aria-label="Facebook">
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/></svg>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z" /></svg>
                     </a>
                     <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="auth-social-circle-btn" aria-label="X (Twitter)">
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
                     </a>
                     <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="auth-social-circle-btn" aria-label="LinkedIn">
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" /></svg>
                     </a>
                   </div>
                 </div>
@@ -1597,7 +1597,7 @@ const App = () => {
               {isDemo ? 'please take subscription' : 'Subscription Expired'}
             </h2>
             <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '0.95rem', textAlign: 'center', lineHeight: '1.5' }}>
-              {isDemo 
+              {isDemo
                 ? 'Your 1-week free trial has expired. To continue using Eazzio and access your campaigns, please purchase a subscription.'
                 : 'Your Eazzio subscription has expired. Please contact Eazzio Support or the system administrator to renew the plan.'}
             </p>
@@ -1622,11 +1622,11 @@ const App = () => {
                     'Authorization': `Bearer ${activeToken}`
                   }
                 })
-                .then(res => res.json())
-                .then(userData => {
-                  setUser(userData);
-                })
-                .catch(err => console.error('Error fetching updated user after renewal:', err));
+                  .then(res => res.json())
+                  .then(userData => {
+                    setUser(userData);
+                  })
+                  .catch(err => console.error('Error fetching updated user after renewal:', err));
               }}
             />
           ) : (
@@ -1672,8 +1672,8 @@ const App = () => {
       <div className="app-layout-wrapper" style={{ display: 'flex', width: '100%', minHeight: offsetHeight > 0 ? `calc(100vh - ${offsetHeight}px)` : '100vh' }}>
         <div className="mobile-header">
           <Logo theme={theme} mode="sidebar" />
-          <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="mobile-menu-toggle"
             title="Toggle Navigation Menu"
           >
@@ -1685,9 +1685,9 @@ const App = () => {
           <div className="mobile-sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>
         )}
 
-        <Sidebar 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
           user={user}
           onLogout={handleLogout}
           theme={theme}
