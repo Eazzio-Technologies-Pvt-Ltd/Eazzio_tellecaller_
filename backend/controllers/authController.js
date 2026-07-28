@@ -1013,34 +1013,36 @@ exports.getCompanyBillingDetails = async (req, res) => {
 
 // Create Razorpay Order (Public) — supports basic (₹29/year), starter (₹49/year + ₹4788 call recording option), and growth (₹99/year with free call recording) plans
 exports.createRazorpayOrder = async (req, res) => {
-  const { noOfTelecallers, planType, includeCallRecording } = req.body;
+  const { noOfTelecallers, planType, includeCallRecording, isTrial, isDemo, trial } = req.body;
   if (!noOfTelecallers || isNaN(noOfTelecallers) || parseInt(noOfTelecallers) <= 0) {
     return res.status(400).json({ error: 'Please provide a valid number of telecallers.' });
   }
 
+  const isTrialOrder = Boolean(isTrial || isDemo || trial || planType === 'demo' || planType === 'trial');
+  const targetPlan = (isTrialOrder && (planType === 'demo' || planType === 'trial')) ? 'basic' : (planType || 'basic');
   const numCallers = parseInt(noOfTelecallers);
   let totalAmount = 0;
   let pricePerCaller = 0;
   let recordingCharge = 0;
 
-  if (planType === 'basic') {
+  if (targetPlan === 'basic') {
     pricePerCaller = 29;
     totalAmount = numCallers * 29 * 12;
     // basic plan does not support call recording
-  } else if (planType === 'starter') {
+  } else if (targetPlan === 'starter') {
     pricePerCaller = 49;
     totalAmount = numCallers * 49 * 12;
     if (includeCallRecording) {
       recordingCharge = 3999;
       totalAmount += recordingCharge;
     }
-  } else if (planType === 'growth') {
+  } else if (targetPlan === 'growth') {
     pricePerCaller = 99;
     totalAmount = numCallers * 99 * 12;
     // call recording is free for growth plan
   } else {
     // legacy monthly/annual support
-    const plan = planType === 'annual' ? 'annual' : 'monthly';
+    const plan = targetPlan === 'annual' ? 'annual' : 'monthly';
     const MONTHLY_RATE = 59;
     const ANNUAL_RATE = 49;
     totalAmount = plan === 'annual' ? numCallers * ANNUAL_RATE * 12 : numCallers * MONTHLY_RATE;
@@ -1051,7 +1053,9 @@ exports.createRazorpayOrder = async (req, res) => {
     }
   }
 
-  const amountInPaise = totalAmount * 100; // Razorpay expects amount in paise
+  // Authorization Step Amount: ₹1 (100 paise) nominal token authorization fee for trial/demo orders as enforced by Razorpay API minimums, instead of charging full plan cost upfront
+  const authorizationAmountInINR = isTrialOrder ? 1 : totalAmount;
+  const amountInPaise = authorizationAmountInINR * 100; // Razorpay expects amount in paise
 
   try {
     const keyId = process.env.RAZORPAY_KEY_ID;
@@ -1063,19 +1067,43 @@ exports.createRazorpayOrder = async (req, res) => {
 
     const authHeader = 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
     
-    console.log(`[Razorpay] Creating ${planType} order for ${numCallers} callers (Call Recording: ${includeCallRecording ? 'Yes' : 'No'}): INR ${totalAmount} (${amountInPaise} paise)`);
+    // TASK 1: Detailed logging around Razorpay order creation call
+    console.log('[Razorpay Order Creation Details]:', {
+      timestamp: new Date().toISOString(),
+      planType: targetPlan,
+      requestedPlanType: planType,
+      isTrialOrder,
+      noOfTelecallers: numCallers,
+      includeCallRecording: Boolean(includeCallRecording),
+      pricePerCallerINR: pricePerCaller,
+      authorizationAmountINR: authorizationAmountInINR,
+      authorizationAmountPaise: amountInPaise,
+      futureRecurringAmountINR: totalAmount,
+      currency: 'INR'
+    });
     
+    const razorpayPayload = {
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: `${isTrialOrder ? 'trial_' : 'rcpt_'}${Date.now()}`,
+      notes: {
+        plan_id: targetPlan,
+        is_trial: isTrialOrder ? 'true' : 'false',
+        authorization_amount: `INR ${authorizationAmountInINR}`,
+        future_recurring_amount: `INR ${totalAmount}`,
+        recurring_schedule: `Annual ${targetPlan.toUpperCase()} Plan (₹${pricePerCaller}/seat/year)`
+      }
+    };
+
+    console.log(`[Razorpay] Sending API Payload to https://api.razorpay.com/v1/orders:`, JSON.stringify(razorpayPayload, null, 2));
+
     const response = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': authHeader
       },
-      body: JSON.stringify({
-        amount: amountInPaise,
-        currency: 'INR',
-        receipt: `rcpt_${Date.now()}`
-      })
+      body: JSON.stringify(razorpayPayload)
     });
 
     if (!response.ok) {
@@ -1085,15 +1113,18 @@ exports.createRazorpayOrder = async (req, res) => {
     }
 
     const orderData = await response.json();
-    console.log(`[Razorpay] Order created successfully: ${orderData.id}`);
+    console.log(`[Razorpay] Order created successfully: ID = ${orderData.id}, Amount = ${orderData.amount} paise (INR ${orderData.amount / 100}), Status = ${orderData.status}`);
 
     res.json({
       orderId: orderData.id,
       amount: orderData.amount,
       keyId: keyId,
-      plan: planType,
+      plan: targetPlan,
       pricePerCaller,
-      totalAmount
+      totalAmount,
+      isTrial: isTrialOrder,
+      authorizationAmount: authorizationAmountInINR,
+      recurringAmount: totalAmount
     });
   } catch (error) {
     console.error('Create Razorpay order error:', error);

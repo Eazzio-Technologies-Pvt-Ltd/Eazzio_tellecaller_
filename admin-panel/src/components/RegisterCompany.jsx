@@ -98,10 +98,18 @@ const RegisterCompany = ({ onBack, theme, renewalMode = false, prefillEmail = ''
         amount: orderData.amount,
         currency: 'INR',
         name: 'Eazzio Auto Dialer',
-        description: renewalMode 
-          ? `Subscription Renewal for ${telecallersCount} seats (${planType.toUpperCase()})${includeCallRecording ? ' + Call Rec' : ''}`
-          : `Setup Fee for ${telecallersCount} Telecallers (${planType.toUpperCase()})${includeCallRecording ? ' + Call Rec' : ''}`,
+        description: orderData.isTrial
+          ? `Free Trial Demo (₹1 Token Authorization) — Future recurring charge: ₹${orderData.totalAmount}/year (${(planType || 'basic').toUpperCase()} Plan)`
+          : (renewalMode 
+            ? `Subscription Renewal for ${telecallersCount} seats (${planType.toUpperCase()})${includeCallRecording ? ' + Call Rec' : ''}`
+            : `Setup Fee for ${telecallersCount} Telecallers (${planType.toUpperCase()})${includeCallRecording ? ' + Call Rec' : ''}`),
         order_id: orderData.orderId,
+        notes: {
+          plan_id: planType || 'basic',
+          is_trial: orderData.isTrial ? 'true' : 'false',
+          future_recurring_amount: `₹${orderData.totalAmount}/year`,
+          mandate_disclosure: orderData.isTrial ? 'Trial authorization fee: ₹1. Future recurring charges apply after trial.' : 'Standard Subscription Charge'
+        },
         handler: async function (response) {
           setLoading(true);
           try {
