@@ -103,8 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const duration = 40; // 40 seconds total
     let currentLang = 'en';
     let lastPartIndex = -1;
-    let lastLang = 'en';
-    let isMuted = false;
+    let isMuted = true; // Start silent by default; sound activates when user clicks unmute
 
     const videoData = {
       parts: [
@@ -277,6 +276,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (muteBtn) {
+      muteBtn.textContent = isMuted ? '🔇' : '🔊';
+      muteBtn.setAttribute('aria-label', isMuted ? 'Unmute' : 'Mute');
+
       muteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         isMuted = !isMuted;

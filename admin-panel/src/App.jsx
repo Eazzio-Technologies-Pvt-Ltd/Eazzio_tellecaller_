@@ -697,6 +697,20 @@ const App = () => {
     }
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleDemoRequestSubmit = async (e) => {
     e.preventDefault();
     setDemoError('');
@@ -709,40 +723,108 @@ const App = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/register-demo-company`, {
+      // 1. Load Razorpay script
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        throw new Error('Failed to load Razorpay SDK. Please check your internet connection.');
+      }
+
+      // 2. Create Trial Razorpay Order (₹1 Token Authorization)
+      const orderRes = await fetch(`${API_BASE_URL}/api/auth/razorpay-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          name: demoName, 
-          email: demoEmail,
-          password: demoPassword,
-          companyName: demoCompanyName,
-          nature: demoCompanyNature,
-          macAddress: getDemoDeviceId()
-        })
+          noOfTelecallers: 1,
+          planType: 'basic',
+          isTrial: true
+        }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to initialize demo workspace.');
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) {
+        throw new Error(orderData.error || 'Failed to create trial payment order.');
       }
 
-      // Auto-login with the returned token & user details
-      localStorage.setItem('token', data.token);
-      setToken(data.token);
-      setUser(data.user);
-      setActiveTab('dashboard');
-      setShowDemoPage(false);
+      // 3. Open Razorpay Checkout Modal
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount, // 100 paise = ₹1 nominal token fee
+        currency: 'INR',
+        name: 'Eazzio Auto Dialer',
+        description: `Free Trial Demo (₹1 Token Authorization) — Future recurring charge: ₹${orderData.totalAmount || 348}/year (BASIC Plan)`,
+        order_id: orderData.orderId,
+        notes: {
+          plan_id: 'basic',
+          is_trial: 'true',
+          future_recurring_amount: `₹${orderData.totalAmount || 348}/year`,
+          mandate_disclosure: 'Trial authorization fee: ₹1. Future recurring charges apply after 7-day trial ends.'
+        },
+        handler: async function (response) {
+          setDemoLoading(true);
+          try {
+            // 4. Verify payment and initialize demo company workspace
+            const regRes = await fetch(`${API_BASE_URL}/api/auth/register-demo-company`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ 
+                name: demoName, 
+                email: demoEmail,
+                password: demoPassword,
+                companyName: demoCompanyName,
+                nature: demoCompanyNature,
+                macAddress: getDemoDeviceId(),
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
 
-      // Reset demo registration states
-      setDemoName('');
-      setDemoEmail('');
-      setDemoPassword('');
-      setDemoCompanyName('');
-      setDemoCompanyNature('');
+            const data = await regRes.json();
+            if (!regRes.ok) {
+              throw new Error(data.error || 'Failed to initialize demo workspace.');
+            }
+
+            // Auto-login with returned token & user details
+            localStorage.setItem('token', data.token);
+            setToken(data.token);
+            setUser(data.user);
+            setActiveTab('dashboard');
+            setShowDemoPage(false);
+
+            // Reset demo registration states
+            setDemoName('');
+            setDemoEmail('');
+            setDemoPassword('');
+            setDemoCompanyName('');
+            setDemoCompanyNature('');
+          } catch (err) {
+            setDemoError(err.message);
+          } finally {
+            setDemoLoading(false);
+          }
+        },
+        prefill: {
+          name: demoName,
+          email: demoEmail
+        },
+        theme: {
+          color: '#f59e0b'
+        },
+        modal: {
+          ondismiss: function () {
+            setDemoLoading(false);
+            setDemoError('Trial payment authorization was cancelled.');
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+
     } catch (err) {
       setDemoError(err.message);
       setDemoLoading(false);
@@ -809,8 +891,8 @@ const App = () => {
     }
   };
 
-  // Render Website / Login Screen if not authenticated
-  if (!token || !user) {
+  // Render Website / Login Screen if not authenticated or if Request Demo page is explicitly requested
+  if (!token || !user || showDemoPage) {
     if (!showLogin && !showDemoPage) {
       return (
         <iframe 
@@ -969,10 +1051,14 @@ const App = () => {
                 ) : (
                   <>
                     <LogIn size={18} />
-                    START 1-WEEK TRIAL
+                    START 1-WEEK TRIAL (₹1 AUTHORIZATION)
                   </>
                 )}
               </button>
+
+              <div style={{ marginTop: '8px', textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-secondary, #64748b)', lineHeight: '1.4' }}>
+                🔒 <strong>Autodebit Mandate Disclosure:</strong> Nominal ₹1 authorization fee today. Recurring Basic Plan charge (₹348/yr) starts after your 7-day trial.
+              </div>
             </form>
 
             <div className="auth-card-divider-line"></div>

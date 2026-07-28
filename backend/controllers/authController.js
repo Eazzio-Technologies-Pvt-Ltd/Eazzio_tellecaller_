@@ -348,13 +348,32 @@ exports.registerCompany = async (req, res) => {
 
 // Register a new demo company (1 week trial working mode)
 exports.registerDemoCompany = async (req, res) => {
-  const { name, email, password, macAddress, companyName: inputCompanyName, nature: inputNature } = req.body;
+  const { name, email, password, macAddress, companyName: inputCompanyName, nature: inputNature, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Please provide both name and email.' });
   }
 
   try {
+    // Optional Razorpay Payment Verification for trial authorization
+    if (razorpay_order_id && razorpay_payment_id && razorpay_signature) {
+      const crypto = require('crypto');
+      const keySecret = process.env.RAZORPAY_KEY_SECRET;
+      if (keySecret) {
+        const signatureText = razorpay_order_id + '|' + razorpay_payment_id;
+        const expectedSignature = crypto
+          .createHmac('sha256', keySecret)
+          .update(signatureText)
+          .digest('hex');
+
+        if (expectedSignature !== razorpay_signature) {
+          console.warn('[Razorpay] Trial registration signature mismatch verification failed!');
+          return res.status(400).json({ error: 'Payment verification signature mismatch. Trial registration aborted.' });
+        }
+        console.log('[Razorpay] Trial authorization payment signature verified successfully.');
+      }
+    }
+
     // Check if company admin email already exists in master db companies table
     const companyExists = await db.queryMain('SELECT * FROM companies WHERE admin_email = $1', [email]);
     if (companyExists.rows.length > 0) {
